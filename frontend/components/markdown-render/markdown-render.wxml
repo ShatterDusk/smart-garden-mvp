@@ -1,0 +1,4 @@
+<!-- Markdown 渲染组件 -->
+<view class="markdown-content">
+  <rich-text nodes="{{richTextNodes}}" bindtap="onLinkTap"></rich-text>
+</view>

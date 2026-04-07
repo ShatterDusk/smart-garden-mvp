@@ -1,0 +1,9 @@
+{
+  "navigationBarTitleText": "快速诊断",
+  "navigationBarBackgroundColor": "#4CAF50",
+  "navigationBarTextStyle": "white",
+  "backgroundColor": "#f8f9fa",
+  "usingComponents": {
+    "diagnosis-card": "/components/diagnosis-card/diagnosis-card"
+  }
+}

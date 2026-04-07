@@ -1,0 +1,48 @@
+<!--components/plant-card/plant-card.wxml-->
+<view class="plant-card {{customClass}}" bindtap="onTap" bindlongpress="onLongPress" data-id="{{plantId}}">
+  <!-- 左侧：植物图片 + 健康分徽章 -->
+  <view class="plant-media">
+    <image wx:if="{{coverImageUrl}}" class="plant-image" src="{{coverImageUrl}}" mode="aspectFill"/>
+    <view wx:else class="plant-image placeholder">
+      <text class="placeholder-emoji">{{emoji || '🌱'}}</text>
+    </view>
+    <!-- 健康分数徽章 -->
+    <view wx:if="{{showHealthScore && healthScore}}" class="score-badge {{healthStatus}}">
+      {{healthScore}}
+    </view>
+  </view>
+
+  <!-- 中间：信息区 -->
+  <view class="plant-body">
+    <!-- 主标题行 -->
+    <view class="title-row">
+      <text class="plant-nickname">{{nickname}}</text>
+    </view>
+
+    <!-- 副标题：品种 -->
+    <text class="plant-species">{{species || '未知品种'}}</text>
+
+    <!-- 底部信息行 -->
+    <view class="meta-row">
+      <view class="status-pill {{healthStatus}}">
+        <text class="dot"></text>
+        <text>{{statusText}}</text>
+      </view>
+      <view wx:if="{{joinedDays > 0}}" class="days-tag">
+        <text class="days-icon">📅</text>
+        <text>已陪伴{{joinedDays}}天</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 右侧：操作按钮区 -->
+  <view class="action-area">
+    <view wx:if="{{deviceConnected}}" class="device-indicator">
+      <text class="indicator-icon">📡</text>
+      <text class="indicator-text">监测中</text>
+    </view>
+    <view wx:if="{{showAction}}" class="chat-btn" catchtap="onActionTap">
+      <text class="chat-icon">💬</text>
+    </view>
+  </view>
+</view>

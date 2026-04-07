@@ -1,0 +1,90 @@
+/* components/metric-item/metric-item.wxss */
+.metric-item {
+  background: white;
+  border-radius: 20rpx;
+  padding: 30rpx 20rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+  position: relative;
+}
+
+.metric-item.clickable:active {
+  opacity: 0.8;
+  transform: scale(0.98);
+}
+
+.metric-item.warning {
+  background: #FFF8E1;
+  border: 2rpx solid #FF9800;
+}
+
+.metric-item.critical {
+  background: #FFEBEE;
+  border: 2rpx solid #F44336;
+}
+
+/* 尺寸变体 */
+.metric-item.small {
+  padding: 20rpx 15rpx;
+}
+
+.metric-item.small .metric-icon { font-size: 36rpx; }
+.metric-item.small .metric-name { font-size: 22rpx; }
+.metric-item.small .metric-value { font-size: 28rpx; }
+
+.metric-item.large {
+  padding: 40rpx 30rpx;
+}
+
+.metric-item.large .metric-icon { font-size: 60rpx; }
+.metric-item.large .metric-name { font-size: 28rpx; }
+.metric-item.large .metric-value { font-size: 48rpx; }
+
+.metric-icon {
+  font-size: 48rpx;
+  margin-bottom: 12rpx;
+}
+
+.metric-name {
+  font-size: 24rpx;
+  color: #999;
+  margin-bottom: 8rpx;
+}
+
+.metric-value-wrapper {
+  display: flex;
+  align-items: baseline;
+}
+
+.metric-value {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #333;
+}
+
+.metric-unit {
+  font-size: 24rpx;
+  color: #999;
+  margin-left: 4rpx;
+}
+
+.metric-alert {
+  position: absolute;
+  top: 12rpx;
+  right: 12rpx;
+  font-size: 28rpx;
+}
+
+.metric-trend {
+  position: absolute;
+  top: 12rpx;
+  right: 12rpx;
+  font-size: 24rpx;
+  font-weight: bold;
+}
+
+.metric-trend.up { color: #4CAF50; }
+.metric-trend.down { color: #F44336; }
+.metric-trend.stable { color: #999; }

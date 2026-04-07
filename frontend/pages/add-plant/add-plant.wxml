@@ -1,0 +1,87 @@
+<!-- 添加植物页面 -->
+<view class="container">
+  <!-- 页面标题 -->
+  <view class="page-header">
+    <text class="page-title">{{pageTitle}}</text>
+    <text class="page-subtitle">{{mode === 'edit' ? '修改植物信息' : '记录你的绿色伙伴'}}</text>
+  </view>
+
+  <!-- 表单区域 -->
+  <view class="form-section">
+    <!-- 封面图片 -->
+    <view class="form-item">
+      <text class="form-label">植物照片</text>
+      <view class="image-upload" bindtap="chooseImage">
+        <image wx:if="{{form.coverImageUrl}}" src="{{form.coverImageUrl}}" mode="aspectFill" class="uploaded-image"/>
+        <view wx:else class="upload-placeholder">
+          <text class="upload-icon">📷</text>
+          <text class="upload-text">点击上传照片</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 植物昵称 -->
+    <view class="form-item">
+      <text class="form-label">植物昵称 <text class="required">*</text></text>
+      <input 
+        class="form-input" 
+        placeholder="给你的植物起个名字，如：小绿"
+        value="{{form.nickname}}"
+        bindinput="onNicknameInput"
+      />
+    </view>
+
+    <!-- 植物种类 -->
+    <view class="form-item">
+      <text class="form-label">植物种类 <text class="required">*</text></text>
+      <view class="category-grid">
+        <view 
+          wx:for="{{categories}}" 
+          wx:key="value"
+          class="category-item {{form.plantCategory === item.value ? 'active' : ''}}"
+          bindtap="onCategorySelect"
+          data-value="{{item.value}}"
+        >
+          <text class="category-icon">{{item.icon}}</text>
+          <text class="category-name">{{item.name}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 具体品种 -->
+    <view class="form-item">
+      <text class="form-label">具体品种（选填）</text>
+      <input 
+        class="form-input" 
+        placeholder="如：绿萝、吊兰、多肉等"
+        value="{{form.species}}"
+        bindinput="onSpeciesInput"
+      />
+    </view>
+
+    <!-- 备注 -->
+    <view class="form-item">
+      <text class="form-label">备注（选填）</text>
+      <textarea 
+        class="form-textarea" 
+        placeholder="记录一些特别的信息，如：购买时间、来源等"
+        value="{{form.remark}}"
+        bindinput="onRemarkInput"
+        maxlength="200"
+      />
+      <text class="textarea-counter">{{form.remark.length || 0}}/200</text>
+    </view>
+  </view>
+
+  <!-- 提示信息 -->
+  <view class="tips-section">
+    <text class="tips-icon">💡</text>
+    <text class="tips-text">添加后可以在植物档案中绑定设备、记录养护历史</text>
+  </view>
+
+  <!-- 提交按钮 -->
+  <view class="action-section">
+    <button class="btn btn-primary {{!isFormValid ? 'disabled' : ''}}" bindtap="submitForm">{{mode === 'edit' ? '保存修改' : '创建植物档案'}}</button>
+    <button class="btn btn-secondary" bindtap="goBack">取消</button>
+  </view>
+</view>

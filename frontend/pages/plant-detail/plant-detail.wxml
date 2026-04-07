@@ -1,0 +1,423 @@
+<!--plant-detail.wxml - 植物详情页-->
+<view class="container">
+  <!-- 加载中 -->
+  <view wx:if="{{loading}}" class="loading-state">
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <block wx:else>
+    <!-- 头部信息区 - 重新设计 -->
+    <view class="header-section">
+      <!-- 植物基本信息卡片 -->
+      <view class="plant-card">
+        <!-- 新布局：左侧图片跨行，右侧信息分块 -->
+        <view class="card-main-layout">
+          <!-- 左侧：大图（跨两行） -->
+          <view class="plant-avatar-large">
+            <image wx:if="{{plantInfo.coverImageUrl}}" class="avatar-image" src="{{plantInfo.coverImageUrl}}" mode="aspectFill"/>
+            <view wx:else class="avatar-placeholder">
+              <text class="avatar-emoji">{{plantEmoji}}</text>
+            </view>
+          </view>
+
+          <!-- 右侧内容区 -->
+          <view class="card-right-content">
+            <!-- 第一行：昵称 + 编辑分享按钮 -->
+            <view class="right-top-row">
+              <text class="plant-name-block">{{plantInfo.nickname}}</text>
+              <view class="card-actions">
+                <view class="action-btn-small" bindtap="editPlant">✏️</view>
+                <view class="action-btn-small" bindtap="sharePlant">📤</view>
+              </view>
+            </view>
+
+            <!-- 第二行：标签区域 + 健康球（底部对齐） -->
+            <view class="right-bottom-row">
+              <!-- 左侧标签组 -->
+              <view class="tags-group">
+                <view class="species-tag">
+                  <text class="species-icon">🌿</text>
+                  <text class="species-text">{{plantInfo.species || '未知品种'}}</text>
+                </view>
+                <view class="tag health-tag {{healthStatusClass}}">
+                  <text class="tag-icon">💚</text>
+                  <text class="tag-text">{{healthStatusText}}</text>
+                </view>
+                <view class="tag device-tag {{deviceStatusClass}}" bindtap="goToDeviceDetail">
+                  <text class="tag-icon">{{deviceIcon}}</text>
+                  <text class="tag-text">{{deviceStatusText}}</text>
+                  <text wx:if="{{deviceInfo.batteryLevel > 0}}" class="tag-battery">{{deviceInfo.batteryLevel}}%</text>
+                </view>
+                <view class="tag days-tag">
+                  <text class="tag-icon">📅</text>
+                  <text class="tag-text">{{joinedDays}}天</text>
+                </view>
+              </view>
+
+              <!-- 右侧健康球（与标签底部对齐） -->
+              <view class="score-circle-wrapper">
+                <view class="score-circle {{healthStatusClass}}">
+                  <text class="score-number">{{healthScore}}</text>
+                  <text class="score-label">健康分</text>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <!-- 第三行：快捷操作按钮 -->
+        <view class="quick-actions-row">
+          <view class="quick-btn" bindtap="addCareRecord">
+            <text class="quick-btn-icon">📝</text>
+            <text class="quick-btn-text">记录养护</text>
+          </view>
+          <view class="quick-btn primary" bindtap="consultAI">
+            <text class="quick-btn-icon">💬</text>
+            <text class="quick-btn-text">咨询小园</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- Tab切换 -->
+    <view class="tab-bar">
+      <view 
+        wx:for="{{tabs}}" 
+        wx:key="id"
+        class="tab-item {{currentTab === item.id ? 'active' : ''}}"
+        bindtap="switchTab"
+        data-id="{{item.id}}"
+      >
+        {{item.label}}
+      </view>
+    </view>
+
+    <!-- Tab内容区 -->
+    <scroll-view class="tab-content" scroll-y="true" enhanced="true" show-scrollbar="false">
+      
+      <!-- 概览 Tab -->
+      <view wx:if="{{currentTab === 'overview'}}" class="tab-panel">
+        <!-- 最新诊断卡片 -->
+        <view class="section-card" wx:if="{{latestDiagnosis.diagnosisCardId}}">
+          <diagnosis-card
+            title="最新诊断"
+            time="{{latestDiagnosis.displayTime}}"
+            diagnosisCardId="{{latestDiagnosis.diagnosisCardId}}"
+            healthScore="{{latestDiagnosis.healthScore}}"
+            status="{{latestDiagnosis.status}}"
+            species="{{plantInfo.species}}"
+            issues="{{latestDiagnosis.issues}}"
+            suggestions="{{latestDiagnosis.suggestions}}"
+            confidence="{{latestDiagnosis.confidence}}"
+            expanded="{{true}}"
+            showSummary="{{true}}"
+            showSpecies="{{false}}"
+            showConfidence="{{true}}"
+            showIssues="{{true}}"
+            showSuggestions="{{true}}"
+            showActions="{{false}}"
+          />
+        </view>
+        <!-- 最近养护记录 -->
+        <view class="section-card">
+          <view class="card-header">
+            <text class="card-title">最近养护</text>
+            <text class="card-action" bindtap="switchTab" data-id="care">查看全部</text>
+          </view>
+          <view wx:if="{{careRecords.length > 0}}" class="care-preview">
+            <view wx:for="{{careRecordsPreview}}" wx:key="recordId" class="care-item">
+              <text class="care-icon">{{item.icon}}</text>
+              <view class="care-content">
+                <text class="care-action">{{item.actionName}}</text>
+                <text class="care-desc">{{item.description}}</text>
+              </view>
+              <text class="care-time">{{item.displayTime}}</text>
+            </view>
+          </view>
+          <view wx:else class="empty-state">
+            <text class="empty-text">暂无养护记录</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 环境数据 Tab -->
+      <view wx:if="{{currentTab === 'environment'}}" class="tab-panel">
+        <!-- 数据来源切换 -->
+        <view class="data-source-tabs">
+          <view 
+            class="source-tab {{envDataSource === 'device' ? 'active' : ''}}" 
+            bindtap="switchEnvDataSource"
+            data-source="device"
+          >
+            <text class="tab-icon">📡</text>
+            <text class="tab-text">设备数据</text>
+          </view>
+          <view 
+            class="source-tab {{envDataSource === 'weather' ? 'active' : ''}}" 
+            bindtap="switchEnvDataSource"
+            data-source="weather"
+          >
+            <text class="tab-icon">🌤️</text>
+            <text class="tab-text">天气数据</text>
+          </view>
+        </view>
+
+        <!-- 设备数据视图 -->
+        <view wx:if="{{envDataSource === 'device'}}">
+          <view wx:if="{{plantInfo.currentDeviceId}}" class="env-section">
+            <!-- 动态数据卡网格 - 两行三列，支持上下滑动 -->
+            <scroll-view class="metrics-scroll-vertical" scroll-y="true" enhanced="true" show-scrollbar="false">
+              <view class="metrics-grid">
+                <view 
+                  wx:for="{{deviceMetrics}}" 
+                  wx:key="metricCode"
+                  class="data-card {{item.status}}"
+                  bindtap="viewMetricDetail"
+                  data-metric="{{item.metricCode}}"
+                >
+                  <text class="card-icon">{{item.icon}}</text>
+                  <text class="card-name">{{item.name}}</text>
+                  <text class="card-value">{{item.value}}{{item.unit}}</text>
+                  <text wx:if="{{item.status === 'warning'}}" class="card-alert">⚠️</text>
+                </view>
+              </view>
+            </scroll-view>
+
+            <!-- 设备信息卡片 -->
+            <view class="device-info-card" wx:if="{{deviceInfo}}">
+              <view class="device-card-header">
+                <view class="device-icon-wrapper">
+                  <text class="device-icon">📡</text>
+                  <view class="device-status-dot {{deviceInfo.status}}"></view>
+                </view>
+                <view class="device-basic-info">
+                  <text class="device-card-name">{{deviceInfo.deviceName || '监测设备'}}</text>
+                  <text class="device-card-status {{deviceInfo.status}}">{{deviceStatusText}}</text>
+                </view>
+                <view class="device-battery" wx:if="{{deviceInfo.batteryLevel}}">
+                  <text class="battery-icon">{{deviceInfo.batteryLevel > 20 ? '🔋' : '🪫'}}</text>
+                  <text class="battery-level {{deviceInfo.batteryLevel <= 20 ? 'low' : ''}}">{{deviceInfo.batteryLevel}}%</text>
+                </view>
+              </view>
+              
+              <view class="device-card-body">
+                <view class="device-meta-item">
+                  <text class="meta-label">设备ID</text>
+                  <text class="meta-value">{{deviceInfo.deviceId}}</text>
+                </view>
+                <view class="device-meta-item">
+                  <text class="meta-label">最后更新</text>
+                  <text class="meta-value">{{deviceInfo.lastUpdate || '刚刚'}}</text>
+                </view>
+              </view>
+              
+              <view class="device-card-actions">
+                <view class="device-action-btn" bindtap="goToDeviceDetail">
+                  <text class="action-icon">📋</text>
+                  <text class="action-label">设备详情</text>
+                </view>
+                <view class="device-action-btn primary" bindtap="goToDeviceManage">
+                  <text class="action-icon">🔄</text>
+                  <text class="action-label">换绑设备</text>
+                </view>
+              </view>
+            </view>
+          </view>
+          <view wx:else class="device-unbind-card">
+            <view class="unbind-content">
+              <text class="unbind-icon">📡</text>
+              <text class="unbind-title">未绑定监测设备</text>
+              <text class="unbind-desc">绑定设备后可查看实时环境数据，获取更精准的养护建议</text>
+            </view>
+            <view class="unbind-action">
+              <view class="btn-bind-device" bindtap="goToDeviceManage">
+                <text class="btn-icon">➕</text>
+                <text class="btn-label">去绑定设备</text>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <!-- 天气数据视图 -->
+        <view wx:if="{{envDataSource === 'weather'}}">
+          <view wx:if="{{weatherData}}" class="env-section">
+            <!-- 动态数据卡网格 - 两行三列，支持上下滑动 -->
+            <scroll-view class="metrics-scroll-vertical" scroll-y="true" enhanced="true" show-scrollbar="false">
+              <view class="metrics-grid">
+                <view 
+                  wx:for="{{weatherMetrics}}" 
+                  wx:key="metricCode"
+                  class="data-card"
+                  bindtap="viewWeatherDetail"
+                  data-metric="{{item.metricCode}}"
+                >
+                  <text class="card-icon">{{item.icon}}</text>
+                  <text class="card-name">{{item.name}}</text>
+                  <text class="card-value">{{item.valueText || item.value}}{{item.unit}}</text>
+                </view>
+              </view>
+            </scroll-view>
+
+            <!-- 天气数据底部：位置信息和更新时间 -->
+            <view class="env-footer weather-footer">
+              <view class="weather-location">
+                <text class="location-icon">📍</text>
+                <text class="location-text">{{weatherData.location || '定位中...'}}</text>
+              </view>
+              <view class="weather-update">
+                <text class="update-icon">🔄</text>
+                <text class="update-text">更新于 {{weatherData.updateTime}}</text>
+              </view>
+              <view class="weather-action" bindtap="viewWeatherForecast">
+                <text class="action-text">查看详细天气预报 →</text>
+              </view>
+            </view>
+          </view>
+          <view wx:else class="empty-state">
+            <text class="empty-icon">🌤️</text>
+            <text class="empty-title">暂无天气数据</text>
+            <text class="empty-desc">请检查网络连接或稍后再试</text>
+          </view>
+        </view>
+      </view>
+      <!-- 诊断历史 Tab -->
+      <view wx:if="{{currentTab === 'diagnosis'}}" class="tab-panel">
+        <view class="diagnosis-list">
+          <view 
+            wx:for="{{diagnosisHistory}}" 
+            wx:key="diagnosisCardId"
+          >
+            <diagnosis-card
+              title="健康评分 {{item.healthScore}}分"
+              time="{{item.displayTime}}"
+              diagnosisCardId="{{item.diagnosisCardId}}"
+              sessionId="{{item.sessionId}}"
+              healthScore="{{item.healthScore}}"
+              status="{{item.status}}"
+              species="{{plantInfo.species}}"
+              issues="{{item.issues}}"
+              suggestions="{{item.suggestions}}"
+              expandable="{{true}}"
+              expanded="{{expandedDiagnosisId === item.diagnosisCardId}}"
+              showSummary="{{false}}"
+              showSpecies="{{false}}"
+              showIssues="{{true}}"
+              showSuggestions="{{true}}"
+              showActions="{{true}}"
+              bind:expand="onDiagnosisCardExpand"
+              bind:action="onDiagnosisCardAction"
+            />
+          </view>
+        </view>
+        <view wx:if="{{diagnosisHistory.length === 0}}" class="empty-state">
+          <text class="empty-icon">诊</text>
+          <text class="empty-title">暂无诊断记录</text>
+          <text class="empty-desc">点击底部"咨询小园"获取首次诊断</text>
+        </view>
+      </view>
+
+      <!-- 养护记录 Tab -->
+      <view wx:if="{{currentTab === 'care'}}" class="tab-panel">
+        <view class="care-list">
+          <view 
+            wx:for="{{careRecords}}" 
+            wx:key="recordId" 
+            class="care-record-item"
+            bindlongpress="onCareRecordLongPress"
+            data-record="{{item}}"
+          >
+            <view class="record-icon">{{item.icon}}</view>
+            <view class="record-content">
+              <view class="record-header">
+                <text class="record-action">{{item.actionName}}</text>
+                <text class="record-time">{{item.displayTime}}</text>
+              </view>
+              <text wx:if="{{item.description}}" class="record-desc">{{item.description}}</text>
+            </view>
+          </view>
+        </view>
+        <view wx:if="{{careRecords.length === 0}}" class="empty-state">
+          <text class="empty-icon">记</text>
+          <text class="empty-title">暂无养护记录</text>
+          <text class="empty-desc">记录每一次养护，AI会给出更好的建议</text>
+        </view>
+        
+        <!-- 浮动添加按钮 -->
+        <view class="fab-btn" bindtap="addCareRecord">
+          <text class="fab-icon">+</text>
+        </view>
+      </view>
+
+      <!-- 养护记录编辑模态框 -->
+      <view wx:if="{{showCareEditModal}}" class="modal-overlay" bindtap="closeCareEditModal">
+        <view class="modal-content" catchtap="preventBubble">
+          <view class="modal-header">
+            <text class="modal-title">{{editingRecordId ? '编辑养护记录' : '添加养护记录'}}</text>
+            <view class="modal-close" bindtap="closeCareEditModal">×</view>
+          </view>
+          
+          <view class="modal-body">
+            <!-- 操作类型选择 -->
+            <view class="form-group">
+              <text class="form-label">操作类型</text>
+              <view class="action-type-grid">
+                <view 
+                  wx:for="{{actionTypes}}" 
+                  wx:key="type"
+                  class="action-type-item {{careForm.actionType === item.type ? 'active' : ''}}"
+                  bindtap="selectActionType"
+                  data-type="{{item.type}}"
+                >
+                  <text class="action-type-icon">{{item.icon}}</text>
+                  <text class="action-type-name">{{item.name}}</text>
+                </view>
+              </view>
+            </view>
+            
+            <!-- 备注 -->
+            <view class="form-group">
+              <text class="form-label">备注</text>
+              <textarea 
+                class="form-textarea" 
+                placeholder="添加备注（可选）"
+                value="{{careForm.description}}"
+                bindinput="onCareDescInput"
+                maxlength="200"
+              />
+              <text class="char-count">{{careForm.description.length}}/200</text>
+            </view>
+            
+            <!-- 执行时间 -->
+            <view class="form-group">
+              <text class="form-label">执行时间</text>
+              <picker mode="multiSelector" range="{{dateTimeRange}}" value="{{dateTimeIndex}}" bindchange="onDateTimeChange">
+                <view class="picker-value">{{careForm.performedAt}}</view>
+              </picker>
+            </view>
+          </view>
+          
+          <view class="modal-footer">
+            <view wx:if="{{editingRecordId}}" class="btn-delete" bindtap="deleteCareRecord">删除</view>
+            <view class="btn-cancel" bindtap="closeCareEditModal">取消</view>
+            <view class="btn-confirm" bindtap="saveCareRecord">保存</view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 长按菜单 -->
+      <view wx:if="{{showCareActionSheet}}" class="action-sheet-overlay" bindtap="closeCareActionSheet">
+        <view class="action-sheet" catchtap="preventBubble">
+          <view class="action-sheet-title">养护记录操作</view>
+          <view class="action-sheet-item" bindtap="editCareRecord">编辑</view>
+          <view class="action-sheet-item delete" bindtap="confirmDeleteCareRecord">删除</view>
+          <view class="action-sheet-cancel" bindtap="closeCareActionSheet">取消</view>
+        </view>
+      </view>
+
+      
+
+      <!-- 底部占位 -->
+      <view style="height: 40rpx;"></view>
+    </scroll-view>
+  </block>
+</view>

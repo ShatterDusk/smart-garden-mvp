@@ -1,0 +1,97 @@
+/* Markdown 渲染组件样式 */
+.markdown-content {
+  font-size: 28rpx;
+  line-height: 1.6;
+  color: #333;
+}
+
+/* 标题样式 */
+.md-h1 {
+  font-size: 40rpx;
+  font-weight: bold;
+  color: #1a1a1a;
+  margin: 24rpx 0 16rpx 0;
+  display: block;
+}
+
+.md-h2 {
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #2a2a2a;
+  margin: 20rpx 0 12rpx 0;
+  display: block;
+}
+
+.md-h3 {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #3a3a3a;
+  margin: 16rpx 0 8rpx 0;
+  display: block;
+}
+
+/* 粗体和斜体 */
+.md-bold {
+  font-weight: bold;
+  color: #1a1a1a;
+}
+
+.md-italic {
+  font-style: italic;
+  color: #4a4a4a;
+}
+
+/* 代码样式 */
+.md-code {
+  font-family: 'Courier New', monospace;
+  background-color: #f5f5f5;
+  padding: 4rpx 8rpx;
+  border-radius: 4rpx;
+  font-size: 24rpx;
+  color: #e83e8c;
+}
+
+.md-code-block {
+  font-family: 'Courier New', monospace;
+  background-color: #f8f9fa;
+  padding: 16rpx;
+  border-radius: 8rpx;
+  font-size: 24rpx;
+  color: #333;
+  margin: 16rpx 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  display: block;
+  border-left: 4rpx solid #81C784;
+}
+
+/* 列表样式 */
+.md-li {
+  margin: 8rpx 0;
+  padding-left: 16rpx;
+  display: block;
+}
+
+.md-li-marker {
+  color: #81C784;
+  font-weight: bold;
+  margin-right: 8rpx;
+}
+
+/* 链接样式 */
+.md-link {
+  color: #4CAF50;
+  text-decoration: underline;
+}
+
+/* 普通文本 */
+.md-text {
+  display: block;
+  margin: 4rpx 0;
+}
+
+/* 空行 */
+.md-empty-line {
+  height: 16rpx;
+  display: block;
+}

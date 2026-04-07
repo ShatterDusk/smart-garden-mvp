@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>虚拟设备监控中心 - proj-alpha</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🌱 虚拟设备监控中心</h1>
+            <div class="status-indicator" id="statusIndicator">
+                <span class="status-dot"></span>
+                <span class="status-text">离线</span>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="panel device-control">
+                <h2>⚙️ 设备控制</h2>
+                <div class="control-group">
+                    <label>服务器地址</label>
+                    <input type="text" id="serverUrl" readonly>
+                </div>
+                <div class="control-group">
+                    <label>设备ID</label>
+                    <input type="text" id="deviceId" readonly>
+                </div>
+                <div class="control-group">
+                    <label>植物ID</label>
+                    <input type="text" id="plantId" readonly>
+                </div>
+                <div class="control-group">
+                    <label>上报间隔 (秒)</label>
+                    <input type="number" id="interval" min="5" max="3600" value="60">
+                    <button onclick="setInterval()" class="btn btn-small">应用</button>
+                </div>
+                <div class="control-buttons">
+                    <button id="startBtn" onclick="startDevice()" class="btn btn-primary">启动</button>
+                    <button id="stopBtn" onclick="stopDevice()" class="btn btn-danger" disabled>停止</button>
+                    <button onclick="manualReport()" class="btn btn-secondary">手动上报</button>
+                </div>
+            </div>
+
+            <div class="panel real-time-data">
+                <h2>📊 实时数据</h2>
+                <div class="metrics-grid" id="metricsGrid">
+                    <div class="metric-card">
+                        <span class="metric-icon">🌡️</span>
+                        <span class="metric-name">温度</span>
+                        <span class="metric-value" id="metric-temperature">--</span>
+                        <span class="metric-unit">°C</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-icon">💧</span>
+                        <span class="metric-name">湿度</span>
+                        <span class="metric-value" id="metric-humidity">--</span>
+                        <span class="metric-unit">%</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-icon">🌐</span>
+                        <span class="metric-name">气压</span>
+                        <span class="metric-value" id="metric-pressure">--</span>
+                        <span class="metric-unit">hPa</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-icon">☀️</span>
+                        <span class="metric-name">光照</span>
+                        <span class="metric-value" id="metric-light_intensity">--</span>
+                        <span class="metric-unit">lux</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-icon">🌱</span>
+                        <span class="metric-name">土壤湿度</span>
+                        <span class="metric-value" id="metric-soil_moisture">--</span>
+                        <span class="metric-unit">%</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-icon">🌡️</span>
+                        <span class="metric-name">土壤温度</span>
+                        <span class="metric-value" id="metric-soil_temperature">--</span>
+                        <span class="metric-unit">°C</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-icon">🔬</span>
+                        <span class="metric-name">土壤pH</span>
+                        <span class="metric-value" id="metric-soil_ph">--</span>
+                        <span class="metric-unit">pH</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-icon">🔋</span>
+                        <span class="metric-name">电池</span>
+                        <span class="metric-value" id="metric-battery_level">--</span>
+                        <span class="metric-unit">%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel scenario-control">
+                <h2>🎭 场景选择</h2>
+                <div class="scenario-grid" id="scenarioGrid">
+                </div>
+            </div>
+
+            <div class="panel device-info">
+                <h2>📱 设备信息</h2>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">运行状态</span>
+                        <span class="info-value" id="runStatus">离线</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">上报次数</span>
+                        <span class="info-value" id="reportCount">0</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">运行时长</span>
+                        <span class="info-value" id="uptime">0秒</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">UDP端口</span>
+                        <span class="info-value" id="udpPort">8266</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel log-panel">
+                <h2>📝 运行日志</h2>
+                <div class="log-container" id="logContainer">
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

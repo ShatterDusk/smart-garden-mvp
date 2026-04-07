@@ -1,0 +1,142 @@
+const BaseService = require('./BaseService');
+const { CareRecord, Plant } = require('../models');
+const { v4: uuidv4 } = require('uuid');
+const logger = require('../utils/logger');
+
+class CareRecordService extends BaseService {
+  constructor() {
+    super(CareRecord, 'CareRecord');
+  }
+
+  generateRecordId() {
+    return `CARE_${uuidv4().replace(/-/g, '').substring(0, 16)}`;
+  }
+
+  async createCareRecord(plantId, userId, recordData) {
+    try {
+      const plant = await Plant.findOne({
+        where: { plant_id: plantId, user_id: userId },
+      });
+
+      if (!plant) {
+        return null;
+      }
+
+      const recordId = this.generateRecordId();
+      const record = await this.create({
+        record_id: recordId,
+        plant_id: plantId,
+        user_id: userId,
+        action_type: recordData.actionType,
+        description: recordData.description || '',
+        images: recordData.images || null,
+        performed_at: recordData.performedAt || new Date(),
+      });
+
+      logger.info(`CareRecord created: ${recordId}`);
+      return record;
+    } catch (err) {
+      logger.error('CareRecordService.createCareRecord error:', err);
+      throw err;
+    }
+  }
+
+  async getCareRecordList(userId, query = {}) {
+    try {
+      const { plantId, page = 1, pageSize = 20 } = query;
+      const offset = (parseInt(page) - 1) * parseInt(pageSize);
+      const limit = parseInt(pageSize);
+
+      const where = { user_id: userId };
+      if (plantId) where.plant_id = plantId;
+
+      const { count, rows: records } = await CareRecord.findAndCountAll({
+        where,
+        order: [['performed_at', 'DESC']],
+        offset,
+        limit,
+      });
+
+      return { count, records };
+    } catch (err) {
+      logger.error('CareRecordService.getCareRecordList error:', err);
+      throw err;
+    }
+  }
+
+  async getRecordById(recordId, userId) {
+    try {
+      return await this.findOne({ record_id: recordId, user_id: userId });
+    } catch (err) {
+      logger.error('CareRecordService.getRecordById error:', err);
+      throw err;
+    }
+  }
+
+  async updateCareRecord(recordId, userId, updateData) {
+    try {
+      const record = await this.getRecordById(recordId, userId);
+      if (!record) return null;
+
+      const allowedFields = ['action_type', 'description', 'images', 'performed_at'];
+      const filteredData = {};
+
+      allowedFields.forEach(field => {
+        if (updateData[field] !== undefined) {
+          filteredData[field] = updateData[field];
+        }
+      });
+
+      const camelToSnake = {
+        actionType: 'action_type',
+        performedAt: 'performed_at',
+      };
+
+      Object.keys(camelToSnake).forEach(camel => {
+        if (updateData[camel] !== undefined) {
+          filteredData[camelToSnake[camel]] = updateData[camel];
+        }
+      });
+
+      if (Object.keys(filteredData).length === 0) {
+        return record;
+      }
+
+      await record.update(filteredData);
+      logger.info(`CareRecord updated: ${recordId}`);
+      return record;
+    } catch (err) {
+      logger.error('CareRecordService.updateCareRecord error:', err);
+      throw err;
+    }
+  }
+
+  async deleteCareRecord(recordId, userId) {
+    try {
+      const record = await this.getRecordById(recordId, userId);
+      if (!record) return false;
+
+      await record.destroy();
+      logger.info(`CareRecord deleted: ${recordId}`);
+      return true;
+    } catch (err) {
+      logger.error('CareRecordService.deleteCareRecord error:', err);
+      throw err;
+    }
+  }
+
+  async getPlantsForRecords(plantIds) {
+    try {
+      if (!plantIds || plantIds.length === 0) return [];
+      return await Plant.findAll({
+        where: { plant_id: plantIds },
+        attributes: ['plant_id', 'nickname', 'cover_image_url'],
+      });
+    } catch (err) {
+      logger.error('CareRecordService.getPlantsForRecords error:', err);
+      return [];
+    }
+  }
+}
+
+module.exports = CareRecordService;

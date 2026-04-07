@@ -1,0 +1,12 @@
+{
+  "navigationBarTitleText": "智能问答",
+  "navigationBarBackgroundColor": "#4CAF50",
+  "navigationBarTextStyle": "white",
+  "enablePullDownRefresh": true,
+  "backgroundColor": "#f5f5f5",
+  "usingComponents": {
+    "diagnosis-card": "/components/diagnosis-card/diagnosis-card",
+    "markdown-render": "/components/markdown-render/markdown-render",
+    "user-message-render": "/components/user-message-render/user-message-render"
+  }
+}

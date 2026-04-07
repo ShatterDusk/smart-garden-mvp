@@ -1,0 +1,33 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/login/login",
+    "pages/sessions/sessions",
+    "pages/qna/qna",
+    "pages/plants/plants",
+    "pages/add-plant/add-plant",
+    "pages/plant-detail/plant-detail",
+    "pages/quick-analyze/quick-analyze",
+    "pages/metric-detail/metric-detail",
+    "pages/device-manage/device-manage",
+    "pages/device-detail/device-detail",
+    "pages/plant-sessions/plant-sessions"
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#4CAF50",
+    "navigationBarTitleText": "proj-alpha",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f8f9fa"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents",
+  "permission": {
+    "scope.userLocation": {
+      "desc": "你的位置信息将用于获取当地天气数据"
+    }
+  },
+  "requiredBackgroundModes": [],
+  "requiredPrivateInfos": ["getLocation", "chooseLocation"]
+}

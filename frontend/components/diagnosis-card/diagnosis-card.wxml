@@ -1,0 +1,68 @@
+<!--components/diagnosis-card/diagnosis-card.wxml-->
+<view class="diagnosis-card {{customClass}} {{expanded ? 'expanded' : ''}}">
+  <!-- 头部信息 -->
+  <view class="card-header" bindtap="toggleExpand">
+    <text class="card-title">{{title}}</text>
+    <text wx:if="{{time}}" class="card-time">{{time}}</text>
+    <text wx:if="{{expandable}}" class="expand-icon">{{expanded ? '▼' : '▶'}}</text>
+  </view>
+
+  <!-- 植物品种 -->
+  <view wx:if="{{showSpecies && species}}" class="species-bar">
+    <text class="species-label">🌱 植物品种</text>
+    <text class="species-value">{{species}}</text>
+  </view>
+
+  <!-- 诊断摘要 -->
+  <view wx:if="{{showSummary}}" class="diagnosis-summary">
+    <view class="summary-item">
+      <text class="summary-label">健康评分</text>
+      <text class="summary-value {{status}}">{{healthScore}}分</text>
+    </view>
+    <view wx:if="{{issues && issues.length > 0}}" class="summary-item">
+      <text class="summary-label">发现问题</text>
+      <text class="summary-value warning">{{issues.length}}个</text>
+    </view>
+  </view>
+
+  <!-- 置信度 -->
+  <view wx:if="{{showConfidence && confidence > 0}}" class="confidence-bar">
+    <text class="confidence-label">AI 置信度</text>
+    <view class="confidence-progress">
+      <view class="confidence-fill" style="width: {{confidence * 100}}%"></view>
+    </view>
+    <text class="confidence-value">{{confidenceValue}}%</text>
+  </view>
+
+  <!-- 问题列表 -->
+  <view wx:if="{{expanded && issues && issues.length > 0 && showIssues}}" class="issues-list">
+    <view wx:for="{{issues}}" wx:key="index" class="issue-item {{item.severity}}">
+      <text class="issue-icon">!</text>
+      <view class="issue-content">
+        <text class="issue-name">{{item.name}}</text>
+        <text wx:if="{{item.description}}" class="issue-desc">{{item.description}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 建议列表 -->
+  <view wx:if="{{expanded && suggestions && suggestions.length > 0 && showSuggestions}}" class="suggestions-list">
+    <text class="suggestions-title">养护建议</text>
+    <view wx:for="{{suggestions}}" wx:key="index" class="suggestion-item">
+      <text class="suggestion-action">{{item.action}}</text>
+      <text wx:if="{{item.details}}" class="suggestion-details">{{item.details}}</text>
+    </view>
+  </view>
+
+  <!-- 操作按钮 -->
+  <view wx:if="{{showActions}}" class="card-actions">
+    <view class="action-btn" bindtap="onAction" data-action="chat">
+      <text class="btn-icon">💬</text>
+      <text>查看对话</text>
+    </view>
+    <view class="action-btn primary" bindtap="onAction" data-action="share">
+      <text class="btn-icon">📤</text>
+      <text>分享</text>
+    </view>
+  </view>
+</view>

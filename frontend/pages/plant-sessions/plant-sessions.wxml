@@ -1,0 +1,67 @@
+<!--plant-sessions.wxml - 植物会话列表页-->
+<view class="container">
+  <!-- 植物信息头部 -->
+  <view class="plant-header">
+    <view class="plant-avatar">
+      <image wx:if="{{plantInfo.coverImageUrl}}" class="avatar-img" src="{{plantInfo.coverImageUrl}}" mode="aspectFill"/>
+      <text wx:else class="avatar-emoji">{{plantInfo.emoji || '🌱'}}</text>
+    </view>
+    <view class="plant-info">
+      <text class="plant-name">{{plantInfo.nickname}}</text>
+      <text class="plant-species">{{plantInfo.species || '未知品种'}}</text>
+    </view>
+  </view>
+
+  <!-- 会话列表 -->
+  <scroll-view class="session-list" scroll-y="true" enhanced="true" show-scrollbar="false">
+    <!-- 新建会话按钮 -->
+    <view class="new-session-card" bindtap="createNewSession">
+      <view class="new-icon">➕</view>
+      <view class="new-text">
+        <text class="new-title">新建植物咨询</text>
+        <text class="new-desc">针对该植物发起新的咨询对话</text>
+      </view>
+    </view>
+
+    <!-- 历史会话列表 -->
+    <view wx:if="{{sessionList.length > 0}}" class="session-section">
+      <text class="section-title">历史咨询记录 ({{sessionList.length}})</text>
+
+      <view
+        wx:for="{{sessionList}}"
+        wx:key="sessionId"
+        class="session-card"
+        bindtap="enterSession"
+        data-id="{{item.sessionId}}"
+        data-title="{{item.title}}"
+      >
+        <!-- 会话图标 -->
+        <view class="session-icon">
+          <text>💬</text>
+        </view>
+
+        <!-- 会话信息 -->
+        <view class="session-body">
+          <view class="session-title-row">
+            <text class="session-title">{{item.title}}</text>
+            <text wx:if="{{item.unreadCount > 0}}" class="unread-badge">{{item.unreadCount}}</text>
+          </view>
+          <text class="session-preview">{{item.lastMessage || '暂无消息'}}</text>
+          <text class="session-time">{{item.updateTime}}</text>
+        </view>
+
+        <!-- 箭头 -->
+        <text class="arrow">›</text>
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <empty-state
+      wx:if="{{sessionList.length === 0 && !loading}}"
+      icon="💬"
+      title="暂无咨询记录"
+      description="点击上方「新建植物咨询」开始第一次对话"
+      showAction="{{false}}"
+    />
+  </scroll-view>
+</view>

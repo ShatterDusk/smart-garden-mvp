@@ -1,0 +1,70 @@
+<!--plants.wxml - 植物列表页-->
+<view class="container">
+  <!-- 搜索栏 -->
+  <view class="search-section">
+    <view class="search-box">
+      <text class="search-icon">🔍</text>
+      <input
+        class="search-input"
+        placeholder="搜索植物名称..."
+        value="{{searchKeyword}}"
+        bindinput="onSearchInput"
+      />
+    </view>
+  </view>
+
+  <!-- 植物列表 -->
+  <scroll-view class="plant-list" scroll-y="true" enhanced="true" show-scrollbar="false">
+    <plant-card
+      wx:for="{{filteredPlants}}"
+      wx:key="plantId"
+      plantId="{{item.plantId}}"
+      nickname="{{item.nickname}}"
+      species="{{item.species}}"
+      coverImageUrl="{{item.coverImageUrl}}"
+      emoji="{{item.emoji}}"
+      healthScore="{{item.healthScore}}"
+      healthStatus="{{item.healthStatus}}"
+      statusText="{{item.healthStatus === 'excellent' ? '健康优秀' : item.healthStatus === 'good' ? '健康良好' : '需要关注'}}"
+      deviceConnected="{{item.hasDevice}}"
+      joinedDays="{{item.joinedDays}}"
+      showAction="{{true}}"
+      bind:tap="goToPlantDetail"
+      bind:action="onPlantAction"
+      bind:longpress="onPlantLongPress"
+    />
+
+    <!-- 底部占位，避免被添加按钮遮挡 -->
+    <view style="height: 120rpx;"></view>
+  </scroll-view>
+
+  <!-- 悬浮添加按钮 -->
+  <view wx:if="{{filteredPlants.length > 0}}" class="fab-add" bindtap="goToAddPlant">
+    <text class="fab-icon">➕</text>
+  </view>
+
+  <!-- 底部筛选 -->
+  <view class="filter-bar">
+    <view
+      wx:for="{{filters}}"
+      wx:key="value"
+      class="filter-item {{currentFilter === item.value ? 'active' : ''}}"
+      bindtap="switchFilter"
+      data-value="{{item.value}}"
+    >
+      {{item.label}}
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <empty-state
+    wx:if="{{filteredPlants.length === 0}}"
+    icon="🌱"
+    title="还没有添加植物"
+    description="添加你的第一株植物，开始智能养护之旅"
+    showAction="{{true}}"
+    actionText="添加植物"
+    actionIcon="➕"
+    bind:action="goToAddPlant"
+  />
+</view>

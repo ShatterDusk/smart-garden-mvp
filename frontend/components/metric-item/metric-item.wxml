@@ -1,0 +1,13 @@
+<!--components/metric-item/metric-item.wxml-->
+<view class="metric-item {{status}} {{size}} {{clickable ? 'clickable' : ''}}" bindtap="onTap">
+  <text class="metric-icon">{{icon}}</text>
+  <text class="metric-name">{{name}}</text>
+  <view class="metric-value-wrapper">
+    <text class="metric-value">{{value}}</text>
+    <text wx:if="{{unit}}" class="metric-unit">{{unit}}</text>
+  </view>
+  <text wx:if="{{status === 'warning' || status === 'critical'}}" class="metric-alert">⚠️</text>
+  <text wx:if="{{showTrend && trend}}" class="metric-trend {{trend}}">
+    {{trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'}}
+  </text>
+</view>

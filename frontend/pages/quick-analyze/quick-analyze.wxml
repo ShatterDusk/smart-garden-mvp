@@ -1,0 +1,90 @@
+<!--quick-analyze.wxml - 快速分析页（方案C：双写方案）-->
+<view class="container">
+  <!-- 头部提示 -->
+  <view class="header-tip">
+    <text class="tip-icon">📸</text>
+    <text class="tip-text">拍照或选择图片，AI将自动识别植物并诊断健康状况</text>
+  </view>
+
+  <!-- 图片选择区域 -->
+  <view class="image-section">
+    <view wx:if="{{!tempImagePath}}" class="image-placeholder" bindtap="chooseImage">
+      <text class="placeholder-icon">📷</text>
+      <text class="placeholder-text">点击选择图片</text>
+      <text class="placeholder-subtext">支持拍照或从相册选择</text>
+    </view>
+
+    <view wx:else class="image-preview">
+      <image class="preview-image" src="{{tempImagePath}}" mode="aspectFit" bindtap="previewImage"/>
+      <view class="image-actions">
+        <view class="action-btn" bindtap="rechooseImage">
+          <text class="btn-icon">🔄</text>
+          <text>重新选择</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 提示信息 -->
+  <view class="info-section" wx:if="{{tempImagePath && !analysisResult && !isAnalyzing}}">
+    <view class="info-item">
+      <text class="info-icon">💡</text>
+      <text class="info-text">AI将自动分析图片中的植物，识别品种并诊断健康状况</text>
+    </view>
+  </view>
+
+  <!-- 分析结果 - 使用诊断卡片组件 -->
+  <view class="result-section" wx:if="{{analysisResult}}">
+    <diagnosis-card
+      title="诊断结果{{createdSession ? '（已保存到会话）' : ''}}"
+      healthScore="{{analysisResult.healthScore}}"
+      status="{{analysisResult.status}}"
+      species="{{analysisResult.species}}"
+      confidence="{{analysisResult.confidence}}"
+      issues="{{analysisResult.issues}}"
+      suggestions="{{analysisResult.suggestions}}"
+      expanded="{{true}}"
+      showSummary="{{true}}"
+      showSpecies="{{true}}"
+      showConfidence="{{true}}"
+      showIssues="{{true}}"
+      showSuggestions="{{true}}"
+      showActions="{{false}}"
+      customClass="quick-diagnosis-card"
+    />
+  </view>
+
+  <!-- 底部按钮区域 -->
+  <view class="footer-actions">
+    <!-- 未选择图片时：取消 + 选择图片 -->
+    <block wx:if="{{!tempImagePath}}">
+      <button class="btn btn-secondary" bindtap="goBack">取消</button>
+      <button class="btn btn-primary" bindtap="chooseImage">选择图片</button>
+    </block>
+    
+    <!-- 已选择图片，未分析时：重新选择 + 开始分析 -->
+    <block wx:if="{{tempImagePath && !analysisResult && !isAnalyzing}}">
+      <button class="btn btn-secondary" bindtap="rechooseImage">重新选择</button>
+      <button class="btn btn-primary {{isAnalyzing ? 'disabled' : ''}}" bindtap="startAnalysis">
+        <text wx:if="{{!isAnalyzing}}">开始分析</text>
+        <text wx:else>分析中...</text>
+      </button>
+    </block>
+    
+    <!-- 分析完成后：重新分析 + 创建档案 + 继续咨询 -->
+    <block wx:if="{{analysisResult}}">
+      <button class="btn btn-secondary" bindtap="reanalyze">重新分析</button>
+      <button class="btn btn-success" bindtap="createPlant">创建档案</button>
+      <button class="btn btn-primary" bindtap="goToChat">继续咨询</button>
+    </block>
+  </view>
+
+  <!-- 加载遮罩 -->
+  <view wx:if="{{isAnalyzing}}" class="loading-mask">
+    <view class="loading-content">
+      <view class="loading-spinner"></view>
+      <text class="loading-text">分析中 {{analysisProgress}}%</text>
+      <text class="loading-subtext">正在创建咨询会话...</text>
+    </view>
+  </view>
+</view>

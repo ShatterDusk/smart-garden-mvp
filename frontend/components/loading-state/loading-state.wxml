@@ -1,0 +1,24 @@
+<!--components/loading-state/loading-state.wxml-->
+<view class="loading-state {{type}} {{customClass}}">
+  <!-- 旋转加载器 -->
+  <view wx:if="{{type === 'spinner' || type === 'page'}}" class="loading-spinner"></view>
+
+  <!-- 圆点加载 -->
+  <view wx:if="{{type === 'dots'}}" class="loading-dots">
+    <view class="dot"></view>
+    <view class="dot"></view>
+    <view class="dot"></view>
+  </view>
+
+  <!-- 遮罩加载 -->
+  <view wx:if="{{type === 'mask'}}" class="loading-mask">
+    <view class="loading-content">
+      <view class="loading-spinner"></view>
+      <text wx:if="{{text}}" class="loading-text">{{text}}</text>
+      <text wx:if="{{progress > 0}}" class="loading-progress">{{progress}}%</text>
+    </view>
+  </view>
+
+  <!-- 加载文字 -->
+  <text wx:if="{{text && type !== 'mask'}}" class="loading-text">{{text}}</text>
+</view>

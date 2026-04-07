@@ -1,0 +1,102 @@
+<!--sessions.wxml - 会话列表页-->
+<view class="container">
+  <!-- 顶部标题栏 -->
+  <view class="header {{isEditMode ? 'edit-mode' : ''}}">
+    <block wx:if="{{!isEditMode}}">
+      <text class="header-title">智能问答</text>
+      <text class="header-subtitle">选择或创建一个会话</text>
+    </block>
+    <block wx:else>
+      <text class="header-title">编辑会话</text>
+      <text class="header-btn" bindtap="exitEditMode">完成</text>
+    </block>
+  </view>
+
+  <!-- 新建对话按钮（非编辑模式显示） -->
+  <view class="new-session-section" wx:if="{{!isEditMode}}">
+    <view class="new-session-btn tap-active" bindtap="createNewSession">
+      <text class="new-session-icon">➕</text>
+      <text class="new-session-text">新建对话</text>
+    </view>
+  </view>
+
+  <!-- 会话列表 -->
+  <view class="section">
+    <view class="section-header" wx:if="{{!isEditMode}}">
+      <text class="section-title">我的会话</text>
+      <text class="section-count">{{sessionList.length}} 个</text>
+    </view>
+
+    <view class="session-list">
+      <view 
+        wx:for="{{sessionList}}" 
+        wx:key="sessionId"
+        class="session-item tap-active {{item.type === 'plant' ? 'plant-session' : 'consultation-session'}} {{isEditMode && editingSessionId === item.sessionId ? 'selected' : ''}}"
+        bindtap="onSessionItemTap"
+        bindlongpress="enterEditMode"
+        data-id="{{item.sessionId}}"
+        data-type="{{item.type}}"
+        data-title="{{item.title}}"
+      >
+        <!-- 勾选框（编辑模式显示） -->
+        <view class="checkbox" wx:if="{{isEditMode}}">
+          <view class="checkbox-inner {{editingSessionId === item.sessionId ? 'checked' : ''}}"></view>
+        </view>
+
+        <!-- 会话图标 -->
+        <view class="session-icon">
+          <text wx:if="{{item.type === 'consultation'}}">💬</text>
+          <text wx:if="{{item.type === 'plant'}}">🌱</text>
+        </view>
+
+        <!-- 会话信息 -->
+        <view class="session-info">
+          <view class="session-title-row">
+            <!-- 正常模式：显示标题文本 -->
+            <block wx:if="{{!isEditMode || editingSessionId !== item.sessionId}}">
+              <text class="session-title">{{item.title}}</text>
+            </block>
+            <!-- 编辑模式：显示输入框 -->
+            <block wx:if="{{isEditMode && editingSessionId === item.sessionId}}">
+              <input 
+                class="title-input"
+                value="{{editTitle}}"
+                bindinput="onTitleInput"
+                placeholder="输入会话标题"
+                focus="{{true}}"
+              />
+            </block>
+            <view wx:if="{{item.hasUnread && !isEditMode}}" class="unread-dot"></view>
+          </view>
+          <text class="session-preview">{{item.lastMessage || '暂无消息'}}</text>
+          <view class="session-meta">
+            <text class="session-type-tag {{item.type}}">{{item.type === 'plant' ? '植物会话' : '咨询会话'}}</text>
+            <text class="session-time">{{item.lastTime}}</text>
+          </view>
+        </view>
+
+        <!-- 箭头（正常模式）或删除按钮（编辑模式选中时） -->
+        <block wx:if="{{!isEditMode}}">
+          <text class="session-arrow">›</text>
+        </block>
+        <block wx:if="{{isEditMode && editingSessionId === item.sessionId}}">
+          <view class="delete-btn" catchtap="deleteSessionInEdit" data-id="{{item.sessionId}}">
+            <text class="delete-icon">🗑️</text>
+          </view>
+        </block>
+      </view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view wx:if="{{sessionList.length === 0}}" class="empty-state">
+    <text class="empty-icon">💬</text>
+    <text class="empty-title">还没有会话</text>
+    <text class="empty-desc">点击上方按钮创建新会话</text>
+  </view>
+
+  <!-- 编辑模式提示 -->
+  <view wx:if="{{isEditMode}}" class="edit-hint">
+    <text>点击其他会话切换选中，长按标题可编辑</text>
+  </view>
+</view>

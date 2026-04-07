@@ -1,0 +1,264 @@
+<!--device-manage.wxml - 设备管理页（完整实现版）-->
+<view class="container">
+  <!-- WiFi状态栏 -->
+  <view class="wifi-status-bar {{wifiConnected ? 'connected' : 'disconnected'}}">
+    <text class="wifi-icon">{{wifiConnected ? '📶' : '⚠️'}}</text>
+    <text class="wifi-text">
+      {{wifiConnected ? '已连接: ' + currentWifiSSID : 'WiFi未连接'}}
+    </text>
+    <text wx:if="{{!wifiConnected}}" class="wifi-action" bindtap="checkWifiStatus">刷新</text>
+  </view>
+
+  <!-- 当前绑定设备 -->
+  <view wx:if="{{currentDevice}}" class="section">
+    <view class="section-title">
+      <text>当前绑定设备</text>
+      <text class="refresh-btn" bindtap="refreshDevices">🔄 刷新</text>
+    </view>
+    <view class="device-card current-device">
+      <view class="device-header">
+        <view class="device-icon-wrapper">
+          <text class="device-icon">📡</text>
+          <view class="status-dot {{currentDevice.status}}"></view>
+        </view>
+        <view class="device-info">
+          <text class="device-name">{{currentDevice.deviceName}}</text>
+          <text class="device-status {{currentDevice.status}}">{{currentDevice.statusText}}</text>
+        </view>
+        <view class="device-battery" wx:if="{{currentDevice.batteryLevel}}">
+          <text class="battery-icon">{{currentDevice.batteryLevel > 20 ? '🔋' : '🪫'}}</text>
+          <text class="battery-level {{currentDevice.batteryLevel <= 20 ? 'low' : ''}}">{{currentDevice.batteryLevel}}%</text>
+        </view>
+      </view>
+      
+      <view class="device-meta">
+        <view class="meta-item">
+          <text class="meta-label">设备ID</text>
+          <text class="meta-value">{{currentDevice.deviceId}}</text>
+        </view>
+        <view class="meta-item">
+          <text class="meta-label">MAC地址</text>
+          <text class="meta-value">{{currentDevice.macAddress}}</text>
+        </view>
+      </view>
+      
+      <view class="device-actions">
+        <view class="action-btn danger" bindtap="unbindDevice">
+          <text class="btn-icon">🔗</text>
+          <text>解绑设备</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 绑定新设备 -->
+  <view class="section">
+    <view class="section-title">{{currentDevice ? '换绑设备' : '绑定新设备'}}</view>
+    
+    <!-- 步骤1：扫描发现设备 -->
+    <view class="step-card">
+      <view class="step-header">
+        <view class="step-number">1</view>
+        <text class="step-title">发现设备</text>
+        <text wx:if="{{isScanning}}" class="scanning-badge">扫描中...</text>
+      </view>
+      <view class="step-content">
+        <view class="step-desc">
+          <text class="step-icon">📡</text>
+          <text class="step-text">确保设备已进入配网模式（指示灯闪烁）</text>
+        </view>
+        
+        <!-- 扫描按钮 -->
+        <view class="scan-section">
+          <button 
+            class="btn {{isScanning ? 'btn-scanning' : 'btn-primary'}}" 
+            bindtap="startScan"
+            disabled="{{isScanning}}"
+          >
+            <text wx:if="{{!isScanning}}">🔍 扫描设备</text>
+            <text wx:else>扫描中...</text>
+          </button>
+          
+          <!-- 扫描进度条 -->
+          <view wx:if="{{isScanning}}" class="progress-bar">
+            <view class="progress-fill" style="width: {{scanProgress}}%"></view>
+          </view>
+        </view>
+        
+        <!-- 发现的设备列表 -->
+        <view class="device-list-section">
+          <view class="list-header">
+            <text class="list-title">发现的设备 ({{availableDevices.length}})</text>
+          </view>
+          
+          <view wx:if="{{availableDevices.length === 0 && !isScanning}}" class="empty-tip">
+            <text class="empty-icon">📡</text>
+            <text class="empty-text">未发现设备</text>
+            <text class="empty-subtext">点击上方按钮扫描局域网设备</text>
+          </view>
+          
+          <view wx:else class="device-list">
+            <view 
+              wx:for="{{availableDevices}}" 
+              wx:key="macAddress"
+              class="device-item {{selectedDeviceId === item.macAddress ? 'selected' : ''}}"
+              bindtap="selectDevice"
+              data-index="{{index}}"
+            >
+              <view class="item-icon-wrapper">
+                <text class="item-icon">📡</text>
+                <view class="item-signal {{item.rssi > -50 ? 'strong' : item.rssi > -70 ? 'medium' : 'weak'}}">
+                  {{item.rssi}}dBm
+                </view>
+              </view>
+              <view class="item-info">
+                <text class="item-name">{{item.deviceName}}</text>
+                <text class="item-mac">{{item.macAddress}}</text>
+                <text class="item-ip">{{item.ipAddress}}:{{item.port}}</text>
+              </view>
+              <view class="item-check">
+                <text wx:if="{{selectedDeviceId === item.macAddress}}" class="check-icon">✓</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+    
+    <!-- 步骤2：设备配网 -->
+    <view class="step-card" wx:if="{{selectedDeviceId}}">
+      <view class="step-header">
+        <view class="step-number">2</view>
+        <text class="step-title">配置WiFi</text>
+        <text wx:if="{{isConfiguring}}" class="configuring-badge">配置中...</text>
+      </view>
+      <view class="step-content">
+        <view class="step-desc">
+          <text class="step-icon">📶</text>
+          <text class="step-text">为设备配置家庭WiFi网络</text>
+        </view>
+        
+        <!-- WiFi配置表单 -->
+        <view class="wifi-form">
+          <view class="form-item">
+            <view class="form-label-wrapper">
+              <text class="form-label">WiFi名称 (SSID)</text>
+              <text wx:if="{{currentWifiSSID}}" class="use-current-wifi" bindtap="useCurrentWifi">使用当前WiFi</text>
+            </view>
+            <input 
+              class="form-input" 
+              placeholder="请输入家庭WiFi名称" 
+              value="{{wifiSSID}}" 
+              bindinput="onSSIDInput"
+              disabled="{{isConfiguring}}"
+            />
+          </view>
+          <view class="form-item">
+            <text class="form-label">WiFi密码</text>
+            <input 
+              class="form-input" 
+              placeholder="请输入WiFi密码" 
+              password 
+              value="{{wifiPassword}}" 
+              bindinput="onPasswordInput"
+              disabled="{{isConfiguring}}"
+            />
+          </view>
+        </view>
+        
+        <!-- 配置进度 -->
+        <view wx:if="{{isConfiguring}}" class="config-progress">
+          <view class="progress-steps">
+            <view class="step {{configProgress >= 20 ? 'active' : ''}}">
+              <view class="step-dot"></view>
+              <text>发送配置</text>
+            </view>
+            <view class="step-line {{configProgress >= 60 ? 'active' : ''}}"></view>
+            <view class="step {{configProgress >= 60 ? 'active' : ''}}">
+              <view class="step-dot"></view>
+              <text>设备连接</text>
+            </view>
+            <view class="step-line {{configProgress >= 100 ? 'active' : ''}}"></view>
+            <view class="step {{configProgress >= 100 ? 'active' : ''}}">
+              <view class="step-dot"></view>
+              <text>完成</text>
+            </view>
+          </view>
+          <view class="progress-bar">
+            <view class="progress-fill" style="width: {{configProgress}}%"></view>
+          </view>
+        </view>
+        
+        <!-- 发送配置按钮 -->
+        <view class="step-action">
+          <button 
+            class="btn btn-primary {{isConfiguring ? 'disabled' : ''}}" 
+            bindtap="configureDevice"
+            disabled="{{isConfiguring || !wifiSSID}}"
+          >
+            <text wx:if="{{!isConfiguring}}">🚀 发送配置</text>
+            <text wx:else>配置中...</text>
+          </button>
+        </view>
+      </view>
+    </view>
+    
+    <!-- 步骤3：绑定设备 -->
+    <view class="step-card" wx:if="{{selectedDeviceId}}">
+      <view class="step-header">
+        <view class="step-number">3</view>
+        <text class="step-title">绑定到植物</text>
+      </view>
+      <view class="step-content">
+        <view class="step-desc">
+          <text class="step-icon">🌱</text>
+          <text class="step-text">将设备绑定到当前植物档案</text>
+        </view>
+        
+        <view class="bind-info" wx:if="{{selectedDeviceId}}">
+          <text class="bind-label">已选择设备:</text>
+          <text class="bind-value">{{selectedDeviceName}}</text>
+        </view>
+        
+        <view class="step-action">
+          <button 
+            class="btn btn-primary {{!selectedDeviceId ? 'disabled' : ''}}" 
+            bindtap="bindDevice"
+            disabled="{{!selectedDeviceId}}"
+          >
+            {{currentDevice ? '换绑到该设备' : '绑定到当前植物'}}
+          </button>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 已绑定设备列表 -->
+  <view class="section" wx:if="{{boundDevices.length > 0}}">
+    <view class="section-title">我的设备 ({{boundDevices.length}})</view>
+    <view class="bound-devices-list">
+      <view 
+        wx:for="{{boundDevices}}" 
+        wx:key="deviceId"
+        class="bound-device-item"
+      >
+        <view class="bound-device-icon">
+          <text>📡</text>
+          <view class="bound-status-dot {{item.status}}"></view>
+        </view>
+        <view class="bound-device-info">
+          <text class="bound-device-name">{{item.deviceName}}</text>
+          <text class="bound-device-status {{item.status}}">{{item.statusText}}</text>
+        </view>
+        <view class="bound-device-battery" wx:if="{{item.batteryLevel}}">
+          <text>{{item.batteryLevel}}%</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 操作提示 -->
+  <view wx:if="{{tipMessage}}" class="tip-toast {{tipType}}">
+    <text>{{tipMessage}}</text>
+  </view>
+</view>

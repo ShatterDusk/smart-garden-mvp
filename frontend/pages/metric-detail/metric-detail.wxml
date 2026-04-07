@@ -1,0 +1,114 @@
+<!--metric-detail.wxml - 环境指标详情页-->
+<view class="container">
+  <!-- 指标基本信息 -->
+  <view class="metric-header">
+    <view class="metric-icon">{{metricInfo.icon}}</view>
+    <view class="metric-info">
+      <text class="metric-name">{{metricInfo.name}}</text>
+      <view class="metric-current">
+        <text class="current-value">{{metricInfo.currentValue}}</text>
+        <text class="current-unit">{{metricInfo.unit}}</text>
+      </view>
+      <text class="metric-status {{metricInfo.status}}">{{metricInfo.statusText}}</text>
+    </view>
+  </view>
+
+  <!-- 时间范围切换 -->
+  <view class="time-range-tabs">
+    <view 
+      wx:for="{{timeRanges}}" 
+      wx:key="value"
+      class="range-tab {{currentRange === item.value ? 'active' : ''}}"
+      bindtap="switchTimeRange"
+      data-value="{{item.value}}"
+    >
+      {{item.label}}
+    </view>
+  </view>
+
+  <!-- 趋势图 -->
+  <view class="chart-section">
+    <view class="chart-header">
+      <text class="chart-title">趋势图</text>
+      <text class="chart-subtitle">{{chartSubtitle}}</text>
+    </view>
+    <view class="chart-container">
+      <canvas 
+        type="2d" 
+        id="trendChart" 
+        class="trend-chart"
+        bindtouchstart="onChartTouch"
+        bindtouchmove="onChartMove"
+      ></canvas>
+      <!-- 提示信息 -->
+      <view wx:if="{{showTooltip}}" class="chart-tooltip" style="left: {{tooltipX}}px; top: {{tooltipY}}px;">
+        <text class="tooltip-time">{{tooltipData.time}}</text>
+        <text class="tooltip-value">{{tooltipData.value}}{{metricInfo.unit}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 统计信息 -->
+  <view class="stats-section">
+    <view class="stats-title">统计数据</view>
+    <view class="stats-grid">
+      <view class="stat-item">
+        <text class="stat-label">最高值</text>
+        <text class="stat-value high">{{statistics.max}}{{metricInfo.unit}}</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-label">最低值</text>
+        <text class="stat-value low">{{statistics.min}}{{metricInfo.unit}}</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-label">平均值</text>
+        <text class="stat-value avg">{{statistics.avg}}{{metricInfo.unit}}</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-label">数据点数</text>
+        <text class="stat-value">{{statistics.count}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 数据来源 -->
+  <view class="source-section">
+    <view class="source-title">数据来源</view>
+    <view class="source-info">
+      <text class="source-icon">{{dataSource === 'device' ? '📡' : '🌤️'}}</text>
+      <view class="source-detail">
+        <text class="source-name">{{dataSource === 'device' ? '监测设备' : '天气服务'}}</text>
+        <text class="source-time">最后更新：{{lastUpdateTime}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 历史数据列表 -->
+  <view class="history-section">
+    <view class="history-header">
+      <text class="history-title">历史数据</text>
+      <text class="history-count">共 {{historyData.length}} 条</text>
+    </view>
+    <view class="history-list">
+      <view 
+        wx:for="{{historyData}}" 
+        wx:key="timestamp"
+        class="history-item {{item.status}}"
+      >
+        <text class="history-time">{{item.displayTime}}</text>
+        <view class="history-value-section">
+          <text class="history-value">{{item.value}}{{metricInfo.unit}}</text>
+          <view wx:if="{{item.status === 'warning'}}" class="status-dot warning"></view>
+          <view wx:if="{{item.status === 'critical'}}" class="status-dot critical"></view>
+        </view>
+      </view>
+    </view>
+    <!-- 加载更多 -->
+    <view wx:if="{{hasMoreData}}" class="load-more" bindtap="loadMoreHistory">
+      <text class="load-text">加载更多</text>
+    </view>
+  </view>
+
+  <!-- 底部占位 -->
+  <view style="height: 40rpx;"></view>
+</view>

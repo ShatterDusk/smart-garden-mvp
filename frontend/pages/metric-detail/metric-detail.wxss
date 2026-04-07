@@ -1,0 +1,376 @@
+/* metric-detail.wxss - 环境指标详情页样式 */
+
+.container {
+  padding: 20rpx;
+  background-color: #f5f5f5;
+  min-height: 100vh;
+}
+
+/* 指标头部信息 */
+.metric-header {
+  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+  border-radius: 20rpx;
+  padding: 40rpx;
+  margin-bottom: 20rpx;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 4rpx 20rpx rgba(76, 175, 80, 0.3);
+}
+
+.metric-icon {
+  font-size: 80rpx;
+  margin-right: 30rpx;
+}
+
+.metric-info {
+  flex: 1;
+  color: #fff;
+}
+
+.metric-name {
+  font-size: 36rpx;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 10rpx;
+}
+
+.metric-current {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 10rpx;
+}
+
+.current-value {
+  font-size: 64rpx;
+  font-weight: 700;
+  margin-right: 10rpx;
+}
+
+.current-unit {
+  font-size: 32rpx;
+  opacity: 0.9;
+}
+
+.metric-status {
+  display: inline-block;
+  padding: 6rpx 20rpx;
+  border-radius: 20rpx;
+  font-size: 24rpx;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.metric-status.warning {
+  background: rgba(255, 152, 0, 0.9);
+}
+
+.metric-status.critical {
+  background: rgba(244, 67, 54, 0.9);
+}
+
+/* 时间范围切换 */
+.time-range-tabs {
+  display: flex;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 10rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
+.range-tab {
+  flex: 1;
+  text-align: center;
+  padding: 20rpx 0;
+  font-size: 28rpx;
+  color: #666;
+  border-radius: 12rpx;
+  transition: all 0.3s;
+}
+
+.range-tab.active {
+  background: #4CAF50;
+  color: #fff;
+  font-weight: 500;
+}
+
+/* 图表区域 */
+.chart-section {
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+
+.chart-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.chart-subtitle {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.chart-container {
+  position: relative;
+  height: 400rpx;
+  background: #fafafa;
+  border-radius: 16rpx;
+  overflow: hidden;
+}
+
+.trend-chart {
+  width: 100%;
+  height: 100%;
+}
+
+/* 图表提示框 */
+.chart-tooltip {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 12rpx;
+  padding: 16rpx 24rpx;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.tooltip-time {
+  display: block;
+  font-size: 22rpx;
+  color: #ccc;
+  margin-bottom: 6rpx;
+}
+
+.tooltip-value {
+  display: block;
+  font-size: 28rpx;
+  color: #fff;
+  font-weight: 600;
+}
+
+/* 统计信息 */
+.stats-section {
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
+.stats-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 20rpx;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20rpx;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 20rpx 10rpx;
+  background: #f8f9fa;
+  border-radius: 12rpx;
+}
+
+.stat-label {
+  display: block;
+  font-size: 24rpx;
+  color: #999;
+  margin-bottom: 10rpx;
+}
+
+.stat-value {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.stat-value.high {
+  color: #4CAF50;
+}
+
+.stat-value.low {
+  color: #f44336;
+}
+
+.stat-value.avg {
+  color: #2196F3;
+}
+
+/* 数据来源 */
+.source-section {
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
+.source-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 20rpx;
+}
+
+.source-info {
+  display: flex;
+  align-items: center;
+}
+
+.source-icon {
+  font-size: 60rpx;
+  margin-right: 20rpx;
+}
+
+.source-detail {
+  flex: 1;
+}
+
+.source-name {
+  display: block;
+  font-size: 30rpx;
+  color: #333;
+  font-weight: 500;
+  margin-bottom: 6rpx;
+}
+
+.source-time {
+  display: block;
+  font-size: 24rpx;
+  color: #999;
+}
+
+/* 历史数据列表 */
+.history-section {
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 30rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+
+.history-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.history-count {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.history-list {
+  max-height: 600rpx;
+  overflow-y: auto;
+}
+
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.history-item:last-child {
+  border-bottom: none;
+}
+
+.history-time {
+  font-size: 28rpx;
+  color: #666;
+}
+
+.history-value-section {
+  display: flex;
+  align-items: center;
+}
+
+.history-value {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+  margin-right: 12rpx;
+}
+
+.status-dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+}
+
+.status-dot.warning {
+  background: #ff9800;
+}
+
+.status-dot.critical {
+  background: #f44336;
+}
+
+.history-item.warning .history-value {
+  color: #ff9800;
+}
+
+.history-item.critical .history-value {
+  color: #f44336;
+}
+
+/* 加载更多 */
+.load-more {
+  text-align: center;
+  padding: 30rpx 0;
+}
+
+.load-text {
+  font-size: 28rpx;
+  color: #4CAF50;
+}
+
+/* 空状态 */
+.empty-state {
+  text-align: center;
+  padding: 60rpx 40rpx;
+}
+
+.empty-icon {
+  font-size: 80rpx;
+  margin-bottom: 20rpx;
+  display: block;
+}
+
+.empty-title {
+  font-size: 32rpx;
+  color: #333;
+  margin-bottom: 10rpx;
+  display: block;
+}
+
+.empty-desc {
+  font-size: 26rpx;
+  color: #999;
+  margin-bottom: 30rpx;
+  display: block;
+}

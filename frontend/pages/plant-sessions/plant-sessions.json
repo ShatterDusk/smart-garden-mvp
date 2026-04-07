@@ -1,0 +1,10 @@
+{
+  "navigationBarTitleText": "植物会话",
+  "navigationBarBackgroundColor": "#4CAF50",
+  "navigationBarTextStyle": "white",
+  "enablePullDownRefresh": true,
+  "backgroundColor": "#f8f9fa",
+  "usingComponents": {
+    "empty-state": "/components/empty-state/empty-state"
+  }
+}

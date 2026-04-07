@@ -1,0 +1,123 @@
+<!--device-detail.wxml - 设备详情页（重新设计版）-->
+<!-- 专注于设备信息展示，环境数据详情由 metric-detail 负责 -->
+<view class="container">
+
+  <!-- 加载状态 -->
+  <view wx:if="{{isLoading}}" class="loading-state">
+    <view class="loading-spinner"></view>
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <!-- 内容区域 -->
+  <block wx:else>
+
+    <!-- 设备状态卡片 -->
+    <view class="status-card">
+      <view class="device-icon-wrap">
+        <text class="device-icon">📡</text>
+        <view class="status-badge {{deviceInfo.status}}">
+          {{deviceInfo.statusText}}
+        </view>
+      </view>
+      <view class="device-main-info">
+        <text class="device-name">{{deviceInfo.deviceName}}</text>
+        <view class="device-metrics">
+          <view class="metric-item" wx:if="{{deviceInfo.batteryLevel}}">
+            <text class="metric-icon">{{deviceInfo.batteryLevel > 20 ? '🔋' : '🪫'}}</text>
+            <text class="metric-value {{deviceInfo.batteryLevel <= 20 ? 'low' : ''}}">{{deviceInfo.batteryLevel}}%</text>
+          </view>
+          <view class="metric-item" wx:if="{{networkInfo.signalStrength}}">
+            <text class="metric-icon">📶</text>
+            <text class="metric-value">{{networkInfo.signalStrength}}dBm</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 设备信息 -->
+    <view class="section">
+      <view class="section-header">
+        <text class="section-title">设备信息</text>
+      </view>
+      <view class="info-card">
+        <view class="info-item">
+          <text class="info-label">设备ID</text>
+          <text class="info-value mono">{{deviceInfo.deviceId}}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">MAC地址</text>
+          <text class="info-value mono">{{deviceInfo.macAddress || '--'}}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">固件版本</text>
+          <text class="info-value">{{deviceInfo.firmwareVersion}}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">绑定时间</text>
+          <text class="info-value">{{deviceInfo.createdAt}}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">最后活跃</text>
+          <text class="info-value {{deviceInfo.status === 'online' ? 'online' : 'offline'}}">{{deviceInfo.lastHeartbeat}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 网络信息 -->
+    <view class="section">
+      <view class="section-header">
+        <text class="section-title">网络信息</text>
+      </view>
+      <view class="info-card">
+        <view class="info-item">
+          <text class="info-label">WiFi名称</text>
+          <text class="info-value">{{networkInfo.ssid}}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">IP地址</text>
+          <text class="info-value mono">{{networkInfo.ipAddress}}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">信号强度</text>
+          <view class="info-value">
+            <text wx:if="{{networkInfo.signalStrength}}" class="signal-badge {{networkInfo.signalStrength >= -50 ? 'strong' : networkInfo.signalStrength >= -65 ? 'medium' : 'weak'}}">
+              {{networkInfo.signalStrength}}dBm
+            </text>
+            <text wx:else>--</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 绑定植物 -->
+    <view class="section" wx:if="{{boundPlant.plantId}}">
+      <view class="section-header">
+        <text class="section-title">绑定植物</text>
+      </view>
+      <view class="plant-card" bindtap="goToPlantDetail">
+        <image class="plant-cover" src="{{boundPlant.coverImageUrl}}" mode="aspectFill"/>
+        <view class="plant-info">
+          <text class="plant-name">{{boundPlant.nickname}}</text>
+          <text class="plant-species" wx:if="{{boundPlant.species}}">{{boundPlant.species}}</text>
+        </view>
+        <text class="arrow">›</text>
+      </view>
+    </view>
+
+    <!-- 操作按钮 -->
+    <view class="action-section">
+      <view class="action-btn secondary" bindtap="goToManage">
+        <text class="btn-icon">🔄</text>
+        <text class="btn-text">换绑设备</text>
+      </view>
+      <view class="action-btn danger" bindtap="unbindDevice">
+        <text class="btn-icon">🔗</text>
+        <text class="btn-text">解绑设备</text>
+      </view>
+    </view>
+
+  </block>
+
+  <!-- 底部占位 -->
+  <view style="height: 40rpx;"></view>
+</view>

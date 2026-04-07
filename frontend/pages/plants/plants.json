@@ -1,0 +1,11 @@
+{
+  "navigationBarTitleText": "我的植物",
+  "navigationBarBackgroundColor": "#4CAF50",
+  "navigationBarTextStyle": "white",
+  "enablePullDownRefresh": true,
+  "backgroundColor": "#f8f9fa",
+  "usingComponents": {
+    "plant-card": "/components/plant-card/plant-card",
+    "empty-state": "/components/empty-state/empty-state"
+  }
+}

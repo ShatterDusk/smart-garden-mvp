@@ -1,0 +1,100 @@
+<!--index.wxml-->
+<view class="container">
+  <!-- 头部区域 -->
+  <view class="header">
+    <view class="header-content">
+      <view class="header-top">
+        <view class="header-left">
+          <text class="title">proj-alpha</text>
+          <text class="header-subtitle">智能植物识别与养护专家</text>
+        </view>
+        <view class="header-actions">
+          <view class="action-btn tap-active" bindtap="goToNotifications">
+            <text style="font-size: 28rpx;">🔔</text>
+            <view class="notification-badge">3</view>
+          </view>
+          <view class="action-btn tap-active" bindtap="goToSettings">
+            <text style="font-size: 28rpx;">⚙️</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+  
+  <!-- 健康仪表盘 -->
+  <view class="section">
+    <view class="section-header">
+      <text class="section-title">健康仪表盘</text>
+      <text class="section-action" bindtap="refreshDashboard">
+        <text style="font-size: 24rpx;">🔄</text>
+        <text style="margin-left: 8rpx;">刷新</text>
+      </text>
+    </view>
+    <view class="card">
+      <view wx:if="{{plantCount === 0}}" class="empty-plant">
+        <view class="empty-icon">🌿</view>
+        <text class="empty-title">还没有添加植物</text>
+        <text class="empty-desc">添加植物后可查看健康状态和养护建议</text>
+        <view class="empty-actions">
+          <button class="btn btn-primary" bindtap="goToAddPlant">
+            <text style="font-size: 24rpx;">➕</text>
+            <text style="margin-left: 8rpx;">添加植物</text>
+          </button>
+        </view>
+      </view>
+      <view wx:else class="plant-health">
+        <view class="health-header">
+          <text class="health-title">植物健康状态</text>
+          <text class="health-subtitle">共 {{plantCount}} 株植物</text>
+        </view>
+        <view class="health-stats">
+          <view class="health-stat-item">
+            <text class="health-stat-value">{{healthyCount}}</text>
+            <text class="health-stat-label">健康植物</text>
+          </view>
+          <view class="health-stat-item">
+            <text class="health-stat-value">{{plantCount - healthyCount}}</text>
+            <text class="health-stat-label">需要关注</text>
+          </view>
+          <view class="health-stat-item">
+            <text class="health-stat-value">{{pendingTasks}}</text>
+            <text class="health-stat-label">待处理任务</text>
+          </view>
+        </view>
+        <view class="health-actions">
+          <button class="btn btn-primary" bindtap="goToPlants">查看所有植物</button>
+          <button class="btn btn-secondary" bindtap="goToAddPlant">添加新植物</button>
+        </view>
+      </view>
+    </view>
+  </view>
+  
+  <!-- 核心功能区域 -->
+  <view class="section">
+    <text class="section-title">核心功能</text>
+    <view class="core-features">
+      <!-- 快速诊断按钮 -->
+      <view class="primary-card tap-active" bindtap="goToIdentify">
+        <view class="primary-icon">📸</view>
+        <text class="primary-title">快速诊断</text>
+        <text class="primary-desc">拍照识别植物问题</text>
+        <view class="primary-badge">推荐</view>
+      </view>
+      <!-- 智能问答按钮 -->
+      <view class="primary-card tap-active" bindtap="goToQna">
+        <view class="primary-icon">💬</view>
+        <text class="primary-title">智能问答</text>
+        <text class="primary-desc">问问proj-alpha</text>
+      </view>
+      <!-- 专家咨询按钮 -->
+      <view class="primary-card tap-active" bindtap="goToExpert">
+        <view class="primary-icon">👨‍🌾</view>
+        <text class="primary-title">专家咨询</text>
+        <text class="primary-desc">真人园艺师在线</text>
+      </view>
+    </view>
+  </view>
+  
+  <!-- 养护小贴士 -->
+  
+</view>

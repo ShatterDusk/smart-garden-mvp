@@ -1,0 +1,67 @@
+<!-- login.wxml - 登录页面 -->
+<view class="login-container">
+  <!-- Logo区域 -->
+  <view class="logo-section">
+    <view class="logo">🌱</view>
+    <view class="app-name">proj-alpha</view>
+    <view class="app-slogan">您的智能植物养护助手</view>
+  </view>
+
+  <!-- 登录卡片 -->
+  <view class="login-card">
+    <view class="card-title">欢迎回来</view>
+    <view class="card-subtitle">登录后开始管理您的植物</view>
+
+    <!-- 微信登录按钮 -->
+    <button 
+      class="login-btn wechat-btn" 
+      bindtap="handleWechatLogin"
+      loading="{{isLoading}}"
+      disabled="{{isLoading}}"
+    >
+      <text class="btn-icon">💬</text>
+      <text class="btn-text">微信一键登录</text>
+    </button>
+
+    <!-- 分割线 -->
+    <view class="divider">
+      <view class="line"></view>
+      <text class="divider-text">或</text>
+      <view class="line"></view>
+    </view>
+
+    <!-- 游客登录按钮 -->
+    <button 
+      class="login-btn guest-btn" 
+      bindtap="handleGuestLogin"
+      disabled="{{isLoading}}"
+    >
+      <text class="btn-icon">👤</text>
+      <text class="btn-text">游客体验</text>
+    </button>
+  </view>
+
+  <!-- 底部说明 -->
+  <view class="footer">
+    <text class="footer-text">登录即表示您同意</text>
+    <text class="footer-link" bindtap="showUserAgreement">《用户协议》</text>
+    <text class="footer-text">和</text>
+    <text class="footer-link" bindtap="showPrivacyPolicy">《隐私政策》</text>
+  </view>
+
+  <!-- 功能介绍 -->
+  <view class="features">
+    <view class="feature-item">
+      <text class="feature-icon">📸</text>
+      <text class="feature-text">拍照识别</text>
+    </view>
+    <view class="feature-item">
+      <text class="feature-icon">💬</text>
+      <text class="feature-text">AI问诊</text>
+    </view>
+    <view class="feature-item">
+      <text class="feature-icon">📊</text>
+      <text class="feature-text">数据监测</text>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,171 @@
+<!--qna.wxml - 智能问答页（带侧栏和诊断卡气泡）-->
+<view class="container">
+  <!-- 侧栏遮罩 -->
+  <view class="sidebar-mask {{showSidebar ? 'show' : ''}}" bindtap="closeSidebar"></view>
+  
+  <!-- 左侧会话列表面板 -->
+  <view class="sidebar {{showSidebar ? 'show' : ''}}">
+    <view class="sidebar-header">
+      <text class="sidebar-title">会话列表</text>
+      <view class="sidebar-close" bindtap="closeSidebar">✕</view>
+    </view>
+    <scroll-view class="sidebar-list" scroll-y="true">
+      <view 
+        wx:for="{{sessionList}}" 
+        wx:key="sessionId"
+        class="sidebar-item {{item.sessionId === sessionId ? 'active' : ''}}"
+        bindtap="switchSession"
+        data-id="{{item.sessionId}}"
+        data-type="{{item.type}}"
+        data-title="{{item.title}}"
+      >
+        <view class="sidebar-item-icon">
+          <text wx:if="{{item.type === 'consultation'}}">💬</text>
+          <text wx:if="{{item.type === 'plant'}}">🌱</text>
+        </view>
+        <view class="sidebar-item-info">
+          <text class="sidebar-item-title">{{item.title}}</text>
+          <text class="sidebar-item-preview">{{item.lastMessage || '暂无消息'}}</text>
+        </view>
+        <view wx:if="{{item.unread > 0}}" class="sidebar-item-badge">{{item.unread}}</view>
+      </view>
+    </scroll-view>
+    <view class="sidebar-footer">
+      <view class="sidebar-new-btn" bindtap="createNewSession">
+        <text>➕ 新建会话</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 左侧滑动指示器 -->
+  <view class="sidebar-trigger" bindtap="openSidebar">
+    <view class="trigger-arrow">›</view>
+  </view>
+  
+  <!-- 触摸区域（用于手势识别） -->
+  <view 
+    class="gesture-area" 
+    bindtouchstart="onTouchStart"
+    bindtouchmove="onTouchMove"
+    bindtouchend="onTouchEnd"
+  ></view>
+
+  <!-- 聊天区域 -->
+  <scroll-view class="chat-box" scroll-y="true" style="height: {{chatHeight}}px;" scroll-into-view="{{scrollToView}}" scroll-top="{{scrollTop}}">
+    <view wx:for="{{currentMessages}}" wx:key="id" id="msg-{{item.id}}" class="message-group {{item.type}}-group">
+      
+      <!-- AI 消息组 -->
+      <view wx:if="{{item.type === 'ai'}}" class="ai-message-group">
+        <!-- AI 头像 -->
+        <view class="ai-avatar">🌱</view>
+        
+        <!-- AI 消息内容区 -->
+        <view class="ai-content">
+          <!-- 文字气泡 -->
+          <view wx:if="{{item.content}}" class="bubble bubble-ai">
+            <markdown-render content="{{item.content}}"></markdown-render>
+          </view>
+          
+          <!-- 诊断卡气泡 - 使用 diagnosis-card 组件 -->
+          <view wx:if="{{item.diagnosisCard}}" class="diagnosis-card-wrapper">
+            <diagnosis-card
+              cardId="{{item.diagnosisCard.cardId}}"
+              healthScore="{{item.diagnosisCard.healthScore}}"
+              status="{{item.diagnosisCard.status}}"
+              species="{{item.diagnosisCard.species}}"
+              confidence="{{item.diagnosisCard.confidence}}"
+              issues="{{item.diagnosisCard.issues}}"
+              suggestions="{{item.diagnosisCard.suggestions}}"
+              expanded="{{true}}"
+              showSummary="{{true}}"
+              showSpecies="{{true}}"
+              showConfidence="{{true}}"
+              showIssues="{{true}}"
+              showSuggestions="{{true}}"
+              showActions="{{false}}"
+              customClass="chat-diagnosis-card"
+            />
+          </view>
+        </view>
+      </view>
+      
+      <!-- 用户消息组 -->
+      <view wx:if="{{item.type === 'user'}}" class="user-message-group">
+        <!-- 用户消息内容区 -->
+        <view class="user-content">
+          <!-- 文字气泡 - 支持分割线 -->
+          <view wx:if="{{item.content}}" class="bubble bubble-user">
+            <user-message-render content="{{item.content}}"></user-message-render>
+          </view>
+          
+          <!-- 图片气泡 -->
+          <view wx:if="{{item.imageUrl}}" class="bubble bubble-image">
+            <image class="message-image" src="{{item.imageUrl}}" mode="aspectFill" bindtap="previewImage" data-url="{{item.imageUrl}}"/>
+          </view>
+        </view>
+      </view>
+      
+    </view>
+    
+    <!-- 加载指示器 -->
+    <view wx:if="{{isLoading}}" class="loading-indicator">
+      <view class="loading-dots">
+        <view class="dot"></view>
+        <view class="dot"></view>
+        <view class="dot"></view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <!-- 上下文开关 - 仅在植物会话中显示 -->
+  <view wx:if="{{sessionType === 'plant'}}" class="context-bar">
+    <view wx:for="{{contextOptions}}" wx:key="id" 
+          class="context-btn {{item.checked ? 'active' : ''}}" 
+          bindtap="toggleContextOption" 
+          data-id="{{item.id}}">
+      <text class="context-icon">{{item.icon}}</text>
+      <text class="context-label">{{item.label}}</text>
+    </view>
+  </view>
+
+  <!-- 图片预览区（微信风格，在输入框上方） -->
+  <view class="image-preview-bar" wx:if="{{showImagePreview}}">
+    <view class="preview-content">
+      <view class="preview-image-wrapper">
+        <image class="preview-image" src="{{previewImagePath}}" mode="aspectFill" />
+        <!-- 上传进度遮罩 -->
+        <view class="upload-overlay" wx:if="{{pendingImage && pendingImage.isUploading}}">
+          <view class="upload-progress-ring">
+            <text class="upload-progress-text">{{pendingImage.uploadProgress}}%</text>
+          </view>
+          <text class="upload-status">上传中...</text>
+        </view>
+        <!-- 上传失败提示 -->
+        <view class="upload-overlay error" wx:if="{{pendingImage && pendingImage.uploadError}}">
+          <text class="upload-error-icon">⚠️</text>
+          <text class="upload-status">上传失败</text>
+        </view>
+      </view>
+      <input 
+        class="preview-input" 
+        placeholder="添加描述文字..." 
+        value="{{previewInputValue}}" 
+        bindinput="onPreviewInput"
+        focus="{{true}}"
+      />
+    </view>
+    <view class="preview-actions">
+      <view class="preview-btn cancel" bindtap="cancelImageSend">取消</view>
+      <view class="preview-btn send {{pendingImage && pendingImage.isUploading ? 'disabled' : ''}}" bindtap="confirmImageSend">
+        {{pendingImage && pendingImage.isUploading ? '上传中...' : '发送'}}
+      </view>
+    </view>
+  </view>
+
+  <!-- 底部输入框 + 拍照按钮（仅在非图片预览模式下显示） -->
+  <view class="input-bar" wx:if="{{!showImagePreview}}">
+    <view class="camera-btn" bindtap="showImageOptions">📷</view>
+    <input class="input-field" placeholder="请输入消息…" value="{{inputValue}}" bindinput="bindInput" bindconfirm="sendMessage" />
+    <view class="send-btn" bindtap="sendMessage">发送</view>
+  </view>
+</view>

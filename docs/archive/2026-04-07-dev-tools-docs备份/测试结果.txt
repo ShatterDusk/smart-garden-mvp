@@ -1,0 +1,473 @@
+  SessionService
+    generateSessionId
+      √ 生成以 SESSION_ 开头的 ID (4 ms)
+    generateMessageId
+      √ 生成以 MSG_ 开头的 ID
+    createSession
+      √ 创建咨询会话 (3 ms)
+      √ 创建植物会话 (1 ms)
+    getSessionList
+      √ 返回会话列表
+      √ 按类型筛选 (1 ms)
+    getSessionById
+      √ 返回会话
+      √ 会话不存在返回 null
+    updateSession
+      √ 更新会话 (1 ms)
+      √ 会话不存在返回 null
+    deleteSession
+      √ 删除会话 (1 ms)
+      √ 会话不存在返回 false
+    createMessage
+      √ 创建消息 (1 ms)
+    getMessages
+      √ 返回消息列表
+    getMessageCount
+      √ 返回消息数量
+    createDiagnosisCard
+      √ 创建诊断卡 (1 ms)
+    upgradeSession
+      √ 升级咨询会话为植物会话 (1 ms)
+      √ 已经是植物会话返回错误 (1 ms)
+      √ 会话不存在返回错误
+
+Test Suites: 8 passed, 8 total
+Tests:       118 passed, 118 total
+Snapshots:   0 total
+Time:        2.078 s, estimated 3 s
+Ran all test suites.
+PS F:\PROJECTS\WeChatProjects\MVP\backend\server> npm run test:integration # 集成测试
+
+> smart-garden-server@1.0.0 test:integration
+> jest --selectProjects integration --runInBand
+
+Running one project: integration
+Determining test suites to run...[dotenv@17.3.1] injecting env (10) from .env.test -- tip: 🛠️  run anywhere with `dotenvx
+ run -- yourcommand`
+测试环境配置: { DB_HOST: 'localhost', DB_NAME: 'smart_garden_test', DB_USER: 'root' }
+测试数据库创建成功
+测试数据库连接成功
+测试数据库同步完成
+  console.log
+    [dotenv@17.3.1] injecting env (0) from .env -- tip: 🤖 agentic secret storage: https://dotenvx.com/as2
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+2026-04-06 18:14:49:1449 info: 环境变量校验通过
+2026-04-06 18:14:50:1450 info: 数据库连接成功
+2026-04-06 18:14:50:1450 info: 启动环境数据同步定时任务
+2026-04-06 18:14:50:1450 info: 同步周期: 120 分钟
+2026-04-06 18:14:50:1450 info: 容忍期: 5 分钟
+2026-04-06 18:14:50:1450 info: ========== 环境数据同步开始 ==========
+2026-04-06 18:14:50:1450 error: 生成任务失败 {"error":"Unknown column 'location' in 'field list'"}
+2026-04-06 18:14:50:1450 error: 环境数据同步失败 {"error":"Unknown column 'location' in 'field list'"}
+2026-04-06 18:14:55:1455 info: POST /api/sessions {"ip":"::ffff:127.0.0.1","body":{"type":"consultation","title":"新的咨询
+会话"}}
+2026-04-06 18:14:56:1456 info: Session created: SESSION_8649b5cb38d84ffd
+2026-04-06 18:14:56:1456 info: POST /api/sessions {"ip":"::ffff:127.0.0.1","body":{"type":"plant","plantId":"TEST_PLANT_1775470496053_l13p48","title":"植物诊断会话"}}
+2026-04-06 18:14:56:1456 info: GET /api/sessions {"ip":"::ffff:127.0.0.1"}
+2026-04-06 18:14:56:1456 error: Error occurred: Cannot set property query of [object Object] which has only a getter {"stack":"TypeError: Cannot set property query of [object Object] which has only a getter\n    at F:\\PROJECTS\\WeChatProjects\\MVP\\backend\\server\\src\\middleware\\validator.js:35:18\n    at Layer.handleRequest (F:\\PROJECTS\\WeChatProjects\\MVP\\backend\\server\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (F:\\PROJECTS\\WeChatProjects\\MVP\\backend\\server\\node_modules\\router\\lib\\route.js:157:13)\n    at next (F:\\PROJECTS\\WeChatProjects\\MVP\\backend\\server\\src\\middleware\\auth.js:83:5)\n    at processTicksAndRejections (node:internal/process/task_queues:103:5)","url":"/api/sessions","method":"GET","ip":"::ffff:127.0.0.1"}
+2026-04-06 18:14:56:1456 info: GET /api/sessions {"ip":"::ffff:127.0.0.1"}
+2026-04-06 18:14:56:1456 error: Error occurred: Cannot set property query of [object Object] which has only a getter {"stack":"TypeError: Cannot set property query of [object Object] which has only a getter\n    at F:\\PROJECTS\\WeChatProjects\\MVP\\backend\\server\\src\\middleware\\validator.js:35:18\n    at Layer.handleRequest (F:\\PROJECTS\\WeChatProjects\\MVP\\backend\\server\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (F:\\PROJECTS\\WeChatProjects\\MVP\\backend\\server\\node_modules\\router\\lib\\route.js:157:13)\n    at next (F:\\PROJECTS\\WeChatProjects\\MVP\\backend\\server\\src\\middleware\\auth.js:83:5)\n    at processTicksAndRejections (node:internal/process/task_queues:103:5)","url":"/api/sessions?type=plant","method":"GET","ip":"::ffff:127.0.0.1"}
+2026-04-06 18:14:56:1456 info: GET /api/sessions {"ip":"::ffff:127.0.0.1"}
+2026-04-06 18:14:56:1456 info: GET /api/sessions/TEST_SESSION_1775470496290_wcop0a {"ip":"::ffff:127.0.0.1"}
+2026-04-06 18:14:56:1456 info: GET /api/sessions/NOT_EXIST_SESSION {"ip":"::ffff:127.0.0.1"}
+2026-04-06 18:14:56:1456 info: GET /api/sessions/TEST_SESSION_1775470496370_08zomc/messages {"ip":"::ffff:127.0.0.1"}
+2026-04-06 18:14:56:1456 error: Error occurred: Cannot set property query of [object Object] which has only a getter {"stack":"TypeError: Cannot set property query of [object Object] which has only a getter\n    at F:\\PROJECTS\\WeChatProjects\\MVP\\backend\\server\\src\\middleware\\validator.js:35:18\n    at Layer.handleRequest (F:\\PROJECTS\\WeChatProjects\\MVP\\backend\\server\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (F:\\PROJECTS\\WeChatProjects\\MVP\\backend\\server\\node_modules\\router\\lib\\route.js:157:13)\n    at next (F:\\PROJECTS\\WeChatProjects\\MVP\\backend\\server\\src\\middleware\\auth.js:83:5)\n    at processTicksAndRejections (node:internal/process/task_queues:103:5)","url":"/api/sessions/TEST_SESSION_1775470496370_08zomc/messages","method":"GET","ip":"::ffff:127.0.0.1"}
+2026-04-06 18:14:56:1456 info: GET /api/sessions/NOT_EXIST_SESSION/messages {"ip":"::ffff:127.0.0.1"}
+2026-04-06 18:14:56:1456 error: Error occurred: Cannot set property query of [object Object] which has only a getter {"stack":"TypeError: Cannot set property query of [object Object] which has only a getter\n    at F:\\PROJECTS\\WeChatProjects\\MVP\\backend\\server\\src\\middleware\\validator.js:35:18\n    at Layer.handleRequest (F:\\PROJECTS\\WeChatProjects\\MVP\\backend\\server\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (F:\\PROJECTS\\WeChatProjects\\MVP\\backend\\server\\node_modules\\router\\lib\\route.js:157:13)\n    at next (F:\\PROJECTS\\WeChatProjects\\MVP\\backend\\server\\src\\middleware\\auth.js:83:5)\n    at processTicksAndRejections (node:internal/process/task_queues:103:5)","url":"/api/sessions/NOT_EXIST_SESSION/messages","method":"GET","ip":"::ffff:127.0.0.1"}
+2026-04-06 18:14:56:1456 info: POST /api/sessions/TEST_SESSION_1775470496449_f3qbhe/messages {"ip":"::ffff:127.0.0.1","body":{"content":"这是一条测试消息","contentType":"text"}}
+2026-04-06 18:14:56:1456 info: POST /api/sessions/NOT_EXIST_SESSION/messages {"ip":"::ffff:127.0.0.1","body":{"content":" 
+测试消息"}}
+2026-04-06 18:14:56:1456 info: PUT /api/sessions/TEST_SESSION_1775470496526_ags01k {"ip":"::ffff:127.0.0.1","body":{"title":"更新后的会话标题"}}
+2026-04-06 18:14:56:1456 info: PUT /api/sessions/NOT_EXIST_SESSION {"ip":"::ffff:127.0.0.1","body":{"title":"新标题"}}    
+2026-04-06 18:14:56:1456 info: DELETE /api/sessions/TEST_SESSION_1775470496608_0yotui {"ip":"::ffff:127.0.0.1"}
+2026-04-06 18:14:56:1456 info: Session deleted: TEST_SESSION_1775470496608_0yotui
+2026-04-06 18:14:56:1456 info: DELETE /api/sessions/NOT_EXIST_SESSION {"ip":"::ffff:127.0.0.1"}
+2026-04-06 18:14:56:1456 info: GET /api/sessions {"ip":"::ffff:127.0.0.1"}
+2026-04-06 18:14:56:1456 info: GET /api/sessions {"ip":"::ffff:127.0.0.1"}
+ FAIL   integration  tests/integration/api/sessions.test.js (11.667 s)
+  会话模块 API 测试
+    POST /api/sessions - 创建会话
+      √ 创建咨询会话成功 (98 ms)
+      × 创建植物会话成功 (42 ms)
+    GET /api/sessions - 获取会话列表
+      × 获取会话列表成功 (80 ms)
+      × 按类型筛选会话列表 (55 ms)
+      × 按植物ID筛选会话列表 (51 ms)
+    GET /api/sessions/:sessionId - 获取会话详情
+      √ 获取会话详情成功 (40 ms)
+      √ 会话不存在返回404 (37 ms)
+    GET /api/sessions/:sessionId/messages - 获取消息列表
+      × 获取消息列表成功 (40 ms)
+      × 会话不存在返回404 (38 ms)
+    POST /api/sessions/:sessionId/messages - 发送消息
+      × 发送文本消息成功 (41 ms)
+      × 会话不存在返回404 (34 ms)
+    PUT /api/sessions/:sessionId - 更新会话
+      √ 更新会话标题成功 (48 ms)
+      √ 会话不存在返回404 (34 ms)
+    DELETE /api/sessions/:sessionId - 删除会话
+      √ 删除会话成功 (40 ms)
+      √ 会话不存在返回404 (39 ms)
+    认证测试
+      √ 无 token 访问返回 401 (6 ms)
+      √ 无效 token 返回 401 (8 ms)
+
+  ● 会话模块 API 测试 › POST /api/sessions - 创建会话 › 创建植物会话成功
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 400
+
+      65 |         });
+      66 |
+    > 67 |       expect(res.status).toBe(200);
+         |                          ^
+      68 |       expect(res.body.code).toBe(200);
+      69 |       expect(res.body.data).toBeDefined();
+      70 |       expect(res.body.data.sessionId).toBeDefined();
+
+      at Object.toBe (tests/integration/api/sessions.test.js:67:26)
+
+  ● 会话模块 API 测试 › GET /api/sessions - 获取会话列表 › 获取会话列表成功
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+       98 |         .set('Authorization', `Bearer ${authToken}`);
+       99 |
+    > 100 |       expect(res.status).toBe(200);
+          |                          ^
+      101 |       expect(res.body.code).toBe(200);
+      102 |       expect(res.body.data).toBeDefined();
+      103 |       expect(res.body.data.list).toBeDefined();
+
+      at Object.toBe (tests/integration/api/sessions.test.js:100:26)
+
+  ● 会话模块 API 测试 › GET /api/sessions - 获取会话列表 › 按类型筛选会话列表
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      115 |         .set('Authorization', `Bearer ${authToken}`);
+      116 |
+    > 117 |       expect(res.status).toBe(200);
+          |                          ^
+      118 |       expect(res.body.code).toBe(200);
+      119 |       expect(res.body.data.list).toBeDefined();
+      120 |     });
+
+      at Object.toBe (tests/integration/api/sessions.test.js:117:26)
+
+  ● 会话模块 API 测试 › GET /api/sessions - 获取会话列表 › 按植物ID筛选会话列表
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 400
+
+      126 |         .set('Authorization', `Bearer ${authToken}`);
+      127 |
+    > 128 |       expect(res.status).toBe(200);
+          |                          ^
+      129 |       expect(res.body.code).toBe(200);
+      130 |       expect(res.body.data.list).toBeDefined();
+      131 |     });
+
+      at Object.toBe (tests/integration/api/sessions.test.js:128:26)
+
+  ● 会话模块 API 测试 › GET /api/sessions/:sessionId/messages - 获取消息列表 › 获取消息列表成功
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      196 |         .set('Authorization', `Bearer ${authToken}`);
+      197 |
+    > 198 |       expect(res.status).toBe(200);
+          |                          ^
+      199 |       expect(res.body.code).toBe(200);
+      200 |       expect(res.body.data).toBeDefined();
+      201 |       expect(res.body.data.list).toBeDefined();
+
+      at Object.toBe (tests/integration/api/sessions.test.js:198:26)
+
+  ● 会话模块 API 测试 › GET /api/sessions/:sessionId/messages - 获取消息列表 › 会话不存在返回404
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 404
+    Received: 500
+
+      209 |         .set('Authorization', `Bearer ${authToken}`);
+      210 |
+    > 211 |       expect(res.status).toBe(404);
+          |                          ^
+      212 |       expect(res.body.code).toBe(404);
+      213 |     });
+      214 |   });
+
+      at Object.toBe (tests/integration/api/sessions.test.js:211:26)
+
+  ● 会话模块 API 测试 › POST /api/sessions/:sessionId/messages - 发送消息 › 发送文本消息成功
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 400
+
+      240 |         });
+      241 |
+    > 242 |       expect(res.status).toBe(200);
+          |                          ^
+      243 |       expect(res.body.code).toBe(200);
+      244 |       expect(res.body.data).toBeDefined();
+      245 |       expect(res.body.data.messageId).toBeDefined();
+
+      at Object.toBe (tests/integration/api/sessions.test.js:242:26)
+
+  ● 会话模块 API 测试 › POST /api/sessions/:sessionId/messages - 发送消息 › 会话不存在返回404
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 404
+    Received: 400
+
+      259 |         });
+      260 |
+    > 261 |       expect(res.status).toBe(404);
+          |                          ^
+      262 |       expect(res.body.code).toBe(404);
+      263 |     });
+      264 |   });
+
+      at Object.toBe (tests/integration/api/sessions.test.js:261:26)
+
+  console.log
+    [dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+2026-04-06 18:14:57:1457 info: 环境变量校验通过
+2026-04-06 18:14:57:1457 info: 数据库连接成功
+2026-04-06 18:14:57:1457 info: 启动环境数据同步定时任务
+2026-04-06 18:14:57:1457 info: 同步周期: 120 分钟
+2026-04-06 18:14:57:1457 info: 容忍期: 5 分钟
+2026-04-06 18:14:57:1457 info: ========== 环境数据同步开始 ==========
+2026-04-06 18:14:57:1457 error: 生成任务失败 {"error":"Unknown column 'location' in 'field list'"}
+2026-04-06 18:14:57:1457 error: 环境数据同步失败 {"error":"Unknown column 'location' in 'field list'"}
+2026-04-06 18:15:02:152 info: POST /api/users/guest-login {"ip":"::ffff:127.0.0.1"}
+2026-04-06 18:15:02:152 info: Guest user created: GUEST_B187C152
+2026-04-06 18:15:02:152 info: Default config created for user: GUEST_B187C152
+2026-04-06 18:15:02:152 info: 游客用户创建: GUEST_B187C152
+2026-04-06 18:15:02:152 info: POST /api/users/guest-login {"ip":"::ffff:127.0.0.1"}
+2026-04-06 18:15:02:152 info: Guest user created: GUEST_D4659EB3
+2026-04-06 18:15:02:152 info: Default config created for user: GUEST_D4659EB3
+2026-04-06 18:15:02:152 info: 游客用户创建: GUEST_D4659EB3
+2026-04-06 18:15:02:152 info: GET /api/users/profile {"ip":"::ffff:127.0.0.1"}
+2026-04-06 18:15:02:152 info: GET /api/users/profile {"ip":"::ffff:127.0.0.1"}
+2026-04-06 18:15:02:152 info: GET /api/users/profile {"ip":"::ffff:127.0.0.1"}
+2026-04-06 18:15:02:152 info: PUT /api/users/profile {"ip":"::ffff:127.0.0.1","body":{"nickname":"更新后的昵称","avatarUrl":"https://example.com/avatar.png"}}
+2026-04-06 18:15:02:152 info: PUT /api/users/profile {"ip":"::ffff:127.0.0.1","body":{"nickname":"测试昵称"}}
+2026-04-06 18:15:02:152 info: GET /api/users/settings {"ip":"::ffff:127.0.0.1"}
+2026-04-06 18:15:02:152 info: GET /api/users/settings {"ip":"::ffff:127.0.0.1"}
+2026-04-06 18:15:02:152 info: POST /api/users/config {"ip":"::ffff:127.0.0.1","body":{"configKey":"test_config","configValue":{"option1":"value1","option2":true},"configType":"preference"}}
+2026-04-06 18:15:02:152 info: POST /api/users/config {"ip":"::ffff:127.0.0.1","body":{"configKey":"test","configValue":{}}}
+2026-04-06 18:15:02:152 info: POST /api/users/config {"ip":"::ffff:127.0.0.1","body":{"configValue":{"test":"value"}}}    
+2026-04-06 18:15:02:152 info: POST /api/users/config {"ip":"::ffff:127.0.0.1","body":{"configKey":"existing_config","configValue":{"data":"test"}}}
+2026-04-06 18:15:02:152 info: GET /api/users/config/existing_config {"ip":"::ffff:127.0.0.1"}
+2026-04-06 18:15:02:152 info: GET /api/users/config/non_existent_config {"ip":"::ffff:127.0.0.1"}
+ FAIL   integration  tests/integration/api/users.test.js (5.651 s)
+  用户模块 API 测试
+    POST /api/users/guest-login - 游客登录
+      √ 游客登录成功 (36 ms)
+      √ 返回有效 token (31 ms)
+    GET /api/users/profile - 获取用户信息
+      √ 获取用户信息成功 (11 ms)
+      √ 无 token 返回 401 (5 ms)
+    PUT /api/users/profile - 更新用户信息
+      √ 更新用户信息成功 (43 ms)
+      √ 无 token 返回 401 (19 ms)
+    GET /api/users/settings - 获取用户设置
+      × 获取用户设置成功 (23 ms)
+      √ 无 token 返回 401 (19 ms)
+    POST /api/users/config - 设置用户配置
+      √ 设置用户配置成功 (36 ms)
+      √ 无 token 返回 401 (19 ms)
+      √ 缺少 configKey 返回 400 (20 ms)
+    GET /api/users/config/:configKey - 获取用户配置项
+      √ 获取已存在的配置项 (37 ms)
+      √ 获取不存在的配置项返回默认值 (28 ms)
+
+  ● 用户模块 API 测试 › GET /api/users/settings - 获取用户设置 › 获取用户设置成功
+
+    expect(received).toHaveProperty(path)
+
+    Expected path: "diagnosisReminder"
+    Received path: []
+
+    Received value: {"care_reminder": true, "diagnosis_reminder": true, "environment_alert": true, "reminder_time": "09:00"}
+
+      164 |       expect(response.body).toHaveProperty('data');
+      165 |       expect(response.body.data).toHaveProperty('notification');
+    > 166 |       expect(response.body.data.notification).toHaveProperty('diagnosisReminder');
+          |                                               ^
+      167 |       expect(response.body.data.notification).toHaveProperty('careReminder');
+      168 |       expect(response.body.data.notification).toHaveProperty('environmentAlert');
+      169 |       expect(response.body.data.notification).toHaveProperty('reminderTime');
+
+      at Object.toHaveProperty (tests/integration/api/users.test.js:166:47)
+
+  console.log
+    [dotenv@17.3.1] injecting env (0) from .env -- tip: 🛡️ auth for agents: https://vestauth.com
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+2026-04-06 18:15:02:152 info: 环境变量校验通过
+2026-04-06 18:15:02:152 info: 数据库连接成功
+2026-04-06 18:15:02:152 info: 启动环境数据同步定时任务
+2026-04-06 18:15:02:152 info: 同步周期: 120 分钟
+2026-04-06 18:15:02:152 info: 容忍期: 5 分钟
+2026-04-06 18:15:02:152 info: ========== 环境数据同步开始 ==========
+2026-04-06 18:15:02:152 error: 生成任务失败 {"error":"Unknown column 'location' in 'field list'"}
+2026-04-06 18:15:02:152 error: 环境数据同步失败 {"error":"Unknown column 'location' in 'field list'"}
+2026-04-06 18:15:07:157 info: POST /api/devices/bind {"ip":"::ffff:127.0.0.1","body":{"macAddress":"AA:BB:CC:DD:EE:FF","deviceName":"测试设备","plantId":"TEST_PLANT_1775470507753_z6slix"}}
+2026-04-06 18:15:07:157 info: Device bound: AA:BB:CC:DD:EE:FF -> plant: TEST_PLANT_1775470507753_z6slix
+2026-04-06 18:15:07:157 info: POST /api/devices/bind {"ip":"::ffff:127.0.0.1","body":{"macAddress":"11:22:33:44:55:66","deviceName":"独立设备"}}
+2026-04-06 18:15:07:157 info: Device bound: 11:22:33:44:55:66 -> plant: undefined
+2026-04-06 18:15:07:157 info: GET /api/devices {"ip":"::ffff:127.0.0.1"}
+2026-04-06 18:15:07:157 info: GET /api/devices/TEST_DEVICE_1775470507913_71revz {"ip":"::ffff:127.0.0.1"}
+2026-04-06 18:15:07:157 info: GET /api/devices/DEVICE_NOT_EXIST {"ip":"::ffff:127.0.0.1"}
+2026-04-06 18:15:08:158 info: POST /api/devices/unbind {"ip":"::ffff:127.0.0.1","body":{"deviceId":"TEST_DEVICE_1775470508000_fuwmmx"}}
+2026-04-06 18:15:08:158 info: Device unbound: TEST_DEVICE_1775470508000_fuwmmx
+2026-04-06 18:15:08:158 info: POST /api/devices/unbind {"ip":"::ffff:127.0.0.1","body":{"deviceId":"DEVICE_NOT_EXIST"}}   
+2026-04-06 18:15:08:158 info: GET /api/devices {"ip":"::ffff:127.0.0.1"}
+2026-04-06 18:15:08:158 info: POST /api/devices/bind {"ip":"::ffff:127.0.0.1","body":{"macAddress":"AA:BB:CC:DD:EE:FF"}}  
+ PASS   integration  tests/integration/api/devices.test.js (5.643 s)
+  设备模块 API 测试
+    POST /api/devices/bind - 绑定设备
+      √ 绑定设备成功 (59 ms)
+      √ 绑定设备成功（不关联植物） (47 ms)
+    GET /api/devices - 获取设备列表
+      √ 获取设备列表成功 (49 ms)
+    GET /api/devices/:deviceId - 获取设备详情
+      √ 获取设备详情成功 (44 ms)
+      √ 设备不存在返回 404 (44 ms)
+    POST /api/devices/unbind - 解绑设备
+      √ 解绑设备成功 (59 ms)
+      √ 设备不存在返回 404 (42 ms)
+    无 token 访问返回 401
+      √ 获取设备列表无 token 返回 401 (4 ms)
+      √ 绑定设备无 token 返回 401 (3 ms)
+
+  console.log
+    [dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env'
+ }
+
+      at _log (node_modules/dotenv/lib/main.js:139:11)
+
+2026-04-06 18:15:08:158 info: 环境变量校验通过
+2026-04-06 18:15:08:158 info: 数据库连接成功
+2026-04-06 18:15:08:158 info: 启动环境数据同步定时任务
+2026-04-06 18:15:08:158 info: 同步周期: 120 分钟
+2026-04-06 18:15:08:158 info: 容忍期: 5 分钟
+2026-04-06 18:15:08:158 info: ========== 环境数据同步开始 ==========
+2026-04-06 18:15:08:158 error: 生成任务失败 {"error":"Unknown column 'location' in 'field list'"}
+2026-04-06 18:15:08:158 error: 环境数据同步失败 {"error":"Unknown column 'location' in 'field list'"}
+2026-04-06 18:15:13:1513 info: POST /api/plants {"ip":"::ffff:127.0.0.1","body":{"nickname":"测试绿萝","species":"绿萝","plantCategory":"foliage","coverImageUrl":"https://example.com/image.jpg","locationName":"客厅"}}
+2026-04-06 18:15:13:1513 info: POST /api/plants {"ip":"::ffff:127.0.0.1","body":{}}
+2026-04-06 18:15:13:1513 info: GET /api/plants {"ip":"::ffff:127.0.0.1"}
+2026-04-06 18:15:13:1513 error: Error occurred: Cannot set property query of [object Object] which has only a getter {"stack":"TypeError: Cannot set property query of [object Object] which has only a getter\n    at F:\\PROJECTS\\WeChatProjects\\MVP\\backend\\server\\src\\middleware\\validator.js:35:18\n    at Layer.handleRequest (F:\\PROJECTS\\WeChatProjects\\MVP\\backend\\server\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (F:\\PROJECTS\\WeChatProjects\\MVP\\backend\\server\\node_modules\\router\\lib\\route.js:157:13)\n    at next (F:\\PROJECTS\\WeChatProjects\\MVP\\backend\\server\\src\\middleware\\auth.js:83:5)\n    at processTicksAndRejections (node:internal/process/task_queues:103:5)","url":"/api/plants","method":"GET","ip":"::ffff:127.0.0.1"}
+2026-04-06 18:15:13:1513 info: GET /api/plants/TEST_PLANT_1775470513306_boep9e {"ip":"::ffff:127.0.0.1"}
+2026-04-06 18:15:13:1513 info: GET /api/plants/PLANT_NOT_EXIST_12345 {"ip":"::ffff:127.0.0.1"}
+2026-04-06 18:15:13:1513 info: PUT /api/plants/TEST_PLANT_1775470513400_5iuh50 {"ip":"::ffff:127.0.0.1","body":{"nickname":"更新后的绿萝","locationName":"阳台"}}
+2026-04-06 18:15:13:1513 info: DELETE /api/plants/TEST_PLANT_1775470513431_6w05et {"ip":"::ffff:127.0.0.1"}
+2026-04-06 18:15:13:1513 info: Plant deleted: TEST_PLANT_1775470513431_6w05et
+2026-04-06 18:15:13:1513 info: GET /api/plants {"ip":"::ffff:127.0.0.1"}
+ FAIL   integration  tests/integration/api/plants.test.js (5.365 s)
+  植物模块 API 测试
+    POST /api/plants - 创建植物
+      × 创建植物成功 (27 ms)
+      √ 缺少必填字段返回 400 (20 ms)
+    GET /api/plants - 获取植物列表
+      × 获取植物列表成功 (44 ms)
+    GET /api/plants/:plantId - 获取植物详情
+      √ 获取植物详情成功 (56 ms)
+      √ 不存在的 ID 返回 404 (38 ms)
+    PUT /api/plants/:plantId - 更新植物
+      × 更新植物信息成功 (31 ms)
+    DELETE /api/plants/:plantId - 删除植物
+      √ 删除植物成功 (34 ms)
+    认证测试
+      √ 无 token 访问返回 401 (4 ms)
+
+  ● 植物模块 API 测试 › POST /api/plants - 创建植物 › 创建植物成功
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 400
+
+      44 |         });
+      45 |
+    > 46 |       expect(res.status).toBe(200);
+         |                          ^
+      47 |       expect(res.body.code).toBe(200);
+      48 |       expect(res.body.data).toHaveProperty('plantId');
+      49 |       expect(res.body.data.nickname).toBe('测试绿萝');
+
+      at Object.toBe (tests/integration/api/plants.test.js:46:26)
+
+  ● 植物模块 API 测试 › GET /api/plants - 获取植物列表 › 获取植物列表成功
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      89 |         .set('Authorization', `Bearer ${userToken}`);
+      90 |
+    > 91 |       expect(res.status).toBe(200);
+         |                          ^
+      92 |       expect(res.body.code).toBe(200);
+      93 |       expect(res.body.data).toHaveProperty('list');
+      94 |       expect(res.body.data).toHaveProperty('pagination');
+
+      at Object.toBe (tests/integration/api/plants.test.js:91:26)
+
+  ● 植物模块 API 测试 › PUT /api/plants/:plantId - 更新植物 › 更新植物信息成功
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 400
+
+      173 |         });
+      174 |
+    > 175 |       expect(res.status).toBe(200);
+          |                          ^
+      176 |       expect(res.body.code).toBe(200);
+      177 |       expect(res.body.data.nickname).toBe('更新后的绿萝');
+      178 |       expect(res.body.data.locationName).toBe('阳台');
+
+      at Object.toBe (tests/integration/api/plants.test.js:175:26)
+
+Test Suites: 3 failed, 1 passed, 4 total
+Tests:       12 failed, 35 passed, 47 total
+Snapshots:   0 total
+Time:        28.449 s
+Ran all test suites.
+[dotenv@17.3.1] injecting env (0) from .env.test -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+测试数据库清理完成
+测试数据库连接关闭
+Jest did not exit one second after the test run has completed.
+
+'This usually means that there are asynchronous operations that weren't stopped in your tests. Consider running Jest with 
+`--detectOpenHandles` to troubleshoot this issue.

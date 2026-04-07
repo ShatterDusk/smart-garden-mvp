@@ -1,0 +1,178 @@
+# ============================================
+# 项目: Smart Garden (微信小程序 + Node.js 后端)
+# ============================================
+
+# ============================================
+# IDE 配置
+# ============================================
+# Trae (保留 agents/ 和 rules/ 以便团队共享)
+.trae/ignore
+.trae/specs/
+
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# JetBrains
+.idea/
+*.iml
+*.iws
+
+# 编辑器备份
+*~
+*.swp
+*.swo
+*.swn
+
+# ============================================
+# 系统文件
+# ============================================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ============================================
+# 微信小程序 - 前端
+# ============================================
+# 私有配置（包含敏感信息如 appid）
+project.private.config.json
+frontend/project.private.config.json
+
+# 小程序构建产物
+miniprogram_npm/
+node_modules/
+
+# 小程序临时文件
+.project.config.json.swp
+
+# ============================================
+# Node.js - 后端 & 工具
+# ============================================
+# 依赖
+node_modules/
+**/node_modules/
+
+# 日志
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+logs/
+
+# 运行时数据
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# 测试覆盖率
+coverage/
+.nyc_output/
+
+# 构建产物
+dist/
+build/
+
+# ============================================
+# Python - 开发工具
+# ============================================
+# 虚拟环境
+.venv/
+venv/
+ENV/
+env/
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# 分发/打包
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyCharm
+.idea/
+
+# ============================================
+# 环境变量（敏感信息）
+# ============================================
+.env
+.env.local
+.env.*.local
+.env.development
+.env.test
+.env.production
+
+# 后端环境文件
+backend/server/.env
+backend/server/.env.*
+!backend/server/.env.example
+
+# ============================================
+# 上传文件/临时文件
+# ============================================
+uploads/
+temp/
+tmp/
+*.tmp
+*.temp
+
+# ============================================
+# 数据库
+# ============================================
+# 本地数据库文件
+*.sqlite
+*.sqlite3
+*.db
+
+# ============================================
+# 测试 & 调试
+# ============================================
+# 调试文件
+test-debug*.js
+debug/
+
+# ESLint 缓存
+.eslintcache
+
+# ============================================
+# 项目特定 - 需要忽略的内容
+# ============================================
+# 废弃数据
+旧数据/
+
+# 开发临时文档
+开发文档/
+
+# 测试文档
+测试文档/
+
+# 部署配置（如果包含敏感信息）
+部署/
+
+# 压缩包
+*.zip
+*.tar.gz
+*.rar
+
+# 备份文件
+*.bak
+*.backup
+*_backup/

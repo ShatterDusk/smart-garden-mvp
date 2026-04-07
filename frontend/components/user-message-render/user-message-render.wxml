@@ -1,0 +1,7 @@
+<!-- 用户消息渲染组件 - 仅支持分割线 -->
+<view class="user-message-content">
+  <block wx:for="{{contentNodes}}" wx:key="index">
+    <view wx:if="{{item.type === 'hr'}}" class="divider-line"></view>
+    <text wx:else class="text-content">{{item.content}}</text>
+  </block>
+</view>
