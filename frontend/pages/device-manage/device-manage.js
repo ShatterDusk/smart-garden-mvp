@@ -337,21 +337,57 @@ Page({
   },
 
   // ========== WiFi状态管理 ==========
-  
+
   checkWifiStatus() {
-    wx.getConnectedWifi({
-      success: (res) => {
-        this.setData({
-          wifiEnabled: true,
-          wifiConnected: true,
-          currentWifiSSID: res.wifi.SSID
+    // 首先检查网络状态（更可靠）
+    wx.getNetworkType({
+      success: (networkRes) => {
+        const networkType = networkRes.networkType;
+        const isWifi = networkType === 'wifi';
+
+        if (!isWifi) {
+          // 未连接WiFi，直接显示提示
+          this.setData({
+            wifiEnabled: true,
+            wifiConnected: false,
+            currentWifiSSID: '',
+            networkType: networkType
+          });
+          console.warn('[WiFi] 当前未连接WiFi，网络类型:', networkType);
+          return;
+        }
+
+        // 已连接WiFi，尝试获取详细信息
+        wx.getConnectedWifi({
+          success: (res) => {
+            console.log('[WiFi] 获取成功:', res.wifi.SSID);
+            this.setData({
+              wifiEnabled: true,
+              wifiConnected: true,
+              currentWifiSSID: res.wifi.SSID,
+              networkType: networkType
+            });
+          },
+          fail: (err) => {
+            // 获取WiFi详情失败，但至少知道是WiFi网络
+            console.warn('[WiFi] 获取WiFi详情失败，但网络类型为WiFi:', err);
+            this.setData({
+              wifiEnabled: true,
+              wifiConnected: true,
+              currentWifiSSID: '已连接WiFi',
+              networkType: networkType
+            });
+          }
         });
       },
       fail: () => {
+        // 获取网络类型失败，降级处理
+        console.error('[WiFi] 获取网络类型失败');
         this.setData({
-          wifiEnabled: false,
+          wifiEnabled: true,
           wifiConnected: false,
-          currentWifiSSID: ''
+          currentWifiSSID: '',
+          networkType: 'unknown'
         });
       }
     });
@@ -485,7 +521,7 @@ Page({
         };
         
         this.setData({
-          availableDevices: [...this.data.availableDevices, newDevice]
+          availableDevices: this.data.availableDevices.concat([newDevice])
         });
       }
     }
@@ -493,9 +529,23 @@ Page({
 
   getWifiStatus() {
     return new Promise((resolve) => {
-      wx.getConnectedWifi({
-        success: () => resolve({ enabled: true, connected: true }),
-        fail: () => resolve({ enabled: false, connected: false })
+      // 优先使用 getNetworkType 检查网络类型（更可靠）
+      wx.getNetworkType({
+        success: (res) => {
+          const isWifi = res.networkType === 'wifi';
+          if (isWifi) {
+            resolve({ enabled: true, connected: true, networkType: res.networkType });
+          } else {
+            resolve({ enabled: true, connected: false, networkType: res.networkType });
+          }
+        },
+        fail: () => {
+          // 降级：尝试直接获取WiFi
+          wx.getConnectedWifi({
+            success: () => resolve({ enabled: true, connected: true, networkType: 'wifi' }),
+            fail: () => resolve({ enabled: false, connected: false, networkType: 'unknown' })
+          });
+        }
       });
     });
   },
@@ -509,10 +559,9 @@ Page({
     api.getPlantDetail(plantId).then((plant) => {
       if (plant && plant.currentDevice) {
         this.setData({
-          currentDevice: {
-            ...plant.currentDevice,
+          currentDevice: Object.assign({}, plant.currentDevice, {
             statusText: this.getStatusText(plant.currentDevice.status)
-          }
+          })
         });
       } else {
         this.setData({ currentDevice: null });
@@ -524,8 +573,7 @@ Page({
 
   loadBoundDevices() {
     api.getDeviceList().then((devices) => {
-      const boundDevices = (devices || []).map((device) => ({
-        ...device,
+      const boundDevices = (devices || []).map((device) => Object.assign({}, device, {
         statusText: this.getStatusText(device.status)
       }));
       
@@ -647,7 +695,7 @@ Page({
         // 更新选中的设备信息
         const updatedDevices = availableDevices.map(d => {
           if (d.macAddress === selectedDeviceId) {
-            return { ...d, ...onlineDevice, status: 'online' };
+            return Object.assign({}, d, onlineDevice, { status: 'online' });
           }
           return d;
         });
@@ -692,10 +740,11 @@ Page({
         }
       });
     }
-  }
+  },
 
   // 等待设备上线（优化版）
-  waitForDeviceOnline(macAddress, timeout = 30000) {
+  waitForDeviceOnline(macAddress, timeout) {
+    timeout = timeout || 30000;
     return new Promise((resolve, reject) => {
       const startTime = Date.now();
       let checkCount = 0;
@@ -797,7 +846,7 @@ Page({
     setTimeout(() => {
       this.configureDevice();
     }, 1000);
-  }
+  },
 
   // ========== 设备选择 ==========
 

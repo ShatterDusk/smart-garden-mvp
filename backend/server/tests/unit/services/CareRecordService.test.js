@@ -56,16 +56,33 @@ describe('CareRecordService', () => {
         user_id: 'USER_1',
       };
 
-      const mockRecord = {
+      const mockCreatedRecord = {
         record_id: 'CARE_123',
-        plant_id: 'PLANT_1',
-        user_id: 'USER_1',
-        action_type: 'water',
+      };
+
+      const mockRecord = {
+        recordId: 'CARE_123',
+        plantId: 'PLANT_1',
+        userId: 'USER_1',
+        actionType: 'water',
         description: '浇水',
+        images: null,
+        performedAt: expect.any(Date),
+        createdAt: expect.any(Date),
       };
 
       Plant.findOne.mockResolvedValue(mockPlant);
-      CareRecord.create.mockResolvedValue(mockRecord);
+      CareRecord.create.mockResolvedValue(mockCreatedRecord);
+      CareRecord.findOne.mockResolvedValue({
+        recordId: 'CARE_123',
+        plantId: 'PLANT_1',
+        userId: 'USER_1',
+        actionType: 'water',
+        description: '浇水',
+        images: null,
+        performedAt: new Date(),
+        createdAt: new Date(),
+      });
 
       const result = await careRecordService.createCareRecord('PLANT_1', 'USER_1', {
         actionType: 'water',
@@ -83,7 +100,8 @@ describe('CareRecordService', () => {
           description: '浇水',
         })
       );
-      expect(result).toEqual(mockRecord);
+      expect(result.recordId).toBe('CARE_123');
+      expect(result.actionType).toBe('water');
       expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('CareRecord created'));
     });
 
@@ -102,6 +120,16 @@ describe('CareRecordService', () => {
       const mockPlant = { plant_id: 'PLANT_1', user_id: 'USER_1' };
       Plant.findOne.mockResolvedValue(mockPlant);
       CareRecord.create.mockResolvedValue({ record_id: 'CARE_123' });
+      CareRecord.findOne.mockResolvedValue({
+        recordId: 'CARE_123',
+        plantId: 'PLANT_1',
+        userId: 'USER_1',
+        actionType: 'water',
+        description: '',
+        images: null,
+        performedAt: new Date(),
+        createdAt: new Date(),
+      });
 
       await careRecordService.createCareRecord('PLANT_1', 'USER_1', {
         actionType: 'water',
@@ -130,8 +158,26 @@ describe('CareRecordService', () => {
   describe('getCareRecordList', () => {
     it('获取养护记录列表', async () => {
       const mockRecords = [
-        { record_id: 'CARE_1', action_type: 'water' },
-        { record_id: 'CARE_2', action_type: 'fertilize' },
+        {
+          recordId: 'CARE_1',
+          plantId: 'PLANT_1',
+          userId: 'USER_1',
+          actionType: 'water',
+          description: '浇水',
+          images: null,
+          performedAt: new Date(),
+          createdAt: new Date(),
+        },
+        {
+          recordId: 'CARE_2',
+          plantId: 'PLANT_1',
+          userId: 'USER_1',
+          actionType: 'fertilize',
+          description: '施肥',
+          images: null,
+          performedAt: new Date(),
+          createdAt: new Date(),
+        },
       ];
 
       CareRecord.findAndCountAll.mockResolvedValue({
@@ -148,7 +194,9 @@ describe('CareRecordService', () => {
         limit: 10,
       });
       expect(result.count).toBe(2);
-      expect(result.records).toEqual(mockRecords);
+      expect(result.records.length).toBe(2);
+      expect(result.records[0].recordId).toBe('CARE_1');
+      expect(result.records[1].recordId).toBe('CARE_2');
     });
 
     it('按植物ID筛选', async () => {
@@ -202,7 +250,20 @@ describe('CareRecordService', () => {
         update: jest.fn().mockResolvedValue(true),
       };
 
-      CareRecord.findOne.mockResolvedValue(mockRecord);
+      const updatedRecord = {
+        recordId: 'CARE_1',
+        plantId: 'PLANT_1',
+        userId: 'USER_1',
+        actionType: 'prune',
+        description: '新描述',
+        images: null,
+        performedAt: new Date(),
+        createdAt: new Date(),
+      };
+
+      CareRecord.findOne
+        .mockResolvedValueOnce(mockRecord)
+        .mockResolvedValueOnce(updatedRecord);
 
       const result = await careRecordService.updateCareRecord('CARE_1', 'USER_1', {
         description: '新描述',
@@ -213,7 +274,8 @@ describe('CareRecordService', () => {
         description: '新描述',
         action_type: 'prune',
       });
-      expect(result).toEqual(mockRecord);
+      expect(result.recordId).toBe('CARE_1');
+      expect(result.actionType).toBe('prune');
       expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('CareRecord updated'));
     });
 
@@ -229,7 +291,14 @@ describe('CareRecordService', () => {
 
     it('空更新数据直接返回记录', async () => {
       const mockRecord = {
-        record_id: 'CARE_1',
+        recordId: 'CARE_1',
+        plantId: 'PLANT_1',
+        userId: 'USER_1',
+        actionType: 'water',
+        description: '浇水',
+        images: null,
+        performedAt: new Date(),
+        createdAt: new Date(),
         update: jest.fn(),
       };
 
@@ -238,7 +307,7 @@ describe('CareRecordService', () => {
       const result = await careRecordService.updateCareRecord('CARE_1', 'USER_1', {});
 
       expect(mockRecord.update).not.toHaveBeenCalled();
-      expect(result).toEqual(mockRecord);
+      expect(result.recordId).toBe('CARE_1');
     });
 
     it('过滤不允许的字段', async () => {
@@ -289,8 +358,8 @@ describe('CareRecordService', () => {
   describe('getPlantsForRecords', () => {
     it('获取植物信息', async () => {
       const mockPlants = [
-        { plant_id: 'PLANT_1', nickname: '小绿' },
-        { plant_id: 'PLANT_2', nickname: '小红' },
+        { plantId: 'PLANT_1', nickname: '小绿', coverImageUrl: 'https://example.com/1.jpg' },
+        { plantId: 'PLANT_2', nickname: '小红', coverImageUrl: 'https://example.com/2.jpg' },
       ];
 
       Plant.findAll.mockResolvedValue(mockPlants);
@@ -301,7 +370,9 @@ describe('CareRecordService', () => {
         where: { plant_id: ['PLANT_1', 'PLANT_2'] },
         attributes: ['plant_id', 'nickname', 'cover_image_url'],
       });
-      expect(result).toEqual(mockPlants);
+      expect(result.length).toBe(2);
+      expect(result[0].plantId).toBe('PLANT_1');
+      expect(result[1].plantId).toBe('PLANT_2');
     });
 
     it('空数组返回空数组', async () => {

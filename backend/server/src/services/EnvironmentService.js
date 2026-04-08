@@ -110,6 +110,11 @@ class EnvironmentService extends BaseService {
       nearestIntervalTime.setMinutes(0, 0, 0);
       nearestIntervalTime.setHours(Math.floor(nearestIntervalTime.getHours() / 2) * 2);
 
+      const plant = await Plant.findOne({
+        where: { plant_id: plantId },
+        attributes: ['plant_id', 'location_name', 'location_code'],
+      });
+
       const [sensorReading, weatherReading, task] = await Promise.all([
         EnvironmentReading.findOne({
           where: {
@@ -164,11 +169,15 @@ class EnvironmentService extends BaseService {
         });
       };
 
+      const updateTime = weatherReading ? weatherReading.created_at : null;
+
       return {
         plantId,
         recordedAt: nearestIntervalTime.toISOString(),
+        location: plant ? plant.location_name : null,
         deviceMetrics: buildMetricsData(sensorReading),
         weatherMetrics: buildMetricsData(weatherReading),
+        updateTime: updateTime ? new Date(updateTime).toISOString() : null,
         taskStatus: task
           ? {
               sensor: task.sensor_status,

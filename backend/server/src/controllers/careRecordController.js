@@ -24,27 +24,26 @@ const getCareRecords = async (req, res) => {
       pageSize,
     });
 
-    const plantIds = records.filter(r => r.plant_id).map(r => r.plant_id);
+    const plantIds = records.filter(r => r.plantId).map(r => r.plantId);
     const plants = await careRecordService.getPlantsForRecords(plantIds);
-    const plantMap = new Map(plants.map(p => [p.plant_id, p]));
+    const plantMap = new Map(plants.map(p => [p.plantId, p]));
 
     const formattedRecords = records.map((record) => {
-      const plain = record.get({ plain: true });
-      const plant = plain.plant_id ? plantMap.get(plain.plant_id) : null;
+      const plant = record.plantId ? plantMap.get(record.plantId) : null;
       return {
-        recordId: plain.record_id,
-        plantId: plain.plant_id,
-        userId: plain.user_id,
-        actionType: plain.action_type,
-        description: plain.description,
-        images: plain.images,
-        performedAt: plain.performed_at,
-        createdAt: plain.created_at,
+        recordId: record.recordId,
+        plantId: record.plantId,
+        userId: record.userId,
+        actionType: record.actionType,
+        description: record.description,
+        images: record.images,
+        performedAt: record.performedAt,
+        createdAt: record.createdAt,
         plant: plant
           ? {
-              plantId: plant.plant_id,
+              plantId: plant.plantId,
               nickname: plant.nickname,
-              coverImageUrl: plant.cover_image_url,
+              coverImageUrl: plant.coverImageUrl,
             }
           : null,
       };
@@ -85,15 +84,14 @@ const createCareRecord = async (req, res) => {
       return error(res, '植物不存在', 404, 404);
     }
 
-    const plain = record.get({ plain: true });
     return success(res, {
-      recordId: plain.record_id,
-      plantId: plain.plant_id,
-      actionType: plain.action_type,
-      description: plain.description,
-      images: plain.images,
-      performedAt: plain.performed_at,
-      createdAt: plain.created_at,
+      recordId: record.recordId,
+      plantId: record.plantId,
+      actionType: record.actionType,
+      description: record.description,
+      images: record.images,
+      performedAt: record.performedAt,
+      createdAt: record.createdAt,
     });
   } catch (err) {
     console.error('创建养护记录失败:', err);
@@ -116,15 +114,14 @@ const updateCareRecord = async (req, res) => {
       return error(res, '养护记录不存在', 404, 404);
     }
 
-    const plain = record.get({ plain: true });
     return success(res, {
-      recordId: plain.record_id,
-      plantId: plain.plant_id,
-      actionType: plain.action_type,
-      description: plain.description,
-      images: plain.images,
-      performedAt: plain.performed_at,
-      createdAt: plain.created_at,
+      recordId: record.recordId,
+      plantId: record.plantId,
+      actionType: record.actionType,
+      description: record.description,
+      images: record.images,
+      performedAt: record.performedAt,
+      createdAt: record.createdAt,
     });
   } catch (err) {
     console.error('更新养护记录失败:', err);

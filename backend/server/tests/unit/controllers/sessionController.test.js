@@ -35,7 +35,7 @@ jest.mock('../../../src/services/aiService', () => ({
 
 jest.mock('../../../src/utils/response', () => ({
   success: jest.fn((res, data, message) => {
-    res.json({ code: 200, message: message || 'success', data });
+    res.json({ code: 0, message: message || 'success', data });
   }),
   error: jest.fn((res, message, code, statusCode) => {
     res.status(statusCode || code || 500).json({ code: code || 500, message, data: null });
@@ -286,7 +286,7 @@ describe('SessionController', () => {
 
       expect(mockSessionService.updateSession).toHaveBeenCalledWith('SESSION_1', 'TEST_USER_123', {
         title: '新标题',
-        context_config: { depth: 'deep' },
+        contextConfig: { depth: 'deep' },
       });
       expect(success).toHaveBeenCalled();
     });

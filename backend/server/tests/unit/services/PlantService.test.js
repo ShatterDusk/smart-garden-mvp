@@ -1,5 +1,5 @@
 const PlantService = require('../../../src/services/PlantService');
-const { Plant, Device, DiagnosisCard, CareRecord } = require('../../../src/models');
+const { Plant, Device, DiagnosisCard, CareRecord, Message } = require('../../../src/models');
 
 jest.mock('../../../src/models', () => ({
   Plant: {
@@ -22,6 +22,9 @@ jest.mock('../../../src/models', () => ({
     update: jest.fn(),
   },
   CareRecord: {
+    findAll: jest.fn(),
+  },
+  Message: {
     findAll: jest.fn(),
   },
 }));
@@ -192,7 +195,7 @@ describe('PlantService', () => {
   });
 
   describe('getPlantDetail', () => {
-    it('返回植物详情', async () => {
+    it('返回植物详情（无诊断卡）', async () => {
       const mockPlant = {
         plant_id: 'PLANT_123',
         user_id: 'USER_123',
@@ -200,7 +203,6 @@ describe('PlantService', () => {
       };
 
       Plant.findOne.mockResolvedValue(mockPlant);
-      DiagnosisCard.findOne.mockResolvedValue(null);
       DiagnosisCard.findAll.mockResolvedValue([]);
       CareRecord.findAll.mockResolvedValue([]);
 
@@ -208,7 +210,119 @@ describe('PlantService', () => {
 
       expect(result.plant).toBeDefined();
       expect(result.device).toBeNull();
-      expect(result.latestDiagnosis).toBeNull();
+      expect(result.diagnosisCards).toEqual([]);
+    });
+
+    it('返回植物详情（有诊断卡）', async () => {
+      const mockPlant = {
+        plant_id: 'PLANT_123',
+        user_id: 'USER_123',
+        current_device_id: null,
+      };
+
+      const mockDiagnosisCards = [
+        {
+          diagnosis_card_id: 'DIAG_001',
+          message_id: 'MSG_001',
+          plant_id: 'PLANT_123',
+          species: '罗勒',
+          health_score: 85,
+          status: 'healthy',
+          issues: [],
+          suggestions: [],
+          confidence: 0.75,
+          analysis_type: 'normal',
+          created_at: '2026-04-08T08:00:00Z',
+          toJSON: function() {
+            return {
+              diagnosisCardId: this.diagnosis_card_id,
+              messageId: this.message_id,
+              plantId: this.plant_id,
+              species: this.species,
+              healthScore: this.health_score,
+              status: this.status,
+              issues: this.issues,
+              suggestions: this.suggestions,
+              confidence: this.confidence,
+              analysisType: this.analysis_type,
+              createdAt: this.created_at,
+            };
+          },
+        },
+      ];
+
+      const mockMessages = [
+        { message_id: 'MSG_001', session_id: 'SESSION_001' },
+      ];
+
+      Plant.findOne.mockResolvedValue(mockPlant);
+      DiagnosisCard.findAll.mockResolvedValue(mockDiagnosisCards);
+      Message.findAll.mockResolvedValue(mockMessages);
+      CareRecord.findAll.mockResolvedValue([]);
+
+      const result = await plantService.getPlantDetail('PLANT_123', 'USER_123');
+
+      expect(result.plant).toBeDefined();
+      expect(result.diagnosisCards).toHaveLength(1);
+      expect(result.diagnosisCards[0].diagnosisCardId).toBe('DIAG_001');
+      expect(result.diagnosisCards[0].species).toBe('罗勒');
+      expect(result.diagnosisCards[0].sessionId).toBe('SESSION_001');
+    });
+
+    it('诊断卡 species 为空时返回默认值', async () => {
+      const mockPlant = {
+        plant_id: 'PLANT_123',
+        user_id: 'USER_123',
+        current_device_id: null,
+      };
+
+      const mockDiagnosisCards = [
+        {
+          diagnosis_card_id: 'DIAG_002',
+          message_id: 'MSG_002',
+          plant_id: 'PLANT_123',
+          species: null,
+          health_score: 70,
+          status: 'warning',
+          issues: [],
+          suggestions: [],
+          confidence: 0.5,
+          analysis_type: 'normal',
+          created_at: '2026-04-08T08:00:00Z',
+          toJSON: function() {
+            return {
+              diagnosisCardId: this.diagnosis_card_id,
+              messageId: this.message_id,
+              plantId: this.plant_id,
+              species: this.species,
+              healthScore: this.health_score,
+              status: this.status,
+              issues: this.issues,
+              suggestions: this.suggestions,
+              confidence: this.confidence,
+              analysisType: this.analysis_type,
+              createdAt: this.created_at,
+            };
+          },
+        },
+      ];
+
+      Plant.findOne.mockResolvedValue(mockPlant);
+      DiagnosisCard.findAll.mockResolvedValue(mockDiagnosisCards);
+      Message.findAll.mockResolvedValue([]);
+      CareRecord.findAll.mockResolvedValue([]);
+
+      const result = await plantService.getPlantDetail('PLANT_123', 'USER_123');
+
+      expect(result.diagnosisCards[0].species).toBe('未知植物');
+    });
+
+    it('植物不存在返回 null', async () => {
+      Plant.findOne.mockResolvedValue(null);
+
+      const result = await plantService.getPlantDetail('NOT_EXIST', 'USER_123');
+
+      expect(result).toBeNull();
     });
   });
 });

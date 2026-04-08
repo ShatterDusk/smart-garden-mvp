@@ -9,7 +9,7 @@ from flask import Flask
 
 from models import DeviceConfig
 from virtual_device import VirtualDevice
-from web.api import app, set_device, add_log
+from web.api import app, set_device, add_web_log
 from constants import DEFAULT_WEB_PORT, DEFAULT_WEB_HOST, ENV_CONFIG
 
 
@@ -18,11 +18,11 @@ def run_web_mode(device: VirtualDevice, config: DeviceConfig):
     set_device(device)
     
     if not device.running:
-        add_log('正在启动设备...', 'INFO')
+        add_web_log('正在启动设备...', 'INFO')
         if device.start():
-            add_log('设备启动成功', 'INFO')
+            add_web_log('设备启动成功', 'INFO')
         else:
-            add_log('设备启动失败', 'ERROR')
+            add_web_log('设备启动失败', 'ERROR')
             return
     
     print(f"\n{'='*50}")
@@ -64,6 +64,7 @@ if __name__ == '__main__':
     parser.add_argument('--interval', type=int, default=60, help='数据上报间隔(秒)')
     parser.add_argument('--scenario', default='normal', choices=list(SCENARIO_NAMES.keys()), help='场景模式')
     parser.add_argument('--no-auto-pair', action='store_true', help='禁用自动配对')
+    parser.add_argument('--manual-mode', action='store_true', help='手动模式（等待前端发现和绑定）')
     parser.add_argument('-v', '--verbose', action='store_true', help='详细日志模式')
     
     args = parser.parse_args()
@@ -77,7 +78,8 @@ if __name__ == '__main__':
         web_port=args.web_port,
         interval=args.interval,
         scenario=args.scenario,
-        auto_pair=not args.no_auto_pair,
+        auto_pair=not args.no_auto_pair and not args.manual_mode,
+        manual_mode=args.manual_mode,
         verbose=args.verbose,
     )
     

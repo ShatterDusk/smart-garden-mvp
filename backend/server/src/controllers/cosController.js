@@ -34,20 +34,40 @@ const getAccessToken = async () => {
     return accessTokenCache;
   }
 
-  const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${process.env.WECHAT_APPID}&secret=${process.env.WECHAT_SECRET}`;
+  const appId = process.env.WECHAT_APPID;
+  const secret = process.env.WECHAT_SECRET;
 
-  const response = await axiosInstance.get(url);
-  const { access_token, expires_in } = response.data;
-
-  if (!access_token) {
-    throw new Error('获取 access_token 失败: ' + JSON.stringify(response.data));
+  if (!appId || !secret) {
+    throw new Error('WECHAT_APPID 或 WECHAT_SECRET 环境变量未设置');
   }
 
-  // 缓存 token（提前 5 分钟过期）
-  accessTokenCache = access_token;
-  accessTokenExpiresAt = Date.now() + (expires_in - 300) * 1000;
+  const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appId}&secret=${secret}`;
 
-  return access_token;
+  try {
+    const response = await axiosInstance.get(url);
+    const { access_token, expires_in, errcode, errmsg } = response.data;
+
+    if (errcode && errcode !== 0) {
+      throw new Error(`微信接口错误: ${errcode} - ${errmsg}`);
+    }
+
+    if (!access_token) {
+      throw new Error('获取 access_token 失败: ' + JSON.stringify(response.data));
+    }
+
+    // 缓存 token（提前 5 分钟过期）
+    accessTokenCache = access_token;
+    accessTokenExpiresAt = Date.now() + (expires_in - 300) * 1000;
+
+    logger.info('获取 access_token 成功，有效期:', expires_in, '秒');
+
+    return access_token;
+  } catch (err) {
+    // 清除缓存，下次重新获取
+    accessTokenCache = null;
+    accessTokenExpiresAt = 0;
+    throw err;
+  }
 };
 
 /**
@@ -69,7 +89,13 @@ const getUploadSign = async (req, res) => {
     const key = `uploads/${userId}/${date}/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
 
     // 获取 access_token
-    const accessToken = await getAccessToken();
+    let accessToken;
+    try {
+      accessToken = await getAccessToken();
+    } catch (err) {
+      logger.error('获取 access_token 失败', { error: err.message });
+      return error(res, '获取上传凭证失败，请检查微信配置', 500);
+    }
 
     // 调用微信云托管存储 API 获取上传链接
     const uploadUrl = `https://api.weixin.qq.com/tcb/uploadfile?access_token=${accessToken}`;
@@ -81,6 +107,12 @@ const getUploadSign = async (req, res) => {
 
     if (response.data.errcode !== 0) {
       logger.error('获取上传链接失败', response.data);
+      // 如果是 token 失效，清除缓存
+      if (response.data.errcode === 40001 || response.data.errcode === 42001) {
+        accessTokenCache = null;
+        accessTokenExpiresAt = 0;
+        logger.info('access_token 已失效，已清除缓存');
+      }
       return error(res, '获取上传链接失败: ' + response.data.errmsg, 500);
     }
 

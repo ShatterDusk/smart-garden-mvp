@@ -47,6 +47,7 @@ class VirtualDevice:
         self.start_time: Optional[float] = None
         
         self._report_thread: Optional[threading.Thread] = None
+        self._sample_thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
     
     def start(self) -> bool:
@@ -79,7 +80,12 @@ class VirtualDevice:
         self.start_time = time.time()
         self._stop_event.clear()
         
-        # 手动模式下不上报数据，等待前端绑定
+        # 启动数据采集线程（所有模式都需要）
+        self.logger.info("启动数据采集线程")
+        self._sample_thread = threading.Thread(target=self._sample_loop, daemon=True)
+        self._sample_thread.start()
+        
+        # 非手动模式下启动上报线程
         if not self.config.manual_mode:
             self._report_thread = threading.Thread(target=self._report_loop, daemon=True)
             self._report_thread.start()
@@ -133,6 +139,10 @@ class VirtualDevice:
         if self._report_thread:
             self._report_thread.join(timeout=5.0)
             self._report_thread = None
+        
+        if self._sample_thread:
+            self._sample_thread.join(timeout=5.0)
+            self._sample_thread = None
         
         if self.udp_service:
             self.udp_service.stop()
@@ -293,6 +303,23 @@ class VirtualDevice:
         except Exception as e:
             return ReportResult(success=False, error=str(e))
     
+    def _sample_loop(self):
+        """数据采集循环 - 独立于上报，持续更新传感器数据"""
+        self.logger.info(f"数据采集线程启动，采集间隔: {self.config.sample_interval}秒")
+        sample_count = 0
+        
+        while self.running and not self._stop_event.is_set():
+            # 生成新的传感器数据（在场景范围内小幅波动）
+            scenario = self.scenario_controller.get_current_scenario()
+            new_metrics = self.data_generator.generate(scenario)
+            sample_count += 1
+            
+            # 每10次采集记录一次日志
+            if sample_count % 10 == 0:
+                self.logger.debug(f"[采集] #{sample_count} 温度: {new_metrics.get('temperature', 0):.1f}C")
+            
+            self._stop_event.wait(self.config.sample_interval)
+    
     def _report_loop(self):
         """上报循环"""
         while self.running and not self._stop_event.is_set():
@@ -306,18 +333,21 @@ class VirtualDevice:
             
             self._stop_event.wait(self.config.interval)
     
-    def set_scenario(self, scenario: str, smooth: bool = True) -> bool:
+    def set_scenario(self, scenario: str, smooth: bool = False) -> bool:
         """设置场景"""
         if not self.scenario_controller.is_valid_scenario(scenario):
             self.logger.error(f"无效的场景: {scenario}")
             return False
         
         old_scenario = self.scenario_controller.get_current_scenario()
-        if self.scenario_controller.switch_scenario(scenario, smooth):
-            self.data_generator.set_scenario(scenario)
-            self.logger.info(f"场景切换: {SCENARIO_NAMES.get(old_scenario, old_scenario)} -> {SCENARIO_NAMES.get(scenario, scenario)}")
+        if old_scenario == scenario:
             return True
-        return False
+        
+        # 直接切换场景，不经过平滑过渡
+        self.scenario_controller.current_scenario = scenario
+        self.data_generator.set_scenario(scenario, smooth=False)
+        self.logger.info(f"场景切换: {SCENARIO_NAMES.get(old_scenario, old_scenario)} -> {SCENARIO_NAMES.get(scenario, scenario)}")
+        return True
     
     def set_interval(self, interval: int) -> bool:
         """设置上报间隔"""
@@ -418,8 +448,13 @@ class VirtualDevice:
                 'status': 'online',
             })
         
-        # 手动模式下，启动数据上报
+        # 手动模式下，启动数据采集和上报
         if self.config.manual_mode:
+            self.logger.info("手动模式：启动数据采集线程")
+            if not self._sample_thread or not self._sample_thread.is_alive():
+                self._sample_thread = threading.Thread(target=self._sample_loop, daemon=True)
+                self._sample_thread.start()
+            
             self.logger.info("手动模式：启动数据上报线程")
             if not self._report_thread or not self._report_thread.is_alive():
                 self._report_thread = threading.Thread(target=self._report_loop, daemon=True)

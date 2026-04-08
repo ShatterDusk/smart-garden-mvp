@@ -9,125 +9,189 @@
 <body>
     <div class="container">
         <header class="header">
-            <h1>🌱 虚拟设备监控中心</h1>
+            <h1>虚拟设备监控中心</h1>
             <div class="status-indicator" id="statusIndicator">
                 <span class="status-dot"></span>
-                <span class="status-text">离线</span>
+                <span class="status-text">初始化中...</span>
             </div>
         </header>
 
         <main class="main-content">
-            <div class="panel device-control">
-                <h2>⚙️ 设备控制</h2>
-                <div class="control-group">
-                    <label>服务器地址</label>
-                    <input type="text" id="serverUrl" readonly>
-                </div>
-                <div class="control-group">
-                    <label>设备ID</label>
-                    <input type="text" id="deviceId" readonly>
-                </div>
-                <div class="control-group">
-                    <label>植物ID</label>
-                    <input type="text" id="plantId" readonly>
-                </div>
-                <div class="control-group">
-                    <label>上报间隔 (秒)</label>
-                    <input type="number" id="interval" min="5" max="3600" value="60">
-                    <button onclick="setInterval()" class="btn btn-small">应用</button>
-                </div>
-                <div class="control-buttons">
-                    <button id="startBtn" onclick="startDevice()" class="btn btn-primary">启动</button>
-                    <button id="stopBtn" onclick="stopDevice()" class="btn btn-danger" disabled>停止</button>
-                    <button onclick="manualReport()" class="btn btn-secondary">手动上报</button>
+            <!-- 设备状态概览 -->
+            <div class="panel device-overview">
+                <h2>设备状态</h2>
+                <div class="overview-grid">
+                    <div class="overview-item">
+                        <span class="overview-label">设备ID</span>
+                        <span class="overview-value" id="deviceId" style="font-size: 11px;">--</span>
+                    </div>
+                    <div class="overview-item">
+                        <span class="overview-label">MAC地址</span>
+                        <span class="overview-value" id="macAddress" style="font-size: 11px;">--</span>
+                    </div>
+                    <div class="overview-item">
+                        <span class="overview-label">设备名称</span>
+                        <span class="overview-value" id="deviceName">--</span>
+                    </div>
+                    <div class="overview-item">
+                        <span class="overview-label">WiFi状态</span>
+                        <span class="overview-value status-badge" id="wifiStatus">
+                            <span class="badge waiting">等待配网</span>
+                        </span>
+                    </div>
+                    <div class="overview-item">
+                        <span class="overview-label">绑定状态</span>
+                        <span class="overview-value status-badge" id="bindStatus">
+                            <span class="badge unbound">未绑定</span>
+                        </span>
+                    </div>
+                    <div class="overview-item">
+                        <span class="overview-label">植物ID</span>
+                        <span class="overview-value" id="plantId">--</span>
+                    </div>
+                    <div class="overview-item">
+                        <span class="overview-label">运行模式</span>
+                        <span class="overview-value" id="runMode">手动模式</span>
+                    </div>
+                    <div class="overview-item">
+                        <span class="overview-label">采集间隔</span>
+                        <span class="overview-value" id="sampleInterval">5秒</span>
+                    </div>
+                    <div class="overview-item">
+                        <span class="overview-label">上报间隔</span>
+                        <span class="overview-value" id="reportInterval">60秒</span>
+                    </div>
                 </div>
             </div>
 
+            <!-- 实时传感器数据 -->
             <div class="panel real-time-data">
-                <h2>📊 实时数据</h2>
+                <h2>实时传感器数据</h2>
                 <div class="metrics-grid" id="metricsGrid">
                     <div class="metric-card">
-                        <span class="metric-icon">🌡️</span>
+                        <span class="metric-icon">&#127777;</span>
                         <span class="metric-name">温度</span>
                         <span class="metric-value" id="metric-temperature">--</span>
-                        <span class="metric-unit">°C</span>
+                        <span class="metric-unit">C</span>
                     </div>
                     <div class="metric-card">
-                        <span class="metric-icon">💧</span>
+                        <span class="metric-icon">&#128167;</span>
                         <span class="metric-name">湿度</span>
                         <span class="metric-value" id="metric-humidity">--</span>
                         <span class="metric-unit">%</span>
                     </div>
                     <div class="metric-card">
-                        <span class="metric-icon">🌐</span>
+                        <span class="metric-icon">&#127760;</span>
                         <span class="metric-name">气压</span>
                         <span class="metric-value" id="metric-pressure">--</span>
                         <span class="metric-unit">hPa</span>
                     </div>
                     <div class="metric-card">
-                        <span class="metric-icon">☀️</span>
+                        <span class="metric-icon">&#9788;</span>
                         <span class="metric-name">光照</span>
                         <span class="metric-value" id="metric-light_intensity">--</span>
                         <span class="metric-unit">lux</span>
                     </div>
                     <div class="metric-card">
-                        <span class="metric-icon">🌱</span>
+                        <span class="metric-icon">&#128136;</span>
                         <span class="metric-name">土壤湿度</span>
                         <span class="metric-value" id="metric-soil_moisture">--</span>
                         <span class="metric-unit">%</span>
                     </div>
                     <div class="metric-card">
-                        <span class="metric-icon">🌡️</span>
+                        <span class="metric-icon">&#127793;</span>
                         <span class="metric-name">土壤温度</span>
                         <span class="metric-value" id="metric-soil_temperature">--</span>
-                        <span class="metric-unit">°C</span>
+                        <span class="metric-unit">C</span>
                     </div>
                     <div class="metric-card">
-                        <span class="metric-icon">🔬</span>
+                        <span class="metric-icon">&#128300;</span>
                         <span class="metric-name">土壤pH</span>
                         <span class="metric-value" id="metric-soil_ph">--</span>
                         <span class="metric-unit">pH</span>
                     </div>
                     <div class="metric-card">
-                        <span class="metric-icon">🔋</span>
+                        <span class="metric-icon">&#128267;</span>
                         <span class="metric-name">电池</span>
                         <span class="metric-value" id="metric-battery_level">--</span>
                         <span class="metric-unit">%</span>
                     </div>
                 </div>
-            </div>
-
-            <div class="panel scenario-control">
-                <h2>🎭 场景选择</h2>
-                <div class="scenario-grid" id="scenarioGrid">
+                <div class="data-footer">
+                    <span class="report-info">
+                        采集间隔: <span id="sampleIntervalDisplay">5</span>秒 |
+                        上报间隔: <span id="interval">60</span>秒 |
+                        已采集: <span id="sampleCount">0</span>次 |
+                        已上报: <span id="reportCount">0</span>次
+                    </span>
+                    <span class="last-update">
+                        最后更新: <span id="lastUpdate">--</span>
+                    </span>
                 </div>
             </div>
 
-            <div class="panel device-info">
-                <h2>📱 设备信息</h2>
+            <!-- 场景选择 -->
+            <div class="panel scenario-control">
+                <h2>场景模拟</h2>
+                <p class="scenario-hint">选择一个场景来模拟不同的环境条件</p>
+                <div class="scenario-grid" id="scenarioGrid"></div>
+            </div>
+
+            <!-- UDP通信日志 -->
+            <div class="panel log-panel udp-log">
+                <h2>UDP通信日志</h2>
+                <p class="log-hint">显示与小程序的UDP通信记录</p>
+                <div class="log-container" id="udpLogContainer">
+                    <div class="log-empty">等待UDP通信...</div>
+                </div>
+            </div>
+
+            <!-- 后端通信日志 -->
+            <div class="panel log-panel backend-log">
+                <h2>后端通信日志</h2>
+                <p class="log-hint">显示与后端API的数据上报记录</p>
+                <div class="log-container" id="backendLogContainer">
+                    <div class="log-empty">等待后端通信...</div>
+                </div>
+            </div>
+
+            <!-- 配置面板 -->
+            <div class="panel config-panel">
+                <h2>设备配置</h2>
+                <div class="config-grid">
+                    <div class="config-item">
+                        <span class="config-label">采集间隔</span>
+                        <div class="config-control">
+                            <input type="range" id="sampleIntervalSlider" min="1" max="30" value="5">
+                            <span id="sampleIntervalValue">5秒</span>
+                        </div>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">上报间隔</span>
+                        <div class="config-control">
+                            <input type="range" id="reportIntervalSlider" min="5" max="300" value="60">
+                            <span id="reportIntervalValue">60秒</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 服务器信息 -->
+            <div class="panel server-info">
+                <h2>服务器配置</h2>
                 <div class="info-grid">
                     <div class="info-item">
-                        <span class="info-label">运行状态</span>
-                        <span class="info-value" id="runStatus">离线</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">上报次数</span>
-                        <span class="info-value" id="reportCount">0</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">运行时长</span>
-                        <span class="info-value" id="uptime">0秒</span>
+                        <span class="info-label">服务器地址</span>
+                        <span class="info-value" id="serverUrl">--</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">UDP端口</span>
                         <span class="info-value" id="udpPort">8266</span>
                     </div>
-                </div>
-            </div>
-
-            <div class="panel log-panel">
-                <h2>📝 运行日志</h2>
-                <div class="log-container" id="logContainer">
+                    <div class="info-item">
+                        <span class="info-label">当前场景</span>
+                        <span class="info-value" id="currentScenario">normal</span>
+                    </div>
                 </div>
             </div>
         </main>

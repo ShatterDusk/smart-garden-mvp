@@ -103,9 +103,26 @@ class DataGenerator:
         self.current_values['battery_level'] = new_value
         return int(new_value)
     
-    def set_scenario(self, scenario: str):
-        """设置场景"""
+    def set_scenario(self, scenario: str, smooth: bool = False):
+        """设置场景
+        
+        Args:
+            scenario: 场景名称
+            smooth: 是否平滑过渡（False则立即跳变到新场景范围）
+        """
+        import logging
+        logger = logging.getLogger('data_generator')
+        logger.info(f'[DataGenerator] 场景切换: {self.scenario} -> {scenario}')
+        
+        old_values = self.current_values.copy()
         self.scenario = scenario
+        if not smooth:
+            # 立即重新初始化当前值到新场景范围
+            self._initialize_values()
+            logger.info(f'[DataGenerator] 重新初始化完成')
+            # 记录温度变化作为示例
+            if 'temperature' in old_values and 'temperature' in self.current_values:
+                logger.info(f'[DataGenerator] 温度: {old_values["temperature"]:.1f} -> {self.current_values["temperature"]:.1f}')
     
     def smooth_transition(self, target_ranges: Dict[str, Tuple[float, float]], progress: float):
         """平滑过渡到新范围"""
@@ -136,32 +153,6 @@ class DataGenerator:
     def reset_battery(self):
         """重置电池电量"""
         self.current_values['battery_level'] = 100.0
-    
-    def smooth_transition(self, target_ranges: Dict[str, Tuple[float, float]], progress: float):
-        """平滑过渡到新范围"""
-        for metric_code, (target_min, target_max) in target_ranges.items():
-            if metric_code not in self.current_values:
-                continue
-            
-            current = self.current_values[metric_code]
-            current_min = current
-            current_max = current
-            
-            blended_min = current_min + (target_min - current_min) * progress
-            blended_max = current_max + (target_max - current_max) * progress
-            
-            if current < blended_min:
-                self.current_values[metric_code] = blended_min
-            elif current > blended_max:
-                self.current_values[metric_code] = blended_max
-    
-    def get_current_values(self) -> Dict[str, float]:
-        """获取当前值"""
-        return self.current_values.copy()
-    
-    def set_current_values(self, values: Dict[str, float]):
-        """设置当前值"""
-        self.current_values.update(values)
     
     def reset_battery(self):
         """重置电池电量"""

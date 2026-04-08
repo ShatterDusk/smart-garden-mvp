@@ -68,7 +68,7 @@ function request(options) {
         console.log('收到响应:', options.url, res.statusCode, res.data);
         if (res.statusCode === 200) {
           // 后端返回格式: { code, message, data }
-          if (res.data.code === 200) {
+          if (res.data.code === 0) {
             resolve(res.data.data);
           } else {
             reject(new Error(res.data.message || '请求失败'));

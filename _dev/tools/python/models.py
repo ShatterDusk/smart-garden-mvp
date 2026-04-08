@@ -15,7 +15,8 @@ class DeviceConfig:
     server_url: str = "http://localhost:3000"
     udp_port: int = 8266
     web_port: int = 8080
-    interval: int = 60
+    interval: int = 60  # 上报间隔（秒）
+    sample_interval: int = 5  # 采集间隔（秒）
     scenario: str = "normal"
     auto_pair: bool = True
     manual_mode: bool = False
@@ -23,12 +24,16 @@ class DeviceConfig:
     aligned: bool = False
     state_file: Optional[str] = None
     env: str = "local"
-    
+
     def __post_init__(self):
         if self.interval < 5:
             raise ValueError("上报间隔不能小于5秒")
         if self.interval > 3600:
             raise ValueError("上报间隔不能大于3600秒")
+        if self.sample_interval < 1:
+            raise ValueError("采集间隔不能小于1秒")
+        if self.sample_interval > self.interval:
+            self.sample_interval = self.interval
 
 
 @dataclass

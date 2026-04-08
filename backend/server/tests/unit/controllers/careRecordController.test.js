@@ -18,7 +18,7 @@ jest.mock('../../../src/services', () => {
 
 jest.mock('../../../src/utils/response', () => ({
   success: jest.fn((res, data, message) => {
-    res.json({ code: 200, message: message || 'success', data });
+    res.json({ code: 0, message: message || 'success', data });
   }),
   error: jest.fn((res, message, code, statusCode) => {
     res.status(statusCode || code || 500).json({ code: code || 500, message, data: null });
@@ -64,28 +64,24 @@ describe('CareRecordController', () => {
 
       const mockRecords = [
         {
-          get: jest.fn(() => ({
-            record_id: 'RECORD_1',
-            plant_id: 'PLANT_1',
-            user_id: 'TEST_USER_123',
-            action_type: 'water',
-            description: '浇水',
-            images: ['https://example.com/water.jpg'],
-            performed_at: new Date(),
-            created_at: new Date(),
-          })),
+          recordId: 'RECORD_1',
+          plantId: 'PLANT_1',
+          userId: 'TEST_USER_123',
+          actionType: 'water',
+          description: '浇水',
+          images: ['https://example.com/water.jpg'],
+          performedAt: new Date(),
+          createdAt: new Date(),
         },
         {
-          get: jest.fn(() => ({
-            record_id: 'RECORD_2',
-            plant_id: 'PLANT_1',
-            user_id: 'TEST_USER_123',
-            action_type: 'fertilize',
-            description: '施肥',
-            images: null,
-            performed_at: new Date(),
-            created_at: new Date(),
-          })),
+          recordId: 'RECORD_2',
+          plantId: 'PLANT_1',
+          userId: 'TEST_USER_123',
+          actionType: 'fertilize',
+          description: '施肥',
+          images: null,
+          performedAt: new Date(),
+          createdAt: new Date(),
         },
       ];
 
@@ -94,7 +90,7 @@ describe('CareRecordController', () => {
         records: mockRecords,
       });
       mockCareRecordService.getPlantsForRecords.mockResolvedValue([
-        { plant_id: 'PLANT_1', nickname: '小绿', cover_image_url: 'https://example.com/plant.jpg' },
+        { plantId: 'PLANT_1', nickname: '小绿', coverImageUrl: 'https://example.com/plant.jpg' },
       ]);
 
       await careRecordController.getCareRecords(req, res);
@@ -183,16 +179,14 @@ describe('CareRecordController', () => {
       };
 
       const mockRecord = {
-        get: jest.fn(() => ({
-          record_id: 'RECORD_NEW',
-          plant_id: 'PLANT_1',
-          user_id: 'TEST_USER_123',
-          action_type: 'water',
-          description: '浇水 200ml',
-          images: ['https://example.com/water.jpg'],
-          performed_at: new Date(),
-          created_at: new Date(),
-        })),
+        recordId: 'RECORD_NEW',
+        plantId: 'PLANT_1',
+        userId: 'TEST_USER_123',
+        actionType: 'water',
+        description: '浇水 200ml',
+        images: ['https://example.com/water.jpg'],
+        performedAt: new Date(),
+        createdAt: new Date(),
       };
 
       mockCareRecordService.createCareRecord.mockResolvedValue(mockRecord);
@@ -248,15 +242,13 @@ describe('CareRecordController', () => {
       };
 
       const mockRecord = {
-        get: jest.fn(() => ({
-          record_id: 'RECORD_NEW',
-          plant_id: 'PLANT_1',
-          action_type: 'prune',
-          description: '修剪枯叶',
-          images: null,
-          performed_at: new Date(),
-          created_at: new Date(),
-        })),
+        recordId: 'RECORD_NEW',
+        plantId: 'PLANT_1',
+        actionType: 'prune',
+        description: '修剪枯叶',
+        images: null,
+        performedAt: new Date(),
+        createdAt: new Date(),
       };
 
       mockCareRecordService.createCareRecord.mockResolvedValue(mockRecord);
@@ -277,15 +269,13 @@ describe('CareRecordController', () => {
       };
 
       const mockRecord = {
-        get: jest.fn(() => ({
-          record_id: 'RECORD_1',
-          plant_id: 'PLANT_1',
-          action_type: 'water',
-          description: '更新后的描述',
-          images: ['https://example.com/new.jpg'],
-          performed_at: new Date(),
-          created_at: new Date(),
-        })),
+        recordId: 'RECORD_1',
+        plantId: 'PLANT_1',
+        actionType: 'water',
+        description: '更新后的描述',
+        images: ['https://example.com/new.jpg'],
+        performedAt: new Date(),
+        createdAt: new Date(),
       };
 
       mockCareRecordService.updateCareRecord.mockResolvedValue(mockRecord);

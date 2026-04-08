@@ -9,18 +9,21 @@
 ## 功能特性
 
 - **植物档案管理**：记录植物信息、生长状态
-- **环境数据监测**：温度、湿度、光照、土壤等多维度监测
-- **AI 智能诊断**：基于 DeepSeek AI 的植物健康分析
+- **环境数据监测**：温度、湿度、光照、
+- 土壤等多维度监测
+- **AI 智能诊断**：基于 AI api 的植物健康分析
 - **虚拟设备模拟**：无需真实硬件即可开发和测试
 - **微信小程序**：便捷的移动端体验
 
 ## 技术栈
 
 ### 前端
+
 - 微信小程序原生框架
 - JavaScript / WXSS / WXML
 
 ### 后端
+
 - Node.js 18+
 - Express.js
 - Sequelize ORM
@@ -29,6 +32,7 @@
 - 腾讯云 COS 文件存储
 
 ### 开发工具
+
 - Python 虚拟设备模拟器（UDP / WiFi 配网）
 - Jest 测试框架
 - ESLint + Prettier 代码规范
@@ -36,6 +40,7 @@
 ## 快速开始
 
 ### 环境要求
+
 - Node.js >= 18.0.0
 - MySQL >= 8.0
 - Python 3.8+（用于虚拟设备）
@@ -47,7 +52,6 @@
    git clone https://github.com/ShatterDusk/smart-garden-mvp.git
    cd smart-garden-mvp
    ```
-
 2. **后端配置**
    ```bash
    cd backend/server
@@ -56,11 +60,9 @@
    # 编辑 .env.local 配置数据库连接
    npm run dev
    ```
-
 3. **前端配置**
    - 使用微信开发者工具打开 `frontend` 目录
    - 修改 `utils/config.js` 中的 API 地址
-
 4. **虚拟设备（可选）**
    ```bash
    cd _dev/tools/python
@@ -83,11 +85,11 @@ smart-garden-mvp/
 
 本项目包含以下内容：
 
-| 来源 | 说明 |
-|:---|:---|
-| **人工编写** | 架构设计、业务逻辑、数据库设计、测试、Bug 修复 |
-| **AI 辅助** | 部分代码由 AI 工具辅助生成，经人工审查和修改 |
-| **开源依赖** | 使用 MIT/Apache 2.0/BSD 许可的开源库（详见 package.json）|
+| 来源        | 说明                                            |
+| :-------- | :-------------------------------------------- |
+| **人工编写**  | 架构设计、业务逻辑、数据库设计、测试、Bug 修复                     |
+| **AI 辅助** | 部分代码由 AI 工具辅助生成，经人工审查和修改                      |
+| **开源依赖**  | 使用 MIT/Apache 2.0/BSD 许可的开源库（详见 package.json） |
 
 本项目由 **ShatterDusk** 独立开发和维护。
 
@@ -100,6 +102,7 @@ smart-garden-mvp/
 本软件按"原样"提供，不附带任何明示或暗示的保证。
 
 作者不对以下情况承担责任：
+
 - AI 生成代码的准确性或安全性
 - 使用本软件造成的任何直接或间接损失
 - 第三方依赖库的问题
@@ -124,6 +127,6 @@ Copyright (c) 2026 ShatterDusk
 - GitHub: [@ShatterDusk](https://github.com/ShatterDusk)
 - 如有问题，欢迎提交 Issue
 
----
+***
 
 **注意**：本项目为学习和实践用途，不保证生产环境稳定性。

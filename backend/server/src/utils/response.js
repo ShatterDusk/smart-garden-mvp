@@ -8,11 +8,11 @@
  * @param {Object} res - Express response 对象
  * @param {*} data - 响应数据
  * @param {string} message - 成功消息
- * @param {number} code - HTTP 状态码
+ * @param {number} statusCode - HTTP 状态码
  */
-function success(res, data, message = 'success', code = 200) {
-  return res.status(code).json({
-    code: 200,
+function success(res, data, message = 'success', statusCode = 200) {
+  return res.status(statusCode).json({
+    code: 0,
     message,
     data,
   });

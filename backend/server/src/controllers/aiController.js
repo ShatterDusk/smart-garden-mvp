@@ -72,11 +72,19 @@ const analyze = async (req, res) => {
     let diagnosisCardData = null;
     if (aiResult.diagnosisCard) {
       const diagnosisCardId = `DIAG_${uuidv4().replace(/-/g, '').substring(0, 16)}`;
+      const species = aiResult.diagnosisCard.species || '未知植物';
+      
+      logger.info('创建诊断卡', {
+        diagnosisCardId,
+        speciesFromAI: aiResult.diagnosisCard.species,
+        speciesToSave: species,
+      });
+      
       await DiagnosisCard.create({
         diagnosis_card_id: diagnosisCardId,
         message_id: aiMessageId,
         plant_id: session.plant_id,
-        species: aiResult.diagnosisCard.species,
+        species: species,
         analysis_type: analysisType,
         health_score: aiResult.diagnosisCard.healthScore,
         status: aiResult.diagnosisCard.status,

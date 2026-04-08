@@ -89,14 +89,14 @@
 .plant-name-block {
   border-left: 6rpx solid #4CAF50;
   padding-left: 16rpx;
-}
-.plant-name-block {
   background: linear-gradient(135deg, #2E7D32, #4CAF50);
   -webkit-background-clip: text;
   font-size: 40rpx;
   font-weight: 700;
   color: #333;
   flex: 1;
+  min-width: 0;
+  max-width: 340rpx;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

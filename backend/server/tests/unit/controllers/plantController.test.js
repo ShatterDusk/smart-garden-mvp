@@ -20,7 +20,7 @@ jest.mock('../../../src/services', () => {
 
 jest.mock('../../../src/utils/response', () => ({
   success: jest.fn((res, data, message) => {
-    res.json({ code: 200, message: message || 'success', data });
+    res.json({ code: 0, message: message || 'success', data });
   }),
   error: jest.fn((res, message, code, statusCode) => {
     res.status(statusCode || code || 500).json({ code: code || 500, message, data: null });

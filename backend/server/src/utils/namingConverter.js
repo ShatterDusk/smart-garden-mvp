@@ -23,9 +23,9 @@ function snakeToCamel(str) {
  * @returns {string} snake_case 字符串
  */
 function camelToSnake(str) {
-  return str.replace(/[A-Z]/g, function(letter) {
+  return str.replace(/([A-Z])/g, function(match, letter) {
     return '_' + letter.toLowerCase();
-  });
+  }).replace(/^_/, '');
 }
 
 /**

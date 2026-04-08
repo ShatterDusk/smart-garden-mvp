@@ -166,7 +166,7 @@ const getPlantDetail = async (req, res) => {
       return error(res, '植物不存在', 404, 404);
     }
 
-    const { plant, device, latestDiagnosis, diagnosisHistory, careRecords, environmentData } = detail;
+    const { plant, device, diagnosisCards, careRecords, environmentData } = detail;
 
     return success(res, {
       plantId: plant.plantId,
@@ -190,22 +190,18 @@ const getPlantDetail = async (req, res) => {
             lastHeartbeat: device.lastHeartbeat,
           }
         : null,
-      firstDiagnosis: latestDiagnosis
-        ? {
-            cardId: latestDiagnosis.diagnosisCardId,
-            healthScore: latestDiagnosis.healthScore,
-            status: latestDiagnosis.status,
-            issues: latestDiagnosis.issues,
-            suggestions: latestDiagnosis.suggestions,
-            createdAt: latestDiagnosis.createdAt,
-          }
-        : null,
-      diagnosisHistory: diagnosisHistory.map(d => ({
-        cardId: d.diagnosisCardId,
+      diagnosisCards: diagnosisCards.map(d => ({
+        diagnosisCardId: d.diagnosisCardId,
+        messageId: d.messageId,
+        sessionId: d.sessionId,
+        plantId: d.plantId,
+        species: d.species,
         healthScore: d.healthScore,
         status: d.status,
         issues: d.issues,
         suggestions: d.suggestions,
+        confidence: d.confidence,
+        analysisType: d.analysisType,
         createdAt: d.createdAt,
       })),
       careRecords: careRecords.map(r => ({

@@ -29,5 +29,9 @@
     }
   },
   "requiredBackgroundModes": [],
-  "requiredPrivateInfos": ["getLocation", "chooseLocation"]
+  "requiredPrivateInfos": ["getLocation", "chooseLocation"],
+  "requiredPermissions": [
+    "getWifiList",
+    "getConnectedWifi"
+  ]
 }

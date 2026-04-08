@@ -176,7 +176,7 @@ const updateSession = async (req, res) => {
 
     const session = await sessionService.updateSession(sessionId, userId, {
       title,
-      context_config: contextConfig,
+      contextConfig,
     });
 
     if (!session) {
@@ -320,6 +320,7 @@ const sendMessage = async (req, res) => {
         await sessionService.createDiagnosisCard({
           messageId: aiMessage.messageId,
           plantId: session.plantId,
+          species: aiResult.diagnosisCard.species || '未知植物',
           analysisType,
           healthScore: aiResult.diagnosisCard.healthScore,
           status: aiResult.diagnosisCard.status,
@@ -332,7 +333,7 @@ const sendMessage = async (req, res) => {
         diagnosisCardData = {
           healthScore: aiResult.diagnosisCard.healthScore,
           status: aiResult.diagnosisCard.status,
-          species: aiResult.diagnosisCard.species,
+          species: aiResult.diagnosisCard.species || '未知植物',
           issues: aiResult.diagnosisCard.issues,
           suggestions: aiResult.diagnosisCard.suggestions,
           confidence: aiResult.diagnosisCard.confidence,

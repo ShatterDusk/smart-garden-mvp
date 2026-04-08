@@ -34,6 +34,11 @@ const EnvironmentReading = sequelize.define(
       allowNull: false,
       comment: '是否为补偿数据',
     },
+    source_id: {
+      type: DataTypes.STRING(64),
+      allowNull: true,
+      comment: '来源标识（设备ID/城市代码/经纬度）',
+    },
   },
   {
     tableName: 'environment_readings',
@@ -51,6 +56,7 @@ const EnvironmentReading = sequelize.define(
       dataSource() { return this.getDataValue('data_source'); },
       recordedAt() { return this.getDataValue('recorded_at'); },
       isStale() { return this.getDataValue('is_stale'); },
+      sourceId() { return this.getDataValue('source_id'); },
     },
   }
 );

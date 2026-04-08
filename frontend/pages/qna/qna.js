@@ -123,7 +123,7 @@ Page({
         var diagnosisCard = null;
         if (msg.diagnosisCard) {
           diagnosisCard = {
-            cardId: msg.diagnosisCard.diagnosisCardId || '',
+            diagnosisCardId: msg.diagnosisCard.diagnosisCardId || '',
             healthScore: msg.diagnosisCard.healthScore,
             status: msg.diagnosisCard.status,
             species: msg.diagnosisCard.species || '',
@@ -258,10 +258,11 @@ Page({
       var diagnosisCard = aiResponse ? aiResponse.diagnosisCard : result.diagnosisCard;
       if (diagnosisCard) {
         aiMessage.diagnosisCard = {
-          cardId: diagnosisCard.diagnosisCardId || '',
+          diagnosisCardId: diagnosisCard.diagnosisCardId || '',
           healthScore: diagnosisCard.healthScore,
           status: diagnosisCard.status,
-          species: diagnosisCard.species,
+          species: diagnosisCard.species || '',
+          confidence: diagnosisCard.confidence || 0,
           issues: diagnosisCard.issues,
           suggestions: diagnosisCard.suggestions
         };
@@ -531,9 +532,11 @@ Page({
       var diagnosisCard = aiResponse ? aiResponse.diagnosisCard : result.diagnosisCard;
       if (diagnosisCard) {
         aiMessage.diagnosisCard = {
-          cardId: diagnosisCard.diagnosisCardId || '',
+          diagnosisCardId: diagnosisCard.diagnosisCardId || '',
           healthScore: diagnosisCard.healthScore,
           status: diagnosisCard.status,
+          species: diagnosisCard.species || '',
+          confidence: diagnosisCard.confidence || 0,
           issues: diagnosisCard.issues,
           suggestions: diagnosisCard.suggestions
         };

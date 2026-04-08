@@ -142,9 +142,22 @@ Page({
   },
 
   goToPlantDetail(e) {
+    // 防止重复跳转
+    if (this._navigatingToDetail) {
+      return;
+    }
+    this._navigatingToDetail = true;
+    
     const { id } = e.currentTarget.dataset;
+    const that = this;
     wx.navigateTo({
-      url: '/pages/plant-detail/plant-detail?id=' + id
+      url: '/pages/plant-detail/plant-detail?id=' + id,
+      complete: () => {
+        // 跳转完成后重置标志
+        setTimeout(() => {
+          that._navigatingToDetail = false;
+        }, 500);
+      }
     });
   },
 

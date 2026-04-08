@@ -166,9 +166,22 @@ Page({
   },
 
   goToPlantDetail: function(e) {
+    // 防止重复跳转
+    if (this._navigatingToDetail) {
+      return;
+    }
+    this._navigatingToDetail = true;
+    
     const plantId = e.detail.plantId;
+    const that = this;
     wx.navigateTo({
-      url: '/pages/plant-detail/plant-detail?id=' + plantId
+      url: '/pages/plant-detail/plant-detail?id=' + plantId,
+      complete: function() {
+        // 跳转完成后重置标志
+        setTimeout(function() {
+          that._navigatingToDetail = false;
+        }, 500);
+      }
     });
   },
 

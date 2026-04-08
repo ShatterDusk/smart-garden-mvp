@@ -184,7 +184,7 @@ ENV_CONFIG = {
 }
 
 # 当前环境
-CURRENT_ENV = 'local'
+CURRENT_ENV = 'production'
 
 # 后端API常量
 DEFAULT_SERVER_URL = ENV_CONFIG[CURRENT_ENV]['server_url']
@@ -215,8 +215,8 @@ MAX_INTERVAL = 3600
 STATE_FILE_NAME = 'virtual_device.json'
 STATE_VERSION = '2.0'
 
-# 场景过渡步数
-SCENARIO_TRANSITION_STEPS = 10
+# 场景过渡步数（减少步数加快过渡速度）
+SCENARIO_TRANSITION_STEPS = 3
 
 # 电池消耗率（每次上报消耗）
 BATTERY_DRAIN_RATE = 0.1

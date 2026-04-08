@@ -83,12 +83,18 @@ class SessionService extends BaseService {
       const session = await this.getSessionById(sessionId, userId);
       if (!session) return null;
 
-      const allowedFields = ['title', 'context_config', 'type', 'plant_id'];
-      const filteredData = {};
+      // camelCase -> snake_case 字段映射
+      const fieldMapping = {
+        title: 'title',
+        contextConfig: 'context_config',
+        type: 'type',
+        plantId: 'plant_id',
+      };
 
-      allowedFields.forEach(field => {
-        if (updateData[field] !== undefined) {
-          filteredData[field] = updateData[field];
+      const filteredData = {};
+      Object.keys(fieldMapping).forEach(camelField => {
+        if (updateData[camelField] !== undefined) {
+          filteredData[fieldMapping[camelField]] = updateData[camelField];
         }
       });
 
@@ -432,13 +438,24 @@ class SessionService extends BaseService {
         attributes: ['message_id'],
       });
 
-      const messageIds = messages.map(m => m.messageId);
+      const messageIds = messages.map(m => m.get('message_id'));
+      logger.info('upgradeSession 准备更新诊断卡', {
+        sessionId,
+        plantId,
+        messageCount: messages.length,
+        messageIds: messageIds.slice(0, 5), // 只显示前5个
+      });
 
       if (messageIds.length > 0) {
-        await DiagnosisCard.update(
+        const [affectedCount] = await DiagnosisCard.update(
           { plant_id: plantId },
           { where: { message_id: { [Op.in]: messageIds } } }
         );
+        logger.info('upgradeSession 诊断卡更新完成', {
+          affectedCount,
+          sessionId,
+          plantId,
+        });
       }
 
       return { session, plant };

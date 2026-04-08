@@ -23,7 +23,7 @@ class CareRecordService extends BaseService {
       }
 
       const recordId = this.generateRecordId();
-      const record = await this.create({
+      await this.create({
         record_id: recordId,
         plant_id: plantId,
         user_id: userId,
@@ -33,8 +33,19 @@ class CareRecordService extends BaseService {
         performed_at: recordData.performedAt || new Date(),
       });
 
+      // 重新获取并转换为 camelCase 返回
+      const record = await this.getRecordById(recordId, userId);
       logger.info(`CareRecord created: ${recordId}`);
-      return record;
+      return {
+        recordId: record.recordId,
+        plantId: record.plantId,
+        userId: record.userId,
+        actionType: record.actionType,
+        description: record.description,
+        images: record.images,
+        performedAt: record.performedAt,
+        createdAt: record.createdAt,
+      };
     } catch (err) {
       logger.error('CareRecordService.createCareRecord error:', err);
       throw err;
@@ -57,7 +68,19 @@ class CareRecordService extends BaseService {
         limit,
       });
 
-      return { count, records };
+      // 转换为 camelCase 返回
+      const formattedRecords = records.map(record => ({
+        recordId: record.recordId,
+        plantId: record.plantId,
+        userId: record.userId,
+        actionType: record.actionType,
+        description: record.description,
+        images: record.images,
+        performedAt: record.performedAt,
+        createdAt: record.createdAt,
+      }));
+
+      return { count, records: formattedRecords };
     } catch (err) {
       logger.error('CareRecordService.getCareRecordList error:', err);
       throw err;
@@ -78,23 +101,18 @@ class CareRecordService extends BaseService {
       const record = await this.getRecordById(recordId, userId);
       if (!record) return null;
 
-      const allowedFields = ['action_type', 'description', 'images', 'performed_at'];
-      const filteredData = {};
-
-      allowedFields.forEach(field => {
-        if (updateData[field] !== undefined) {
-          filteredData[field] = updateData[field];
-        }
-      });
-
-      const camelToSnake = {
+      // camelCase -> snake_case 字段映射
+      const fieldMapping = {
         actionType: 'action_type',
+        description: 'description',
+        images: 'images',
         performedAt: 'performed_at',
       };
 
-      Object.keys(camelToSnake).forEach(camel => {
-        if (updateData[camel] !== undefined) {
-          filteredData[camelToSnake[camel]] = updateData[camel];
+      const filteredData = {};
+      Object.keys(fieldMapping).forEach(camelField => {
+        if (updateData[camelField] !== undefined) {
+          filteredData[fieldMapping[camelField]] = updateData[camelField];
         }
       });
 
@@ -104,7 +122,19 @@ class CareRecordService extends BaseService {
 
       await record.update(filteredData);
       logger.info(`CareRecord updated: ${recordId}`);
-      return record;
+
+      // 重新获取并转换为 camelCase 返回
+      const updatedRecord = await this.getRecordById(recordId, userId);
+      return {
+        recordId: updatedRecord.recordId,
+        plantId: updatedRecord.plantId,
+        userId: updatedRecord.userId,
+        actionType: updatedRecord.actionType,
+        description: updatedRecord.description,
+        images: updatedRecord.images,
+        performedAt: updatedRecord.performedAt,
+        createdAt: updatedRecord.createdAt,
+      };
     } catch (err) {
       logger.error('CareRecordService.updateCareRecord error:', err);
       throw err;
@@ -128,10 +158,16 @@ class CareRecordService extends BaseService {
   async getPlantsForRecords(plantIds) {
     try {
       if (!plantIds || plantIds.length === 0) return [];
-      return await Plant.findAll({
+      const plants = await Plant.findAll({
         where: { plant_id: plantIds },
         attributes: ['plant_id', 'nickname', 'cover_image_url'],
       });
+      // 转换为 camelCase 返回
+      return plants.map(plant => ({
+        plantId: plant.plantId,
+        nickname: plant.nickname,
+        coverImageUrl: plant.coverImageUrl,
+      }));
     } catch (err) {
       logger.error('CareRecordService.getPlantsForRecords error:', err);
       return [];

@@ -1,5 +1,5 @@
 <!--components/plant-card/plant-card.wxml-->
-<view class="plant-card {{customClass}}" bindtap="onTap" bindlongpress="onLongPress" data-id="{{plantId}}">
+<view class="plant-card {{customClass}}" bindtap="onTap" bindlongpress="onLongPress">
   <!-- 左侧：植物图片 + 健康分徽章 -->
   <view class="plant-media">
     <image wx:if="{{coverImageUrl}}" class="plant-image" src="{{coverImageUrl}}" mode="aspectFill"/>

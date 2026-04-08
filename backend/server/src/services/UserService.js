@@ -99,11 +99,16 @@ class UserService extends BaseService {
         return null;
       }
 
-      const allowedFields = ['nickname', 'avatar_url'];
+      // camelCase -> snake_case 字段映射
+      const fieldMapping = {
+        nickname: 'nickname',
+        avatarUrl: 'avatar_url',
+      };
+
       const filteredData = {};
-      allowedFields.forEach(field => {
-        if (updateData[field] !== undefined) {
-          filteredData[field] = updateData[field];
+      Object.keys(fieldMapping).forEach(camelField => {
+        if (updateData[camelField] !== undefined) {
+          filteredData[fieldMapping[camelField]] = updateData[camelField];
         }
       });
 

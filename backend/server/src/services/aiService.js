@@ -457,7 +457,7 @@ class AIService {
       stage = 'parseResponse';
       logger.info('AI 原始响应', {
         responseLength: response.length,
-        responsePreview: response.substring(0, 300),
+        responseContent: response, // 记录完整响应
       });
       
       const result = this.parseResponse(response);

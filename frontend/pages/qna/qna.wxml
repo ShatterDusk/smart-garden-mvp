@@ -69,7 +69,7 @@
           <!-- 诊断卡气泡 - 使用 diagnosis-card 组件 -->
           <view wx:if="{{item.diagnosisCard}}" class="diagnosis-card-wrapper">
             <diagnosis-card
-              cardId="{{item.diagnosisCard.cardId}}"
+              diagnosisCardId="{{item.diagnosisCard.diagnosisCardId}}"
               healthScore="{{item.diagnosisCard.healthScore}}"
               status="{{item.diagnosisCard.status}}"
               species="{{item.diagnosisCard.species}}"

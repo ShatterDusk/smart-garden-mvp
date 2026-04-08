@@ -21,15 +21,7 @@ Page({
       batteryLevel: 0,
       lastHeartbeat: ''
     },
-    latestDiagnosis: {
-      cardId: '',
-      healthScore: 0,
-      status: '',
-      issues: [],
-      suggestions: [],
-      createdAt: ''
-    },
-    diagnosisHistory: [],
+    diagnosisCards: [],  // 统一诊断卡数组
     careRecords: [],
     careRecordsPreview: [],
     envDataSource: 'device',
@@ -90,7 +82,8 @@ Page({
   },
 
   onShow: function() {
-    if (this.data.plantId) {
+    const plantId = this.data.plantId;
+    if (plantId && plantId !== 'undefined' && plantId !== '') {
       this.loadPlantDetail();
     }
   },
@@ -104,9 +97,16 @@ Page({
 
   loadPlantDetail: function() {
     var that = this;
+    var plantId = this.data.plantId;
+    
+    if (!plantId || plantId === 'undefined') {
+      console.warn('植物ID无效，跳过加载');
+      return Promise.resolve();
+    }
+    
     this.setData({ loading: true });
     
-    return api.getPlantDetail(this.data.plantId).then(function(plantData) {
+    return api.getPlantDetail(plantId).then(function(plantData) {
       if (!plantData) {
         wx.showToast({ title: '植物不存在', icon: 'error' });
         that.setData({ loading: false });
@@ -115,16 +115,10 @@ Page({
       
       // 格式化养护记录，添加 icon、actionName、displayTime
       var formattedCareRecords = that.formatCareRecords(plantData.careRecords || []);
-      
-      // 格式化诊断历史，添加 displayTime
-      var formattedDiagnosisHistory = that.formatDiagnosisHistory(plantData.diagnosisHistory || []);
-      
-      // 格式化最新诊断，添加 displayTime
-      var formattedLatestDiagnosis = plantData.firstDiagnosis || {};
-      if (formattedLatestDiagnosis.createdAt) {
-        formattedLatestDiagnosis.displayTime = that.formatDateTime(formattedLatestDiagnosis.createdAt);
-      }
-      
+
+      // 格式化诊断卡数据，添加 displayTime
+      var formattedDiagnosisCards = that.formatDiagnosisCards(plantData.diagnosisCards || []);
+
       that.setData({
         plantInfo: {
           plantId: plantData.plantId,
@@ -137,12 +131,18 @@ Page({
           location: plantData.locationName,
           remark: plantData.remark
         },
-        latestDiagnosis: formattedLatestDiagnosis,
-        diagnosisHistory: formattedDiagnosisHistory,
+        diagnosisCards: formattedDiagnosisCards,
         careRecords: formattedCareRecords,
         careRecordsPreview: formattedCareRecords.slice(0, 3),
         deviceInfo: plantData.device || { status: 'unbound' },
-        environmentData: plantData.environmentData || { current: {} }
+        environmentData: plantData.environmentData || { current: {} },
+        deviceMetrics: (plantData.environmentData && plantData.environmentData.deviceMetrics) || [],
+        weatherMetrics: (plantData.environmentData && plantData.environmentData.weatherMetrics) || [],
+        weatherData: (plantData.environmentData && plantData.environmentData.weatherMetrics) ? {
+          location: (plantData.environmentData && plantData.environmentData.location) || plantData.locationName || null,
+          updateTime: plantData.environmentData && plantData.environmentData.updateTime ? that.formatDateTime(plantData.environmentData.updateTime) : null,
+          recordedAt: plantData.environmentData && plantData.environmentData.recordedAt
+        } : null
       });
       
       that.updateComputedProperties();
@@ -159,9 +159,12 @@ Page({
 
   updateComputedProperties: function() {
     const plantInfo = this.data.plantInfo;
-    const latestDiagnosis = this.data.latestDiagnosis;
+    const diagnosisCards = this.data.diagnosisCards;
     const deviceInfo = this.data.deviceInfo;
-    
+
+    // 计算属性：最新诊断为数组第一个
+    const latestDiagnosis = diagnosisCards[0] || {};
+
     const emojiMap = {
       succulent: '🌵',
       flower: '🌹',
@@ -169,7 +172,7 @@ Page({
       vegetable: '🥬'
     };
     const plantEmoji = emojiMap[plantInfo.plantCategory] || '🌱';
-    
+
     const healthScore = latestDiagnosis.healthScore || '--';
     const healthStatusClass = latestDiagnosis.status || '';
     const statusTextMap = {
@@ -236,9 +239,12 @@ Page({
   /**
    * 格式化诊断历史，添加 displayTime
    */
-  formatDiagnosisHistory: function(history) {
+  /**
+   * 格式化诊断卡数组，添加 displayTime
+   */
+  formatDiagnosisCards: function(cards) {
     const that = this;
-    return history.map(function(item) {
+    return cards.map(function(item) {
       return {
         ...item,
         displayTime: that.formatDateTime(item.createdAt)
@@ -601,6 +607,65 @@ Page({
 
   goToEnvironment: function() {
     this.setData({ currentTab: 'environment' });
+  },
+
+  /**
+   * 查看详细天气预报
+   */
+  viewWeatherForecast: function() {
+    const plantInfo = this.data.plantInfo;
+    if (!plantInfo.locationLat || !plantInfo.locationLng) {
+      wx.showToast({
+        title: '请先设置植物位置',
+        icon: 'none'
+      });
+      return;
+    }
+    wx.navigateTo({
+      url: '/pages/weather/weather?lat=' + plantInfo.locationLat + '&lng=' + plantInfo.locationLng + '&name=' + encodeURIComponent(plantInfo.location || plantInfo.nickname)
+    });
+  },
+
+  /**
+   * 选择植物位置
+   */
+  chooseLocation: function() {
+    const that = this;
+    const plantId = this.data.plantId;
+
+    wx.chooseLocation({
+      success: function(res) {
+        const locationData = {
+          locationName: res.name || res.address,
+          locationLat: res.latitude,
+          locationLng: res.longitude
+        };
+
+        // 更新植物位置（不需要城市代码，后端用经纬度查询天气）
+        api.updatePlant(plantId, locationData).then(function() {
+          wx.showToast({
+            title: '位置设置成功',
+            icon: 'success'
+          });
+          // 刷新页面数据
+          that.loadPlantDetail();
+        }).catch(function(err) {
+          console.error('设置位置失败:', err);
+          wx.showToast({
+            title: '设置位置失败',
+            icon: 'none'
+          });
+        });
+      },
+      fail: function(err) {
+        if (err.errMsg && err.errMsg.indexOf('cancel') === -1) {
+          wx.showToast({
+            title: '请选择位置',
+            icon: 'none'
+          });
+        }
+      }
+    });
   },
 
   onShareAppMessage: function() {

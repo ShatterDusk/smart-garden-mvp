@@ -139,7 +139,7 @@ describe('UserService', () => {
       User.findByPk.mockResolvedValue(mockUser);
       User.findByPk.mockResolvedValueOnce(mockUser);
 
-      await userService.updateUser('USER_123', { nickname: '新昵称', avatar_url: 'https://example.com/new.png' });
+      await userService.updateUser('USER_123', { nickname: '新昵称', avatarUrl: 'https://example.com/new.png' });
 
       expect(mockUser.update).toHaveBeenCalledWith({
         nickname: '新昵称',

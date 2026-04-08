@@ -3,8 +3,9 @@
  * 每2小时执行一次，生成 reading_tasks 并获取天气数据
  */
 
-const { Plant, ReadingTask } = require('../models');
+const { Plant, ReadingTask, EnvironmentReading, EnvironmentReadingValue } = require('../models');
 const { v4: uuidv4 } = require('uuid');
+const { Op } = require('sequelize');
 const logger = require('../utils/logger');
 const { SYNC_INTERVAL, TOLERANCE_PERIOD, TASK_STATUS, DATA_SOURCE } = require('../config/environment');
 const compensationService = require('../services/compensationService');
@@ -39,9 +40,17 @@ async function generateTasksForAllPlants() {
     const recordedAt = getNearestIntervalTime(now);
 
     const plants = await Plant.findAll({
-      attributes: ['plant_id', 'location_code'],
+      attributes: ['plant_id', 'location_code', 'location_lat', 'location_lng'],
       where: {
-        current_device_id: { [require('sequelize').Op.ne]: null },
+        [Op.or]: [
+          { current_device_id: { [Op.ne]: null } },
+          {
+            [Op.and]: [
+              { location_lat: { [Op.ne]: null } },
+              { location_lng: { [Op.ne]: null } },
+            ],
+          },
+        ],
       },
     });
 
@@ -82,6 +91,7 @@ async function generateTasksForAllPlants() {
 
 /**
  * 为所有植物获取天气数据
+ * 优化：按位置分组，组内共享结果，复用缓存
  */
 async function fetchWeatherForAllPlants() {
   try {
@@ -97,52 +107,141 @@ async function fetchWeatherForAllPlants() {
         {
           model: Plant,
           as: 'plant',
-          attributes: ['plant_id', 'location_code'],
+          attributes: ['plant_id', 'location_code', 'location_lat', 'location_lng'],
         },
       ],
     });
 
     logger.info(`开始获取天气数据，共 ${pendingTasks.length} 个任务`);
 
-    let successCount = 0;
-    let failedCount = 0;
+    // 1. 按位置分组
+    const locationGroups = new Map(); // locationKey -> { plantIds: [], plant: {...} }
 
     for (const task of pendingTasks) {
-      try {
-        const plant = task.plant;
-        if (!plant || !plant.location_code) {
-          await task.update({ weather_status: TASK_STATUS.WEATHER.FAILED });
-          failedCount++;
-          continue;
+      const plant = task.plant;
+      if (!plant) continue;
+
+      const locationKey = weatherService.getPlantLocationKey(plant);
+      if (!locationKey) continue;
+
+      if (!locationGroups.has(locationKey)) {
+        locationGroups.set(locationKey, {
+          locationKey,
+          locationCode: plant.location_code,
+          lat: plant.location_lat,
+          lng: plant.location_lng,
+          tasks: [],
+        });
+      }
+      locationGroups.get(locationKey).tasks.push(task);
+    }
+
+    logger.info(`位置分组完成，共 ${locationGroups.size} 个不同位置`);
+
+    // 2. 检查数据库缓存（同一个位置标识是否有可用的天气读数）
+    const cachedReadings = new Map(); // locationKey -> weatherData
+
+    if (locationGroups.size > 0) {
+      const existingReadings = await EnvironmentReading.findAll({
+        where: {
+          data_source: DATA_SOURCE.WEATHER_API,
+          recorded_at: recordedAt,
+        },
+        include: [
+          {
+            model: EnvironmentReadingValue,
+            as: 'values',
+          },
+        ],
+      });
+
+      for (const reading of existingReadings) {
+        const sourceId = reading.source_id;
+        let matchedKey = null;
+
+        for (const locationKey of locationGroups.keys()) {
+          const group = locationGroups.get(locationKey);
+          const groupSourceId = group.locationCode || (group.lat && group.lng ? `${group.lng},${group.lat}` : null);
+          if (sourceId === groupSourceId) {
+            matchedKey = locationKey;
+            break;
+          }
         }
 
-        const weatherData = await weatherService.getWeatherForPlant(plant);
-
-        if (!weatherData || !weatherData.metrics) {
-          await task.update({ weather_status: TASK_STATUS.WEATHER.FAILED });
-          failedCount++;
-          continue;
+        if (matchedKey) {
+          const metrics = {};
+          for (const v of reading.values) {
+            metrics[v.metric_code] = v.value;
+          }
+          cachedReadings.set(matchedKey, metrics);
+          logger.debug('找到缓存的天气数据', { locationKey: matchedKey });
         }
-
-        await compensationService.createWeatherReading(
-          plant.plant_id,
-          recordedAt,
-          weatherData.metrics,
-          plant.location_code
-        );
-
-        await task.update({ weather_status: TASK_STATUS.WEATHER.RECEIVED });
-        successCount++;
-      } catch (err) {
-        logger.warn('获取天气数据失败', { taskId: task.task_id, error: err.message });
-        await task.update({ weather_status: TASK_STATUS.WEATHER.FAILED });
-        failedCount++;
       }
     }
 
-    logger.info(`天气数据获取完成，成功: ${successCount}，失败: ${failedCount}`);
+    // 3. 对每个位置分组获取天气数据
+    let successCount = 0;
+    let failedCount = 0;
+    let cacheHitCount = 0;
 
-    return { successCount, failedCount };
+    for (const [locationKey, group] of locationGroups) {
+      const { tasks, locationCode, lat, lng } = group;
+      let weatherData = cachedReadings.get(locationKey);
+
+      if (!weatherData) {
+        // 缓存未命中，尝试获取城市代码
+        let queryLocationCode = locationCode;
+        if (!queryLocationCode && lat && lng) {
+          queryLocationCode = await weatherService.geocoding(lat, lng);
+          if (queryLocationCode) {
+            logger.debug('经纬度转换为城市代码', { lat, lng, cityCode: queryLocationCode });
+          }
+        }
+
+        // 调用API获取天气数据
+        const queryPlant = {
+          location_code: queryLocationCode,
+          location_lat: lat,
+          location_lng: lng,
+        };
+        weatherData = await weatherService.getWeatherForPlant(queryPlant);
+      } else {
+        cacheHitCount++;
+      }
+
+      if (!weatherData || Object.keys(weatherData).length === 0) {
+        for (const task of tasks) {
+          await task.update({ weather_status: TASK_STATUS.WEATHER.FAILED });
+        }
+        failedCount += tasks.length;
+        continue;
+      }
+
+      // 使用统一的 sourceId
+      const sourceId = locationCode || (lat && lng ? `${lng},${lat}` : null);
+
+      // 为每个 task 创建天气读数（共享同一份天气数据）
+      for (const task of tasks) {
+        try {
+          await compensationService.createWeatherReading(
+            task.plant_id,
+            recordedAt,
+            weatherData,
+            sourceId
+          );
+          await task.update({ weather_status: TASK_STATUS.WEATHER.RECEIVED });
+          successCount++;
+        } catch (err) {
+          logger.warn('创建天气读数失败', { taskId: task.task_id, error: err.message });
+          await task.update({ weather_status: TASK_STATUS.WEATHER.FAILED });
+          failedCount++;
+        }
+      }
+    }
+
+    logger.info(`天气数据获取完成，成功: ${successCount}，失败: ${failedCount}，缓存命中: ${cacheHitCount}`);
+
+    return { successCount, failedCount, cacheHitCount };
   } catch (error) {
     logger.error('获取天气数据失败', { error: error.message });
     throw error;
