@@ -40,6 +40,7 @@ def create_config(
     interval: int = 60,
     scenario: str = "normal",
     auto_pair: bool = True,
+    manual_mode: bool = False,
     verbose: bool = False,
     aligned: bool = False,
     state_file: Optional[str] = None,
@@ -55,6 +56,7 @@ def create_config(
         interval: 数据上报间隔（秒）
         scenario: 默认场景模式
         auto_pair: 是否自动配对
+        manual_mode: 手动模式（前端绑定模式，跳过自动配对）
         verbose: 详细日志输出
         aligned: 是否时间对齐
         state_file: 状态文件路径
@@ -83,6 +85,7 @@ def create_config(
         interval=interval,
         scenario=scenario,
         auto_pair=auto_pair,
+        manual_mode=manual_mode,
         verbose=verbose,
         aligned=aligned,
         state_file=state_file,

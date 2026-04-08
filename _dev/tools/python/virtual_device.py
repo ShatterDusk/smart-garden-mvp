@@ -57,7 +57,11 @@ class VirtualDevice:
         
         self.logger.info("正在启动虚拟设备...")
         
-        if self.state_manager.load() and self.state_manager.is_valid():
+        # 手动模式：跳过自动配对，生成随机设备信息
+        if self.config.manual_mode:
+            self.logger.info("手动模式：跳过自动配对，等待前端发现和绑定")
+            self._init_manual_mode()
+        elif self.state_manager.load() and self.state_manager.is_valid():
             self.logger.info("发现有效的持久化状态，跳过配对")
             self._load_state()
         elif self.config.auto_pair:
@@ -75,17 +79,46 @@ class VirtualDevice:
         self.start_time = time.time()
         self._stop_event.clear()
         
-        self._report_thread = threading.Thread(target=self._report_loop, daemon=True)
-        self._report_thread.start()
+        # 手动模式下不上报数据，等待前端绑定
+        if not self.config.manual_mode:
+            self._report_thread = threading.Thread(target=self._report_loop, daemon=True)
+            self._report_thread.start()
         
         self.logger.info(f"虚拟设备启动成功")
-        self.logger.info(f"  设备ID: {self.device_id}")
-        self.logger.info(f"  植物ID: {self.plant_id}")
+        if self.device_id:
+            self.logger.info(f"  设备ID: {self.device_id}")
+        if self.plant_id:
+            self.logger.info(f"  植物ID: {self.plant_id}")
+        self.logger.info(f"  MAC地址: {self.mac_address}")
+        self.logger.info(f"  设备名称: {self.device_name}")
         self.logger.info(f"  场景: {SCENARIO_NAMES.get(self.scenario_controller.get_current_scenario(), 'normal')}")
-        self.logger.info(f"  上报间隔: {self.config.interval}秒")
+        if not self.config.manual_mode:
+            self.logger.info(f"  上报间隔: {self.config.interval}秒")
         self.logger.info(f"  UDP端口: {self.config.udp_port}")
         
         return True
+    
+    def _init_manual_mode(self):
+        """初始化手动模式（前端绑定模式）"""
+        # 生成随机的MAC地址
+        if not self.mac_address:
+            self.mac_address = f"VIRTUAL_{random.randint(10000000, 99999999)}"
+        
+        # 生成设备名称
+        if not self.device_name:
+            self.device_name = f"proj-alpha-虚拟设备-{self.mac_address[-4:]}"
+        
+        # 手动模式下使用 MAC 地址作为 device_id
+        # 这样后端开发环境可以识别并允许上报
+        self.device_id = self.mac_address
+        self.plant_id = None  # plant_id 由前端绑定后通过 WiFi 配置传递
+        self.token = None
+        
+        self.logger.info(f"手动模式初始化完成")
+        self.logger.info(f"  MAC地址: {self.mac_address}")
+        self.logger.info(f"  设备名称: {self.device_name}")
+        self.logger.info(f"  设备ID: {self.device_id}")
+        self.logger.info(f"  等待前端发现和绑定...")
     
     def stop(self):
         """停止虚拟设备"""
@@ -338,9 +371,67 @@ class VirtualDevice:
         else:
             self.logger.error("UDP服务启动失败")
     
-    def _on_wifi_config(self, ssid: str, password: str):
-        """WiFi配置回调"""
+    def _on_wifi_config(self, ssid: str, password: str, plant_id: str = ''):
+        """WiFi配置回调
+        
+        处理前端发送的WiFi配置，模拟设备连接WiFi的过程
+        
+        Args:
+            ssid: WiFi名称
+            password: WiFi密码
+            plant_id: 可选，前端传递的植物ID
+        """
         self.logger.info(f"收到WiFi配置: SSID={ssid}")
+        if plant_id:
+            self.logger.info(f"  绑定植物ID: {plant_id}")
+        
+        # 保存WiFi配置
+        self._configured_wifi = ssid
+        self._wifi_password = password
+        
+        # 如果前端传递了plant_id，则更新
+        if plant_id:
+            self.plant_id = plant_id
+        
+        # 启动线程模拟WiFi连接过程
+        threading.Thread(
+            target=self._simulate_wifi_connection,
+            args=(ssid, password),
+            daemon=True
+        ).start()
+    
+    def _simulate_wifi_connection(self, ssid: str, password: str):
+        """模拟WiFi连接过程"""
+        self.logger.info("开始模拟WiFi连接...")
+        
+        # 模拟连接延迟（2秒）
+        time.sleep(2)
+        
+        # 更新设备状态为online
+        self.logger.info(f"✅ WiFi连接成功: {ssid}")
+        
+        # 更新UDP服务中的设备信息
+        if self.udp_service:
+            self.udp_service.update_device_info({
+                'mac_address': self.mac_address,
+                'device_name': self.device_name,
+                'status': 'online',
+            })
+        
+        # 手动模式下，启动数据上报
+        if self.config.manual_mode:
+            self.logger.info("手动模式：启动数据上报线程")
+            if not self._report_thread or not self._report_thread.is_alive():
+                self._report_thread = threading.Thread(target=self._report_loop, daemon=True)
+                self._report_thread.start()
+            
+            # 立即上报一次数据
+            self.logger.info("立即上报首次数据...")
+            result = self.report()
+            if result.success:
+                self.logger.info(f"首次数据上报成功: {result.reading_id}")
+            else:
+                self.logger.error(f"首次数据上报失败: {result.error}")
     
     def _load_state(self):
         """加载状态"""
@@ -417,6 +508,7 @@ def main():
     runtime_group.add_argument('--interval', type=int, default=60, help='数据上报间隔(秒)')
     runtime_group.add_argument('--scenario', default='normal', choices=list(SCENARIO_NAMES.keys()), help='场景模式')
     runtime_group.add_argument('--no-auto-pair', action='store_true', help='禁用自动配对')
+    runtime_group.add_argument('--manual-mode', action='store_true', help='手动模式（前端绑定模式，跳过自动配对）')
     runtime_group.add_argument('--reset', action='store_true', help='重置状态文件')
     runtime_group.add_argument('-v', '--verbose', action='store_true', help='详细日志模式')
     runtime_group.add_argument('--web', action='store_true', help='启动Web界面')
@@ -431,7 +523,8 @@ def main():
         udp_port=args.udp_port,
         interval=args.interval,
         scenario=args.scenario,
-        auto_pair=not args.no_auto_pair,
+        auto_pair=not args.no_auto_pair and not args.manual_mode,
+        manual_mode=args.manual_mode,
         verbose=args.verbose,
     )
     

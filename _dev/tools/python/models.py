@@ -18,6 +18,7 @@ class DeviceConfig:
     interval: int = 60
     scenario: str = "normal"
     auto_pair: bool = True
+    manual_mode: bool = False
     verbose: bool = False
     aligned: bool = False
     state_file: Optional[str] = None

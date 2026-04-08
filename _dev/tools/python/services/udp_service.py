@@ -117,11 +117,14 @@ class UDPService:
         """处理WiFi配置请求"""
         ssid = message.get('ssid', '')
         password = message.get('password', '')
+        plant_id = message.get('plantId', '')  # 可选：前端传递的plant_id
         
         self._configured_wifi = ssid
+        self._plant_id = plant_id
         
         if self.on_config_received:
-            self.on_config_received(ssid, password)
+            # 传递 ssid, password, plant_id
+            self.on_config_received(ssid, password, plant_id)
         
         return {
             'cmd': 'config_wifi_ack',

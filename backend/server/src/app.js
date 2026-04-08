@@ -10,7 +10,31 @@ const path = require('path');
 
 // 仅在非测试环境下加载 .env，测试环境由 jest setup 加载 .env.test
 if (process.env.NODE_ENV !== 'test') {
-  require('dotenv').config();
+  const path = require('path');
+  const fs = require('fs');
+  
+  // 尝试多个可能的路径
+  const possiblePaths = [
+    path.join(process.cwd(), '.env.local'),
+    path.join(process.cwd(), '.env'),
+    path.resolve(__dirname, '..', '.env.local'),
+    path.resolve(__dirname, '..', '.env'),
+  ];
+  
+  let loaded = false;
+  for (const envPath of possiblePaths) {
+    if (fs.existsSync(envPath)) {
+      require('dotenv').config({ path: envPath });
+      console.log(`[环境] 已加载配置文件: ${path.basename(envPath)} (${envPath})`);
+      loaded = true;
+      break;
+    }
+  }
+  
+  if (!loaded) {
+    require('dotenv').config();
+    console.log('[环境] 已加载默认配置文件: .env');
+  }
 }
 
 const { sequelize } = require('./models');
