@@ -11,7 +11,7 @@
  Target Server Version : 80030 (8.0.30-cynos-3.1.16.003)
  File Encoding         : 65001
 
- Date: 07/04/2026 17:41:35
+ Date: 09/04/2026 19:45:13
 */
 
 SET NAMES utf8mb4;
@@ -40,6 +40,7 @@ CREATE TABLE `care_records`  (
 -- ----------------------------
 -- Records of care_records
 -- ----------------------------
+INSERT INTO `care_records` VALUES ('CARE_4fd38fb83e6440bb', 'PLANT_46abed3703ed404d', 'USER_E2C0DBFB', 'water', '浇水', NULL, '2026-04-08 09:24:00', '2026-04-08 09:24:40');
 
 -- ----------------------------
 -- Table structure for devices
@@ -92,6 +93,9 @@ CREATE TABLE `diagnosis_cards`  (
 -- ----------------------------
 -- Records of diagnosis_cards
 -- ----------------------------
+INSERT INTO `diagnosis_cards` VALUES ('DIAG_2b83a259f50543b1', 'MSG_292c4ad7f0824d5c', 'PLANT_617fb5613e4d44ab', NULL, 'normal', 85, 'healthy', '[]', '[{\"type\": \"light\", \"action\": \"提供充足散射光\", \"details\": \"幼苗期需要明亮但不强烈的散射光，避免强光直射灼伤叶片\", \"priority\": \"medium\"}, {\"type\": \"watering\", \"action\": \"保持土壤微湿\", \"details\": \"观察土壤表面干燥后再浇水，避免积水导致烂根\", \"priority\": \"medium\"}, {\"type\": \"temperature\", \"action\": \"维持适宜温度\", \"details\": \"保持20-25℃的温暖环境，避免温度剧烈变化\", \"priority\": \"low\"}, {\"type\": \"other\", \"action\": \"加强通风\", \"details\": \"适当通风可以预防病虫害，促进健康生长\", \"priority\": \"low\"}]', 0.70, '{\"conversationHistory\": [{\"role\": \"user\", \"content\": \"这是什么植物？健康状况如何？\"}]}', '2026-04-08 08:02:34');
+INSERT INTO `diagnosis_cards` VALUES ('DIAG_31028d54cbf74030', 'MSG_5555926a20f6407d', NULL, NULL, 'normal', 75, 'warning', '[{\"name\": \"土壤湿度偏高\", \"type\": \"watering\", \"severity\": \"low\", \"description\": \"土壤看起来较为湿润，幼苗期容易发生烂根\"}]', '[{\"type\": \"watering\", \"action\": \"控制浇水频率\", \"details\": \"等土壤表面干燥后再浇水，避免积水导致烂根\", \"priority\": \"high\"}, {\"type\": \"light\", \"action\": \"提供充足光照\", \"details\": \"幼苗期需要充足散射光，每天4-6小时为宜\", \"priority\": \"medium\"}, {\"type\": \"temperature\", \"action\": \"保持适宜温度\", \"details\": \"最适生长温度20-25°C，避免低温或高温\", \"priority\": \"medium\"}]', 0.70, '{\"conversationHistory\": [{\"role\": \"user\", \"content\": \"这是什么植物？健康状况如何？\"}]}', '2026-04-08 09:45:29');
+INSERT INTO `diagnosis_cards` VALUES ('DIAG_f0b28649da2a44b5', 'MSG_f08870afb9c84994', 'PLANT_46abed3703ed404d', NULL, 'normal', 85, 'healthy', '[{\"name\": \"土壤湿度偏高\", \"type\": \"watering\", \"severity\": \"low\", \"description\": \"土壤看起来比较湿润，建议适当减少浇水频率\"}]', '[{\"type\": \"light\", \"action\": \"增加光照\", \"details\": \"提供每天6小时以上的充足阳光\", \"priority\": \"medium\"}, {\"type\": \"watering\", \"action\": \"调整浇水频率\", \"details\": \"等土壤表面干燥后再浇水，避免积水\", \"priority\": \"medium\"}, {\"type\": \"pruning\", \"action\": \"定期摘心\", \"details\": \"促进分枝，让植株更茂盛\", \"priority\": \"low\"}]', 0.75, '{\"conversationHistory\": [{\"role\": \"user\", \"content\": \"这是什么植物？健康状况如何？\"}]}', '2026-04-08 08:32:23');
 
 -- ----------------------------
 -- Table structure for environment_metrics
@@ -202,6 +206,14 @@ CREATE TABLE `messages`  (
 -- ----------------------------
 -- Records of messages
 -- ----------------------------
+INSERT INTO `messages` VALUES ('MSG_292c4ad7f0824d5c', 'SESSION_b27d769b8fb44460', 'assistant', 'text', '从图片来看，这是一株生长状态良好的幼苗植物！🌱\n\n### 植物识别\n根据叶片形态和生长状态，这看起来像是一株**草本植物幼苗**，可能是罗勒、薄荷或其他香草类植物。由于幼苗期特征相似，具体品种需要更多生长信息才能准确判断。\n\n### 健康状况分析\n- ✅ 叶片挺拔，颜色鲜绿，无黄化或枯萎现象\n- ✅ 茎秆直立，生长势良好\n- ✅ 土壤湿润适中，没有积水迹象\n- ✅ 整体状态健康，无明显病虫害\n\n### 养护建议\n1. **光照管理**：幼苗期需要充足散射光，避免强光直射 ☀️\n2. **水分控制**：保持土壤微湿，避免过干或过湿 💧\n3. **温度适宜**：保持在20-25℃的温暖环境 🌡️\n4. **通风良好**：适当通风有助于幼苗健康生长 🌬️\n\n随着植物长大，您可以提供更多生长环境信息，我会帮您更准确地识别品种并给出针对性建议！', NULL, NULL, 'normal', '2026-04-08 08:02:34', '2026-04-08 08:02:34');
+INSERT INTO `messages` VALUES ('MSG_45bf872d620b4295', 'SESSION_77f98592c9ad4955', 'user', 'image', '这是什么植物？健康状况如何？', '[\"https://7072-prod-4g7ephngc4e53ec3-1401681523.tcb.qcloud.la/uploads/USER_E2C0DBFB/2026-04-08/1775637112364-h2dja0.jpg\"]', NULL, 'normal', '2026-04-08 08:31:53', '2026-04-08 08:31:53');
+INSERT INTO `messages` VALUES ('MSG_5555926a20f6407d', 'SESSION_7fab5c16ea5441f5', 'assistant', 'text', '从图片来看，这是一株**罗勒幼苗**（也可能是其他香草或蔬菜幼苗），目前生长状态良好。\n\n### 植物识别\n- 🌱 植株特征：嫩绿色叶片，椭圆形，对生排列\n- 🪴 栽培环境：陶制花盆，土壤看起来较为湿润\n- 📅 生长阶段：处于幼苗期，需要特别关注养护\n\n### 健康状况分析\n- ✅ 叶片色泽正常，无黄化或枯萎现象\n- ✅ 茎秆直立，生长姿态健康\n- ⚠️ 土壤湿度较高，需要注意避免积水\n- 🔄 整体健康评分良好，但需注意幼苗期的特殊养护需求', NULL, NULL, 'normal', '2026-04-08 09:45:29', '2026-04-08 09:45:29');
+INSERT INTO `messages` VALUES ('MSG_63b72816941047c0', 'SESSION_b27d769b8fb44460', 'assistant', 'text', '您好！由于这次没有提供新的图片，我无法进行全新的视觉诊断。不过，根据之前的诊断记录，您的**草本植物幼苗**在4月8日的健康评分为85分，状态为健康（healthy）。\n\n### 基于历史数据的养护建议\n由于这是幼苗期，我建议您重点关注以下方面：\n\n🌱 **生长阶段特点**：\n- 幼苗期需要更频繁的观察和适当的养护\n- 根系正在发育，对水分变化较为敏感\n\n💧 **浇水建议**：\n- 保持土壤微湿但不积水\n- 观察叶片状态，避免过度干旱或过湿\n\n☀️ **光照需求**：\n- 大多数草本植物喜欢充足的散射光\n- 避免强光直射，以免灼伤嫩叶\n\n🌡️ **温度管理**：\n- 保持温暖环境（18-25°C为宜）\n- 避免温度剧烈变化\n\n如果您想获得更准确的当前状态诊断，建议上传最新的植物照片，我会立即为您分析！', NULL, NULL, 'normal', '2026-04-08 08:28:25', '2026-04-08 08:28:25');
+INSERT INTO `messages` VALUES ('MSG_687a7e928e554fed', 'SESSION_7fab5c16ea5441f5', 'user', 'image', '这是什么植物？健康状况如何？', '[\"https://7072-prod-4g7ephngc4e53ec3-1401681523.tcb.qcloud.la/uploads/USER_E2C0DBFB/2026-04-08/1775641502711-dxes8n.jpg\"]', NULL, 'normal', '2026-04-08 09:45:03', '2026-04-08 09:45:03');
+INSERT INTO `messages` VALUES ('MSG_8f22348cd1fb410d', 'SESSION_b27d769b8fb44460', 'user', 'text', '再次诊断', NULL, NULL, 'normal', '2026-04-08 08:27:56', '2026-04-08 08:27:56');
+INSERT INTO `messages` VALUES ('MSG_f08870afb9c84994', 'SESSION_77f98592c9ad4955', 'assistant', 'text', '从图片来看，这是一株**罗勒幼苗**（Ocimum basilicum），属于唇形科香草植物。\n\n### 健康状况分析\n- 🌱 **整体状态良好**：植株直立，叶片舒展，颜色鲜绿\n- 💧 **土壤湿度**：土壤看起来比较湿润，可能需要适当控水\n- 🌿 **生长状态**：作为幼苗，目前生长正常，没有明显问题\n\n### 养护建议\n1. **光照需求**：罗勒喜欢充足的阳光，建议每天至少6小时直射光\n2. **浇水管理**：等土壤表面干燥后再浇水，避免积水导致烂根\n3. **温度适宜**：最适生长温度为20-25℃，避免低温\n4. **定期修剪**：适当摘心可以促进分枝，让植株更茂盛\n\n这是一株健康的幼苗，继续保持良好的养护习惯即可！', NULL, NULL, 'normal', '2026-04-08 08:32:23', '2026-04-08 08:32:23');
+INSERT INTO `messages` VALUES ('MSG_fa174d07c10c439e', 'SESSION_b27d769b8fb44460', 'user', 'image', '这是什么植物？健康状况如何？', '[\"https://7072-prod-4g7ephngc4e53ec3-1401681523.tcb.qcloud.la/uploads/USER_E2C0DBFB/2026-04-08/1775635313821-unq3wm.jpg\"]', NULL, 'normal', '2026-04-08 08:01:56', '2026-04-08 08:01:56');
 
 -- ----------------------------
 -- Table structure for plants
@@ -231,6 +243,8 @@ CREATE TABLE `plants`  (
 -- ----------------------------
 -- Records of plants
 -- ----------------------------
+INSERT INTO `plants` VALUES ('PLANT_46abed3703ed404d', 'USER_E2C0DBFB', '我的罗勒', 'vegetable', '罗勒', 'https://7072-prod-4g7ephngc4e53ec3-1401681523.tcb.qcloud.la/uploads/USER_E2C0DBFB/2026-04-08/1775637412518-zcorfl.jpg', NULL, '武汉市人民政府', NULL, 30.59276000, 114.30525000, '2026-04-08 08:36:54', '2026-04-08 11:37:58');
+INSERT INTO `plants` VALUES ('PLANT_617fb5613e4d44ab', 'USER_E2C0DBFB', '我的草本植物幼苗', 'foliage', '草本植物幼苗', 'https://7072-prod-4g7ephngc4e53ec3-1401681523.tcb.qcloud.la/uploads/USER_E2C0DBFB/2026-04-08/1775635783405-bttnfj.jpg', NULL, NULL, NULL, NULL, NULL, '2026-04-08 08:09:44', '2026-04-08 08:09:44');
 
 -- ----------------------------
 -- Table structure for reading_tasks
@@ -305,6 +319,9 @@ CREATE TABLE `sessions`  (
 -- ----------------------------
 -- Records of sessions
 -- ----------------------------
+INSERT INTO `sessions` VALUES ('SESSION_77f98592c9ad4955', 'USER_E2C0DBFB', 'plant', 'PLANT_46abed3703ed404d', '我的罗勒 - 植物会话', '{\"careRecords\": false, \"environmentData\": false, \"historyDiagnosis\": false}', 'active', '2026-04-08 08:31:52', '2026-04-08 08:36:54');
+INSERT INTO `sessions` VALUES ('SESSION_7fab5c16ea5441f5', 'USER_E2C0DBFB', 'consultation', NULL, '快速诊断', '{\"careRecords\": false, \"environmentData\": false, \"historyDiagnosis\": false}', 'active', '2026-04-08 09:45:02', '2026-04-08 09:45:02');
+INSERT INTO `sessions` VALUES ('SESSION_b27d769b8fb44460', 'USER_E2C0DBFB', 'plant', 'PLANT_617fb5613e4d44ab', '我的草本植物幼苗 - 植物会话', '{\"careRecords\": false, \"environmentData\": false, \"historyDiagnosis\": false}', 'active', '2026-04-08 08:01:53', '2026-04-08 08:09:45');
 
 -- ----------------------------
 -- Table structure for user_config
@@ -327,7 +344,9 @@ CREATE TABLE `user_config`  (
 -- ----------------------------
 -- Records of user_config
 -- ----------------------------
-INSERT INTO `user_config` VALUES ('CFG_A646FA25', 'USER_1D9546F2', 'notification_settings', '{\"care_reminder\": true, \"reminder_time\": \"09:00\", \"environment_alert\": true, \"diagnosis_reminder\": true}', 'setting', '2026-04-07 08:08:24', '2026-04-07 08:08:24');
+INSERT INTO `user_config` VALUES ('CFG_1775635767276', 'USER_E2C0DBFB', 'read_positions', '{\"SESSION_14cafe263cb54cb8\": \"MSG_d9eaad63b24849af\", \"SESSION_77f98592c9ad4955\": \"MSG_f08870afb9c84994\", \"SESSION_7fab5c16ea5441f5\": \"MSG_5555926a20f6407d\", \"SESSION_b27d769b8fb44460\": \"MSG_63b72816941047c0\"}', 'preference', '2026-04-08 08:09:27', '2026-04-09 04:10:39');
+INSERT INTO `user_config` VALUES ('CFG_BB6CE0AE', 'USER_E2C0DBFB', 'context_options', '{\"env\": true, \"care\": true, \"history\": true}', 'preference', '2026-04-08 08:28:02', '2026-04-08 08:28:02');
+INSERT INTO `user_config` VALUES ('CFG_E1DBEDBB', 'USER_E2C0DBFB', 'notification_settings', '{\"care_reminder\": true, \"reminder_time\": \"09:00\", \"environment_alert\": true, \"diagnosis_reminder\": true}', 'setting', '2026-04-08 07:54:35', '2026-04-08 07:54:35');
 
 -- ----------------------------
 -- Table structure for users
@@ -352,6 +371,65 @@ CREATE TABLE `users`  (
 -- ----------------------------
 -- Records of users
 -- ----------------------------
-INSERT INTO `users` VALUES ('USER_1D9546F2', 'wx_MGQzc3pyRmExYVlJdUwwT2Y0SWEx', '微信用户', '', 'user', 'active', '2026-04-07 08:08:24', '2026-04-07 08:08:24', '2026-04-07 08:08:24');
+INSERT INTO `users` VALUES ('USER_E2C0DBFB', 'wx_MGQzemh0RmExMWRldkwwWkNrSmEx', '微信用户', '', 'user', 'active', '2026-04-08 07:54:35', '2026-04-08 07:54:35', '2026-04-08 07:54:35');
+
+-- ----------------------------
+-- Table structure for system_logs
+-- ----------------------------
+DROP TABLE IF EXISTS `system_logs`;
+CREATE TABLE `system_logs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '日志ID',
+  `level` enum('debug','info','warn','error','fatal') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'info' COMMENT '日志级别',
+  `message` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '日志消息',
+  `metadata` json DEFAULT NULL COMMENT '额外数据',
+  `source` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '来源模块',
+  `request_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '请求追踪ID',
+  `ip_address` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'IP地址',
+  `user_agent` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'User Agent',
+  `url` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '请求URL',
+  `method` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'HTTP方法',
+  `error_stack` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '错误堆栈',
+  `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+  `updated_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  KEY `idx_level_created` (`level`,`created_at`) USING BTREE,
+  KEY `idx_source_created` (`source`,`created_at`) USING BTREE,
+  KEY `idx_request_id` (`request_id`) USING BTREE,
+  KEY `idx_created_at` (`created_at`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='系统日志表' ROW_FORMAT=DYNAMIC;
+
+-- ----------------------------
+-- Records of system_logs
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for client_logs
+-- ----------------------------
+DROP TABLE IF EXISTS `client_logs`;
+CREATE TABLE `client_logs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '日志ID',
+  `user_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '用户ID',
+  `session_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '会话ID',
+  `level` enum('debug','info','warn','error','fatal') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'info' COMMENT '日志级别',
+  `message` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '日志消息',
+  `page_path` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '页面路径',
+  `action` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '用户行为',
+  `device_info` json DEFAULT NULL COMMENT '设备信息',
+  `metadata` json DEFAULT NULL COMMENT '附加数据',
+  `network_type` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '网络类型',
+  `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+  `updated_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  KEY `idx_user_created` (`user_id`,`created_at`) USING BTREE,
+  KEY `idx_session_created` (`session_id`,`created_at`) USING BTREE,
+  KEY `idx_level_created` (`level`,`created_at`) USING BTREE,
+  KEY `idx_page_created` (`page_path`,`created_at`) USING BTREE,
+  KEY `idx_created_at` (`created_at`) USING BTREE,
+  CONSTRAINT `client_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='客户端日志表' ROW_FORMAT=DYNAMIC;
+
+-- ----------------------------
+-- Records of client_logs
+-- ----------------------------
 
 SET FOREIGN_KEY_CHECKS = 1;

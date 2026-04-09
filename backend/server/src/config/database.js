@@ -1,5 +1,4 @@
 const { Sequelize } = require('sequelize');
-const logger = require('../utils/logger');
 
 // 构建 dialectOptions，根据环境配置 SSL
 const dialectOptions = {
@@ -14,23 +13,17 @@ const dialectOptions = {
 if (process.env.DB_SSL === 'true') {
   dialectOptions.ssl = {
     require: true,
-    rejectUnauthorized: false, // 允许自签名证书
+    rejectUnauthorized: false,
   };
 }
 
-// 自定义日志函数
+// 自定义日志函数（避免循环依赖，不直接引用 logger）
 const loggingFunction = (msg, timing) => {
-  // 提取 SQL 查询（去掉时间戳等前缀）
-  const sqlMatch = msg.match(/Executing \((\w+)\): (.+)/);
-  if (sqlMatch) {
-    const [, connection, sql] = sqlMatch;
-    logger.debug('SQL 查询', {
-      connection,
-      sql: sql.substring(0, 500), // 截断长 SQL
-      timing: timing ? `${timing}ms` : null,
-    });
-  } else {
-    logger.debug('数据库日志', { msg });
+  if (process.env.DB_LOGGING === 'true') {
+    const sqlMatch = msg.match(/Executing \((\w+)\): (.+)/);
+    if (sqlMatch) {
+      console.log(`[SQL] ${sqlMatch[1]} (${timing || 0}ms): ${sqlMatch[2].substring(0, 200)}`);
+    }
   }
 };
 

@@ -65,9 +65,7 @@ Page({
       const lng = encodeURIComponent(this.data.longitude);
       const locationKey = 'geo:' + lat + ',' + lng;
 
-      api.get('/weather/now', {
-        location: locationKey,
-      }).then(function(data) {
+      api.get('/weather/now?location=' + encodeURIComponent(locationKey)).then(function(data) {
         resolve(data);
       }).catch(function(err) {
         reject(err);

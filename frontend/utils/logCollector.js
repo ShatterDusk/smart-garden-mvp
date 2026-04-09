@@ -1,172 +1,206 @@
 /**
  * 前端日志收集器
- * 将日志推送到本地日志服务
+ * 用于收集小程序 console.log 并推送到后端
+ * 日志通过 API 推送到后端统一存储
  */
 
-const LOG_SERVER_URL = 'http://localhost:3456';
-const STORAGE_KEY = 'pending_logs';
-const BATCH_SIZE = 10;
-const FLUSH_INTERVAL = 5000; // 5秒推送一次
+const logApi = require('./logApi')
 
-// 待发送的日志队列
-let pendingLogs = [];
-let flushTimer = null;
+const PUSH_INTERVAL = 10000 // 10秒推送一次
 
-/**
- * 从存储中恢复待发送日志
- */
-const restorePendingLogs = () => {
-  try {
-    const stored = wx.getStorageSync(STORAGE_KEY);
-    if (stored && Array.isArray(stored)) {
-      pendingLogs = stored;
+class LogCollector {
+  constructor() {
+    this.logQueue = []
+    this.pushTimer = null
+    this.isPushing = false
+    this.init()
+  }
+
+  init() {
+    // 定时推送日志到后端（每10秒）
+    this.pushTimer = setInterval(() => {
+      this.pushToBackend()
+    }, PUSH_INTERVAL)
+
+    // 页面卸载时推送剩余日志
+    wx.onAppHide(() => {
+      this.pushToBackend()
+    })
+
+    // 拦截原生 console 方法
+    this.interceptConsole()
+  }
+
+  /**
+   * 拦截原生 console 方法，自动捕获所有 console.log
+   */
+  interceptConsole() {
+    const originalLog = console.log
+    const originalInfo = console.info
+    const originalWarn = console.warn
+    const originalError = console.error
+    const originalDebug = console.debug
+
+    // 保存原始方法，以便内部使用
+    this._originalConsole = {
+      log: originalLog,
+      info: originalInfo,
+      warn: originalWarn,
+      error: originalError,
+      debug: originalDebug
     }
-  } catch (e) {
-    console.error('恢复待发送日志失败', e);
+
+    const self = this
+
+    // 重写 console.log
+    console.log = function(...args) {
+      originalLog.apply(console, args)
+      self._captureConsoleLog('INFO', args)
+    }
+
+    // 重写 console.info
+    console.info = function(...args) {
+      originalInfo.apply(console, args)
+      self._captureConsoleLog('INFO', args)
+    }
+
+    // 重写 console.warn
+    console.warn = function(...args) {
+      originalWarn.apply(console, args)
+      self._captureConsoleLog('WARN', args)
+    }
+
+    // 重写 console.error
+    console.error = function(...args) {
+      originalError.apply(console, args)
+      self._captureConsoleLog('ERROR', args)
+    }
+
+    // 重写 console.debug
+    console.debug = function(...args) {
+      originalDebug.apply(console, args)
+      self._captureConsoleLog('DEBUG', args)
+    }
   }
-};
 
-/**
- * 保存待发送日志到存储
- */
-const savePendingLogs = () => {
-  try {
-    wx.setStorageSync(STORAGE_KEY, pendingLogs);
-  } catch (e) {
-    console.error('保存待发送日志失败', e);
+  /**
+   * 捕获 console 输出
+   */
+  _captureConsoleLog(level, args) {
+    // 避免捕获日志收集器自身的输出（防止循环）
+    if (args.length > 0 && typeof args[0] === 'string' && args[0].startsWith('[LogCollector]')) {
+      return
+    }
+
+    const message = args.map(arg => {
+      if (typeof arg === 'object') {
+        try {
+          return JSON.stringify(arg)
+        } catch (e) {
+          return String(arg)
+        }
+      }
+      return String(arg)
+    }).join(' ')
+
+    const timestamp = new Date().toISOString()
+    const logEntry = {
+      timestamp,
+      level,
+      message,
+      data: ''
+    }
+
+    this.logQueue.push(logEntry)
+
+    // 队列过长时立即推送
+    if (this.logQueue.length >= 50) {
+      this.pushToBackend()
+    }
   }
-};
 
-/**
- * 添加日志到队列
- */
-const collect = (level, message, data) => {
-  const logEntry = {
-    timestamp: new Date().toISOString(),
-    level: level.toUpperCase(),
-    message,
-    data: data ? JSON.stringify(data) : null,
-    source: 'frontend',
-    page: getCurrentPage(),
-  };
-  
-  pendingLogs.push(logEntry);
-  
-  // 限制队列大小
-  if (pendingLogs.length > 100) {
-    pendingLogs = pendingLogs.slice(-100);
+  /**
+   * 记录日志
+   * @param {string} level - 日志级别: debug, info, warn, error
+   * @param {string} message - 日志消息
+   * @param {*} data - 附加数据
+   */
+  log(level, message, data) {
+    const timestamp = new Date().toISOString()
+    const logEntry = {
+      timestamp,
+      level: level.toUpperCase(),
+      message,
+      data: data ? JSON.stringify(data) : ''
+    }
+
+    // 同时输出到控制台
+    console[level](`[${logEntry.level}] ${message}`, data || '')
+
+    // 加入队列
+    this.logQueue.push(logEntry)
+
+    // 队列过长时立即推送
+    if (this.logQueue.length >= 50) {
+      this.pushToBackend()
+    }
   }
-  
-  savePendingLogs();
-  
-  // 立即尝试推送（如果队列足够大）
-  if (pendingLogs.length >= BATCH_SIZE) {
-    flush();
+
+  debug(message, data) {
+    this.log('debug', message, data)
   }
-};
 
-/**
- * 获取当前页面路径
- */
-const getCurrentPage = () => {
-  const pages = getCurrentPages();
-  return pages.length > 0 ? pages[pages.length - 1].route : 'unknown';
-};
-
-/**
- * 推送日志到服务器
- */
-const flush = async () => {
-  if (pendingLogs.length === 0) return;
-  
-  const logsToSend = pendingLogs.splice(0, BATCH_SIZE);
-  savePendingLogs();
-  
-  try {
-    await new Promise((resolve, reject) => {
-      wx.request({
-        url: `${LOG_SERVER_URL}/api/logs/frontend`,
-        method: 'POST',
-        data: logsToSend,
-        header: {
-          'Content-Type': 'application/json',
-        },
-        success: (res) => {
-          if (res.statusCode === 200) {
-            resolve(res);
-          } else {
-            reject(new Error(`HTTP ${res.statusCode}`));
-          }
-        },
-        fail: reject,
-      });
-    });
-    
-    console.log(`[LogCollector] 推送 ${logsToSend.length} 条日志成功`);
-  } catch (err) {
-    console.error('[LogCollector] 推送日志失败:', err.message);
-    // 推送失败，重新加入队列
-    pendingLogs.unshift(...logsToSend);
-    savePendingLogs();
+  info(message, data) {
+    this.log('info', message, data)
   }
-};
 
-/**
- * 启动定时推送
- */
-const start = () => {
-  restorePendingLogs();
-  
-  if (flushTimer) {
-    clearInterval(flushTimer);
+  warn(message, data) {
+    this.log('warn', message, data)
   }
-  
-  flushTimer = setInterval(flush, FLUSH_INTERVAL);
-  
-  // 监听小程序前后台切换
-  wx.onAppShow(() => {
-    console.log('[LogCollector] 小程序进入前台，恢复推送');
-    flush();
-  });
-  
-  wx.onAppHide(() => {
-    console.log('[LogCollector] 小程序进入后台，保存日志');
-    savePendingLogs();
-  });
-  
-  console.log('[LogCollector] 日志收集器已启动');
-};
 
-/**
- * 停止定时推送
- */
-const stop = () => {
-  if (flushTimer) {
-    clearInterval(flushTimer);
-    flushTimer = null;
+  error(message, data) {
+    this.log('error', message, data)
   }
-  savePendingLogs();
-};
 
-/**
- * 立即推送所有日志
- */
-const flushAll = async () => {
-  while (pendingLogs.length > 0) {
-    await flush();
+  /**
+   * 推送日志到后端
+   */
+  async pushToBackend() {
+    if (this.logQueue.length === 0 || this.isPushing) return
+
+    this.isPushing = true
+    const logs = this.logQueue.splice(0)
+
+    try {
+      await logApi.pushFrontendLogs(logs)
+      // 使用原始 console 避免循环
+      if (this._originalConsole) {
+        this._originalConsole.log('[LogCollector] 日志已推送到后端，条数:', logs.length)
+      }
+    } catch (err) {
+      // 推送失败，将日志放回队列（保留最近100条）
+      this.logQueue = [...logs, ...this.logQueue].slice(0, 100)
+      if (this._originalConsole) {
+        this._originalConsole.error('[LogCollector] 推送日志失败:', err.message)
+      }
+    } finally {
+      this.isPushing = false
+    }
   }
-};
 
-// 日志级别快捷方法
-const logger = {
-  error: (message, data) => collect('ERROR', message, data),
-  warn: (message, data) => collect('WARN', message, data),
-  info: (message, data) => collect('INFO', message, data),
-  debug: (message, data) => collect('DEBUG', message, data),
-  start,
-  stop,
-  flush,
-  flushAll,
-};
+  /**
+   * 销毁收集器
+   */
+  destroy() {
+    if (this.pushTimer) {
+      clearInterval(this.pushTimer)
+      this.pushTimer = null
+    }
+    this.pushToBackend()
+  }
+}
 
-module.exports = logger;
+// 创建单例实例
+const logCollector = new LogCollector()
+
+module.exports = logCollector

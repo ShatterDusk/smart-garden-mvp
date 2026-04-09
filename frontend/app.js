@@ -1,3 +1,4 @@
+require('./utils/logCollector.js') 
 // app.js - 应用入口
 App({
   globalData: {

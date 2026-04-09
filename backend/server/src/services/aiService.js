@@ -4,6 +4,7 @@
  */
 
 const axios = require('axios');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const aiConfig = require('../config/ai');
@@ -16,6 +17,19 @@ try {
 } catch (err) {
   logger.warn('sharp 未安装，图片将不会压缩');
 }
+
+// 创建图片下载客户端
+// SSL 证书验证配置：
+// - 默认启用验证（安全）
+// - 可通过环境变量 SSL_VERIFY=false 在特殊环境禁用
+// - 仅在遇到证书问题时临时禁用
+const imageDownloadClient = axios.create({
+  timeout: 60000,
+  maxContentLength: 10 * 1024 * 1024, // 最大 10MB
+  httpsAgent: new https.Agent({
+    rejectUnauthorized: process.env.SSL_VERIFY !== 'false',
+  }),
+});
 
 const SYSTEM_PROMPT = `你是一个专业的植物养护AI助手"小园"。
 
@@ -240,7 +254,7 @@ class AIService {
           return `data:${mimeType};base64,${fileBuffer.toString('base64')}`;
         }
       } catch (err) {
-        logger.warn('本地图片转换失败，尝试直接使用 URL', { imageUrl, error: err.message });
+        logger.warn('本地图片读取失败，将尝试作为远程URL下载', { imageUrl, error: err.message });
       }
     }
 
@@ -255,10 +269,8 @@ class AIService {
           urlDomain: new URL(imageUrl).hostname,
         });
         
-        const response = await axios.get(imageUrl, {
+        const response = await imageDownloadClient.get(imageUrl, {
           responseType: 'arraybuffer',
-          timeout: 60000, // 60 秒超时
-          maxContentLength: 10 * 1024 * 1024, // 最大 10MB
         });
         const downloadTime = Date.now() - downloadStart;
 

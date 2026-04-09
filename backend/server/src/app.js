@@ -107,6 +107,7 @@ app.use('/api/devices', require('./routes/devices'));
 app.use('/api/diagnosis', require('./routes/diagnosis'));
 app.use('/api/ai', require('./routes/ai'));
 app.use('/api/environment', require('./routes/environment'));
+app.use('/api/weather', require('./routes/weather'));
 app.use('/api/upload', require('./routes/upload'));
 app.use('/api/storage', require('./routes/storage'));
 app.use('/api/cos', require('./routes/cos'));

@@ -129,6 +129,18 @@
 | [代码审查清单](./10-project/代码审查清单.md) | CR检查项 |
 | [specs/](./10-project/specs/) | 功能规格说明书 |
 
+### [11-知识库](./11-knowledge/) 🆕
+AI记忆、项目洞察、领域知识
+
+| 分类 | 说明 |
+|:---|:---|
+| [ai-memory/](./11-knowledge/ai-memory/) | AI记忆存储 - 决策记录、学习总结 |
+| [project-insights/](./11-knowledge/project-insights/) | 项目洞察 - 代码模式、解决方案、最佳实践 |
+| [domain-knowledge/](./11-knowledge/domain-knowledge/) | 领域知识 - 业务、技术、架构 |
+| [meta/](./11-knowledge/meta/) | 元数据 - 索引和标签系统 |
+
+**知识管理工具**: `node _dev/tools/knowledge-manager.js`
+
 ---
 
 ## 快速链接

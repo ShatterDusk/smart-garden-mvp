@@ -15,10 +15,14 @@ const envConfig = {
   region: process.env.COS_REGION || 'ap-shanghai',
 };
 
-// 创建 axios 实例，忽略 SSL 证书验证（解决 self-signed certificate 错误）
+// 创建 axios 实例
+// SSL 证书验证配置：
+// - 默认启用验证（安全）
+// - 可通过环境变量 SSL_VERIFY=false 在特殊环境禁用
+// - 仅在遇到证书问题时临时禁用
 const axiosInstance = axios.create({
   httpsAgent: new https.Agent({
-    rejectUnauthorized: false,
+    rejectUnauthorized: process.env.SSL_VERIFY !== 'false',
   }),
 });
 

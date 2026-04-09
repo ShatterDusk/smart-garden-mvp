@@ -1,0 +1,129 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2026-04-09",
+  "description": "知识库主索引文件",
+  "knowledge": [
+    {
+      "id": "KNOW-2026-04-09-001",
+      "title": "知识管理最佳实践指南",
+      "type": "best-practice",
+      "category": "project-insights/best-practices",
+      "tags": ["knowledge-management", "documentation", "ai-memory", "best-practice"],
+      "path": "project-insights/best-practices/knowledge-management-guide.md",
+      "created": "2026-04-09",
+      "updated": "2026-04-09",
+      "status": "active"
+    },
+    {
+      "id": "KNOW-2026-04-09-002",
+      "title": "知识管理系统实现决策",
+      "type": "decision",
+      "category": "ai-memory/decisions",
+      "tags": ["knowledge-management", "architecture", "decision", "ai"],
+      "path": "ai-memory/decisions/knowledge-system-implementation.md",
+      "created": "2026-04-09",
+      "updated": "2026-04-09",
+      "status": "active"
+    },
+    {
+      "id": "KNOW-2026-04-09-003",
+      "title": "项目数据库设计概览",
+      "type": "technical",
+      "category": "domain-knowledge/technical",
+      "tags": ["database", "mysql", "sequelize", "schema", "architecture"],
+      "path": "domain-knowledge/technical/database-schema-overview.md",
+      "created": "2026-04-09",
+      "updated": "2026-04-09",
+      "status": "active"
+    }
+  ],
+  "categories": [
+    {
+      "id": "ai-memory",
+      "name": "AI记忆",
+      "description": "AI会话中产生的记忆和决策",
+      "path": "ai-memory",
+      "subcategories": [
+        {
+          "id": "session-contexts",
+          "name": "会话上下文",
+          "path": "ai-memory/session-contexts"
+        },
+        {
+          "id": "decisions",
+          "name": "决策记录",
+          "path": "ai-memory/decisions"
+        },
+        {
+          "id": "learnings",
+          "name": "学习总结",
+          "path": "ai-memory/learnings"
+        }
+      ]
+    },
+    {
+      "id": "project-insights",
+      "name": "项目洞察",
+      "description": "项目开发过程中积累的经验和洞察",
+      "path": "project-insights",
+      "subcategories": [
+        {
+          "id": "patterns",
+          "name": "代码模式",
+          "path": "project-insights/patterns"
+        },
+        {
+          "id": "solutions",
+          "name": "解决方案",
+          "path": "project-insights/solutions"
+        },
+        {
+          "id": "best-practices",
+          "name": "最佳实践",
+          "path": "project-insights/best-practices"
+        }
+      ]
+    },
+    {
+      "id": "domain-knowledge",
+      "name": "领域知识",
+      "description": "业务和技术领域知识",
+      "path": "domain-knowledge",
+      "subcategories": [
+        {
+          "id": "business",
+          "name": "业务知识",
+          "path": "domain-knowledge/business"
+        },
+        {
+          "id": "technical",
+          "name": "技术知识",
+          "path": "domain-knowledge/technical"
+        },
+        {
+          "id": "architecture",
+          "name": "架构知识",
+          "path": "domain-knowledge/architecture"
+        }
+      ]
+    }
+  ],
+  "tags": [
+    "knowledge-management",
+    "documentation",
+    "ai-memory",
+    "best-practice",
+    "architecture",
+    "decision",
+    "ai",
+    "database",
+    "mysql",
+    "sequelize",
+    "schema"
+  ],
+  "stats": {
+    "totalKnowledge": 3,
+    "activeKnowledge": 3,
+    "archivedKnowledge": 0
+  }
+}

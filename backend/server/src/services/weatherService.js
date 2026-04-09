@@ -129,12 +129,18 @@ async function getCurrentWeather(locationCode, lat, lng) {
     return {
       temperature: parseFloat(now.temp),
       humidity: parseFloat(now.humidity),
+      feelsLike: parseFloat(now.feelsLike),
       weatherCondition: now.text,
       weatherCode: parseInt(now.icon),
-      windSpeed: parseFloat(now.windSpeed),
+      windSpeed: parseFloat(now.windSpeed), // API 返回 km/h，不再转换
       windDirection: now.windDir,
-      pressure: parseFloat(now.pressure),
+      wind360: parseFloat(now.wind360),
+      windScale: parseInt(now.windScale),
+      pressure: parseFloat(now.pressure), // hPa (百帕)
+      precip: parseFloat(now.precip),
       visibility: parseFloat(now.vis),
+      cloud: parseFloat(now.cloud),
+      dew: parseFloat(now.dew),
       dataSource: 'weather_api',
       recordedAt: new Date(),
     };
@@ -212,23 +218,59 @@ function convertToMetrics(weatherData, astroData) {
 
   const metrics = {};
 
+  // 基础气象指标
   if (weatherData.temperature !== undefined) {
     metrics.temperature = weatherData.temperature;
   }
   if (weatherData.humidity !== undefined) {
     metrics.humidity = weatherData.humidity;
   }
-  if (weatherData.windSpeed !== undefined) {
-    metrics.wind_speed = weatherData.windSpeed;
-  }
   if (weatherData.pressure !== undefined) {
-    metrics.air_pressure = weatherData.pressure;
+    metrics.pressure = weatherData.pressure;
   }
+
+  // 体感温度
+  if (weatherData.feelsLike !== undefined) {
+    metrics.feels_like = weatherData.feelsLike;
+  }
+
+  // 天气状况
   if (weatherData.weatherCode !== undefined) {
     metrics.weather_condition = weatherData.weatherCode;
   }
 
-  // 添加天文数据
+  // 风向风力
+  if (weatherData.windSpeed !== undefined) {
+    metrics.wind_speed = weatherData.windSpeed;
+  }
+  if (weatherData.wind360 !== undefined) {
+    metrics.wind_direction_360 = weatherData.wind360;
+  }
+  if (weatherData.windScale !== undefined) {
+    metrics.wind_scale = weatherData.windScale;
+  }
+
+  // 降水
+  if (weatherData.precip !== undefined) {
+    metrics.precip = weatherData.precip;
+  }
+
+  // 能见度
+  if (weatherData.visibility !== undefined) {
+    metrics.visibility = weatherData.visibility;
+  }
+
+  // 云量
+  if (weatherData.cloud !== undefined) {
+    metrics.cloud_cover = weatherData.cloud;
+  }
+
+  // 露点
+  if (weatherData.dew !== undefined) {
+    metrics.dew_point = weatherData.dew;
+  }
+
+  // 天文数据
   if (astroData && astroData.sunHours !== undefined) {
     metrics.sun_hours = astroData.sunHours;
   }
@@ -271,7 +313,13 @@ async function getWeatherForPlant(plant) {
  */
 function getLocationKey(locationCode, lat, lng) {
   if (locationCode) return `city:${locationCode}`;
-  if (lat && lng) return `geo:${lat.toFixed(4)},${lng.toFixed(4)}`;
+  if (lat && lng) {
+    const latNum = parseFloat(lat);
+    const lngNum = parseFloat(lng);
+    if (!isNaN(latNum) && !isNaN(lngNum)) {
+      return `geo:${latNum.toFixed(4)},${lngNum.toFixed(4)}`;
+    }
+  }
   return null;
 }
 
@@ -294,5 +342,4 @@ module.exports = {
   getPlantLocationKey,
   geocoding,
   batchGeocoding,
-};
 };
