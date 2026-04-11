@@ -5,6 +5,7 @@
 
 // 引入配置文件
 const config = require('./config.js');
+const cosUpload = require('./cos-upload.js');
 
 // API 基础地址配置
 const API_BASE_URL = config.API_BASE_URL;
@@ -122,6 +123,35 @@ function del(url, data) {
   return request({ url: url, method: 'DELETE', data: data });
 }
 
+// ==================== 统一响应处理工具 ====================
+
+/**
+ * 处理列表响应
+ * @param {Object} res - 响应数据
+ * @returns {Array} 列表数据
+ */
+function handleListResponse(res) {
+  return res?.list || [];
+}
+
+/**
+ * 处理详情响应
+ * @param {Object} res - 响应数据
+ * @returns {Object|null} 详情数据
+ */
+function handleDetailResponse(res) {
+  return res || null;
+}
+
+/**
+ * 处理操作响应
+ * @param {Object} res - 响应数据
+ * @returns {boolean} 操作是否成功
+ */
+function handleActionResponse(res) {
+  return !!res;
+}
+
 // ==================== 用户模块 ====================
 
 /**
@@ -161,20 +191,6 @@ function getUserProfile(include) {
  */
 function updateUserProfile(data) {
   return put('/users/profile', data);
-}
-
-/**
- * 获取用户设置
- */
-function getUserSettings() {
-  return get('/users/settings');
-}
-
-/**
- * 更新用户设置
- */
-function updateUserSettings(data) {
-  return put('/users/settings', data);
 }
 
 // ==================== 植物模块 ====================
@@ -257,10 +273,63 @@ function getSessionMessages(sessionId, before, limit) {
 }
 
 /**
+ * 标记会话为已读
+ */
+function markSessionAsRead(sessionId) {
+  return post('/sessions/' + sessionId + '/read', {});
+}
+
+/**
  * 发送消息
+ * 优化：增加超时处理，提升用户体验
  */
 function sendMessage(sessionId, data) {
-  return post('/sessions/' + sessionId + '/messages', data);
+  return new Promise(function(resolve, reject) {
+    const token = getToken();
+    const startTime = Date.now();
+    
+    console.log('发送消息:', sessionId, data);
+    
+    const requestTask = wx.request({
+      url: API_BASE_URL + '/sessions/' + sessionId + '/messages',
+      method: 'POST',
+      data: data || {},
+      header: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? 'Bearer ' + token : '',
+      },
+      // 优化：设置35秒超时（后端30秒 + 5秒缓冲）
+      timeout: 35000,
+      success: function(res) {
+        const duration = Date.now() - startTime;
+        console.log('收到响应:', '/sessions/' + sessionId + '/messages', res.statusCode, duration + 'ms');
+        
+        if (res.statusCode === 200) {
+          if (res.data.code === 0) {
+            resolve(res.data.data);
+          } else {
+            reject(new Error(res.data.message || '请求失败'));
+          }
+        } else if (res.statusCode === 401) {
+          clearToken();
+          reject(new Error('请先登录'));
+        } else {
+          reject(new Error('请求失败: ' + res.statusCode));
+        }
+      },
+      fail: function(err) {
+        const duration = Date.now() - startTime;
+        console.error('请求失败:', '/sessions/' + sessionId + '/messages', err, duration + 'ms');
+        
+        // 优化：区分超时错误和其他网络错误
+        if (err.errMsg && err.errMsg.includes('timeout')) {
+          reject(new Error('AI 分析超时，请稍后刷新页面查看结果'));
+        } else {
+          reject(new Error('网络请求失败，请检查网络连接'));
+        }
+      },
+    });
+  });
 }
 
 /**
@@ -428,43 +497,17 @@ function getStorageUploadLink(filename, contentType) {
 
 /**
  * 上传图片到云存储（COS 直传）
- * @returns {Promise<{url: string, fileId: string, key: string}>}
+ * 使用 cos-upload.js 的统一实现
+ * @param {string} filePath - 本地文件路径
+ * @param {Function} onProgress - 进度回调函数 (progress, sent, total)
+ * @returns {Promise<{url: string, fileId: string}>}
  */
-function uploadImage(filePath) {
+function uploadImage(filePath, onProgress) {
   const fileName = filePath.split('/').pop() || 'image.jpg';
-  
-  return getStorageUploadLink(fileName, 'image/jpeg').then(function(uploadInfo) {
-    return new Promise(function(resolve, reject) {
-      wx.uploadFile({
-        url: uploadInfo.uploadUrl,
-        filePath: filePath,
-        name: 'file',
-        header: {
-          'Authorization': uploadInfo.authorization,
-        },
-        formData: {
-          key: uploadInfo.key,
-          Signature: uploadInfo.authorization,
-          'x-cos-security-token': uploadInfo.token,
-          'x-cos-meta-fileid': uploadInfo.fileId,
-        },
-        success: function(res) {
-          // COS 上传成功返回 200 或 204，响应体为空
-          if (res.statusCode === 200 || res.statusCode === 204) {
-            resolve({
-              url: uploadInfo.fileUrl,      // 文件访问 URL
-              fileId: uploadInfo.fileId,    // 文件 ID
-              key: uploadInfo.key,          // 文件路径
-            });
-          } else {
-            reject(new Error('上传失败，状态码：' + res.statusCode));
-          }
-        },
-        fail: function(err) {
-          reject(new Error('上传失败：' + JSON.stringify(err)));
-        }
-      });
-    });
+  return cosUpload.uploadToCloudStorage(filePath, {
+    filename: fileName,
+    contentType: 'image/jpeg',
+    onProgress: onProgress
   });
 }
 
@@ -478,38 +521,6 @@ function deleteStorageFile(fileId) {
     method: 'DELETE',
     data: { fileId }
   });
-}
-
-// ==================== 消息模块 ====================
-
-/**
- * 获取会话消息列表
- */
-function getMessages(sessionId) {
-  return get('/sessions/' + sessionId + '/messages').then(function(res) {
-    return res.list || [];
-  });
-}
-
-/**
- * 添加消息到会话
- */
-function addMessage(sessionId, message) {
-  return post('/sessions/' + sessionId + '/messages', message);
-}
-
-/**
- * 标记会话已读
- */
-function markSessionAsRead(sessionId) {
-  return post('/sessions/' + sessionId + '/read');
-}
-
-/**
- * 更新会话
- */
-function updateSession(sessionId, data) {
-  return put('/sessions/' + sessionId, data);
 }
 
 // ==================== 导出 ====================
@@ -532,8 +543,6 @@ module.exports = {
   guestLogin: guestLogin,
   getUserProfile: getUserProfile,
   updateUserProfile: updateUserProfile,
-  getUserSettings: getUserSettings,
-  updateUserSettings: updateUserSettings,
   getUserConfig: getUserConfig,
   setUserConfig: setUserConfig,
   
@@ -549,11 +558,8 @@ module.exports = {
   createSession: createSession,
   getSessionDetail: getSessionDetail,
   getSessionMessages: getSessionMessages,
-  getMessages: getMessages,
-  addMessage: addMessage,
-  sendMessage: sendMessage,
   markSessionAsRead: markSessionAsRead,
-  updateSession: updateSession,
+  sendMessage: sendMessage,
   upgradeSessionToPlant: upgradeSessionToPlant,
   deleteSession: deleteSession,
   
@@ -585,21 +591,5 @@ module.exports = {
   // 云存储模块
   getStorageUploadLink: getStorageUploadLink,
   uploadImage: uploadImage,
-  deleteStorageFile: deleteStorageFile,
-  
-  // 兼容旧接口
-  currentUser: {
-    userId: 'USER_001',
-    nickname: '测试用户',
-    avatarUrl: 'https://picsum.photos/100/100?random=1'
-  },
-  
-  // 响应格式化（兼容 mock）
-  response: function(success, data, message) {
-    return {
-      success: success,
-      data: data,
-      message: message || ''
-    };
-  }
+  deleteStorageFile: deleteStorageFile
 };

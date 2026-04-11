@@ -118,7 +118,7 @@ Page({
 
     if (!sessionId) return;
 
-    api.getMessages(sessionId).then(function(result) {
+    api.getSessionMessages(sessionId).then(function(result) {
       var messages = (result || []).map(function(msg) {
         var diagnosisCard = null;
         if (msg.diagnosisCard) {

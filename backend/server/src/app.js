@@ -144,4 +144,49 @@ const testDatabaseConnection = async () => {
 
 testDatabaseConnection();
 
+// ==================== 优雅关闭处理 ====================
+
+/**
+ * 优雅关闭函数
+ * 处理 SIGTERM 和 SIGINT 信号，确保资源正确释放
+ */
+const gracefulShutdown = async (signal) => {
+  logger.info(`收到 ${signal} 信号，开始优雅关闭...`);
+
+  // 停止定时任务
+  try {
+    const environmentSyncJob = require('./jobs/environmentSyncJob');
+    environmentSyncJob.stop();
+    logger.info('定时任务已停止');
+  } catch (err) {
+    logger.error('停止定时任务失败', { error: err.message });
+  }
+
+  // 关闭数据库连接
+  try {
+    await sequelize.close();
+    logger.info('数据库连接已关闭');
+  } catch (err) {
+    logger.error('关闭数据库连接失败', { error: err.message });
+  }
+
+  logger.info('优雅关闭完成');
+  process.exit(0);
+};
+
+// 监听关闭信号
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// 处理未捕获的异常
+process.on('uncaughtException', (err) => {
+  logger.error('未捕获的异常', { error: err.message, stack: err.stack });
+  process.exit(1);
+});
+
+// 处理未处理的 Promise 拒绝
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('未处理的 Promise 拒绝', { reason, promise });
+});
+
 module.exports = app;

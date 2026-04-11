@@ -19,6 +19,20 @@ const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7天
 const weatherDataCache = new Map();
 const WEATHER_CACHE_TTL = 2 * 60 * 60 * 1000; // 2小时
 
+// 天文数据缓存
+const astronomyCache = new Map();
+const ASTRONOMY_CACHE_TTL = 24 * 60 * 60 * 1000; // 24小时
+
+// 天文数据获取失败计数（用于降级）
+let astronomyFailCount = 0;
+let astronomyLastFailTime = 0;
+const ASTRONOMY_MAX_FAIL = 5;
+const ASTRONOMY_COOLDOWN = 30 * 60 * 1000; // 30分钟冷却期
+
+// TODO[MEDIUM]: 缓存使用内存存储，重启后丢失
+// 建议：考虑使用 Redis 或数据库缓存，支持多实例共享
+// 影响：生产环境多实例部署时缓存不共享
+
 /**
  * 地理编码：经纬度 → 城市代码
  * @param {number} lat - 纬度
@@ -108,6 +122,14 @@ async function getCurrentWeather(locationCode, lat, lng) {
       location = `${lng},${lat}`;
     }
 
+    // 检查缓存
+    const cacheKey = `weather:${location}`;
+    const cached = weatherDataCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < WEATHER_CACHE_TTL) {
+      logger.debug('[Weather] 使用缓存的天气数据', { location });
+      return cached.data;
+    }
+
     const url = `${WEATHER_BASE_URL}/weather/now`;
     const response = await axios.get(url, {
       params: {
@@ -126,7 +148,7 @@ async function getCurrentWeather(locationCode, lat, lng) {
     }
 
     const now = response.data.now;
-    return {
+    const weatherData = {
       temperature: parseFloat(now.temp),
       humidity: parseFloat(now.humidity),
       feelsLike: parseFloat(now.feelsLike),
@@ -144,6 +166,14 @@ async function getCurrentWeather(locationCode, lat, lng) {
       dataSource: 'weather_api',
       recordedAt: new Date(),
     };
+
+    // 缓存天气数据
+    weatherDataCache.set(cacheKey, {
+      data: weatherData,
+      timestamp: Date.now(),
+    });
+
+    return weatherData;
   } catch (error) {
     logger.error('获取天气数据失败', { error: error.message, locationCode });
     return null;
@@ -159,13 +189,37 @@ async function getCurrentWeather(locationCode, lat, lng) {
  * @returns {Promise<Object>} 天文数据
  */
 async function getAstronomyData(locationCode, lat, lng, date) {
+  const today = date || new Date().toISOString().split('T')[0];
+  const cacheKey = `${locationCode || lat + ',' + lng}_${today}`;
+  
+  // 检查缓存
+  const cached = astronomyCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < ASTRONOMY_CACHE_TTL) {
+    logger.debug('使用缓存的天文数据', { cacheKey });
+    return cached.data;
+  }
+  
+  // 检查是否需要冷却（连续失败过多）
+  if (astronomyFailCount >= ASTRONOMY_MAX_FAIL && 
+      Date.now() - astronomyLastFailTime < ASTRONOMY_COOLDOWN) {
+    logger.warn('[getAstronomyData] 天文数据获取进入冷却期，跳过请求', {
+      failCount: astronomyFailCount,
+      cooldownRemaining: Math.ceil((ASTRONOMY_COOLDOWN - (Date.now() - astronomyLastFailTime)) / 1000),
+    });
+    return getDefaultAstronomyData();
+  }
+  
   try {
     let location = locationCode;
     if (lat && lng) {
       location = `${lng},${lat}`;
     }
+    
+    if (!location) {
+      logger.warn('[getAstronomyData] 缺少位置信息');
+      return getDefaultAstronomyData();
+    }
 
-    const today = date || new Date().toISOString().split('T')[0];
     const url = `${WEATHER_BASE_URL}/astronomy/sun`;
     const response = await axios.get(url, {
       params: {
@@ -180,8 +234,15 @@ async function getAstronomyData(locationCode, lat, lng, date) {
     });
 
     if (response.data.code !== '200') {
-      logger.warn('天文API返回错误', { code: response.data.code, location });
-      return null;
+      logger.warn('[getAstronomyData] 天文API返回错误', { 
+        code: response.data.code, 
+        location,
+        date: today,
+      });
+      // 记录失败
+      astronomyFailCount++;
+      astronomyLastFailTime = Date.now();
+      return getDefaultAstronomyData();
     }
 
     const astro = response.data.sun;
@@ -191,20 +252,67 @@ async function getAstronomyData(locationCode, lat, lng, date) {
     // 计算日照时长（小时）
     let sunHours = null;
     if (sunrise && sunset) {
-      const rise = new Date(`2026-01-01T${sunrise}`);
-      const set = new Date(`2026-01-01T${sunset}`);
-      sunHours = (set - rise) / (1000 * 60 * 60);
+      try {
+        const rise = new Date(`2026-01-01T${sunrise}`);
+        const set = new Date(`2026-01-01T${sunset}`);
+        
+        // 验证日期是否有效
+        if (isNaN(rise.getTime()) || isNaN(set.getTime())) {
+          logger.warn('[getAstronomyData] 日出日落时间格式无效', { sunrise, sunset });
+        } else {
+          sunHours = (set - rise) / (1000 * 60 * 60);
+          // 处理跨天的情况（日落时间在日出时间之前）
+          if (sunHours < 0) {
+            sunHours += 24;
+          }
+          logger.debug('[getAstronomyData] 日照时长计算', { sunrise, sunset, sunHours });
+        }
+      } catch (err) {
+        logger.error('[getAstronomyData] 计算日照时长失败', { sunrise, sunset, error: err.message });
+      }
+    } else {
+      logger.debug('[getAstronomyData] 缺少日出日落数据', { hasSunrise: !!sunrise, hasSunset: !!sunset });
     }
 
-    return {
+    const result = {
       sunrise: sunrise,
       sunset: sunset,
       sunHours: sunHours,
     };
+    
+    // 缓存成功结果
+    astronomyCache.set(cacheKey, { data: result, timestamp: Date.now() });
+    // 重置失败计数
+    astronomyFailCount = 0;
+    
+    logger.debug('[getAstronomyData] 获取天文数据成功', { cacheKey, sunrise, sunset });
+
+    return result;
   } catch (error) {
-    logger.error('获取天文数据失败', { error: error.message, locationCode });
-    return null;
+    logger.error('[getAstronomyData] 获取天文数据失败', { 
+      error: error.message, 
+      locationCode,
+      date: today,
+    });
+    // 记录失败
+    astronomyFailCount++;
+    astronomyLastFailTime = Date.now();
+    return getDefaultAstronomyData();
   }
+}
+
+/**
+ * 获取默认天文数据（降级）
+ * @returns {Object} 默认天文数据
+ */
+function getDefaultAstronomyData() {
+  // 返回合理的默认值（基于中国大部分地区）
+  return {
+    sunrise: '06:00',
+    sunset: '18:00',
+    sunHours: 12,
+    isDefault: true,
+  };
 }
 
 /**
@@ -271,7 +379,7 @@ function convertToMetrics(weatherData, astroData) {
   }
 
   // 天文数据
-  if (astroData && astroData.sunHours !== undefined) {
+  if (astroData && astroData.sunHours !== undefined && astroData.sunHours !== null) {
     metrics.sun_hours = astroData.sunHours;
   }
 
@@ -295,11 +403,28 @@ async function getWeatherForPlant(plant) {
     return null;
   }
 
+  // 检查天文数据缓存状态
+  const today = new Date().toISOString().split('T')[0];
+  const astroCacheKey = `${locationCode || lat + ',' + lng}_${today}`;
+  const astroCached = astronomyCache.get(astroCacheKey);
+  if (astroCached && Date.now() - astroCached.timestamp < ASTRONOMY_CACHE_TTL) {
+    logger.debug('[getWeatherForPlant] 使用缓存的天文数据', { plantId: plant.plant_id, cacheKey: astroCacheKey });
+  } else {
+    logger.debug('[getWeatherForPlant] 天文数据缓存未命中，将请求API', { plantId: plant.plant_id, cacheKey: astroCacheKey });
+  }
+
   // 并行获取天气和天文数据
   const [weatherData, astroData] = await Promise.all([
     getCurrentWeather(locationCode, lat, lng),
     getAstronomyData(locationCode, lat, lng),
   ]);
+
+  logger.debug('[getWeatherForPlant] 获取天气数据完成', { 
+    plantId: plant.plant_id, 
+    hasWeatherData: !!weatherData,
+    hasAstroData: !!astroData,
+    sunHours: astroData ? astroData.sunHours : null,
+  });
 
   return convertToMetrics(weatherData, astroData);
 }
@@ -333,6 +458,17 @@ function getPlantLocationKey(plant) {
   return getLocationKey(plant.location_code, plant.location_lat, plant.location_lng);
 }
 
+/**
+ * 清除所有缓存（用于测试）
+ */
+function clearCache() {
+  cityCodeCache.clear();
+  weatherDataCache.clear();
+  astronomyCache.clear();
+  astronomyFailCount = 0;
+  astronomyLastFailTime = 0;
+}
+
 module.exports = {
   getCurrentWeather,
   getAstronomyData,
@@ -342,4 +478,5 @@ module.exports = {
   getPlantLocationKey,
   geocoding,
   batchGeocoding,
+  clearCache,
 };

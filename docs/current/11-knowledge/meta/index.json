@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "lastUpdated": "2026-04-09",
+  "lastUpdated": "2026-04-11",
   "description": "知识库主索引文件",
   "knowledge": [
     {
@@ -34,6 +34,50 @@
       "path": "domain-knowledge/technical/database-schema-overview.md",
       "created": "2026-04-09",
       "updated": "2026-04-09",
+      "status": "active"
+    },
+    {
+      "id": "KNOW-2026-04-10-001",
+      "title": "会话功能耗时过长问题分析与解决方案",
+      "type": "solution",
+      "category": "project-insights/solutions",
+      "tags": ["performance", "session", "ai-service", "async", "optimization", "bottleneck"],
+      "path": "project-insights/solutions/session-performance-issue.md",
+      "created": "2026-04-10",
+      "updated": "2026-04-10",
+      "status": "active"
+    },
+    {
+      "id": "KNOW-2026-04-11-001",
+      "title": "工作区模式 - 隔离式任务管理最佳实践",
+      "type": "best-practice",
+      "category": "project-insights/best-practices",
+      "tags": ["workspace-pattern", "task-management", "risk-management", "documentation", "project-management"],
+      "path": "project-insights/best-practices/workspace-pattern.md",
+      "created": "2026-04-11",
+      "updated": "2026-04-11",
+      "status": "active"
+    },
+    {
+      "id": "KNOW-2026-04-11-002",
+      "title": "文档管理规范 - 项目文档组织最佳实践",
+      "type": "best-practice",
+      "category": "project-insights/best-practices",
+      "tags": ["documentation", "document-management", "standards", "organization", "project-management"],
+      "path": "project-insights/best-practices/documentation-management.md",
+      "created": "2026-04-11",
+      "updated": "2026-04-11",
+      "status": "active"
+    },
+    {
+      "id": "KNOW-2026-04-11-003",
+      "title": "三线并行工作流 - 开发、文档与跟踪",
+      "type": "best-practice",
+      "category": "project-insights/best-practices",
+      "tags": ["workflow", "project-management", "task-tracking", "documentation", "development-process"],
+      "path": "project-insights/best-practices/three-line-workflow.md",
+      "created": "2026-04-11",
+      "updated": "2026-04-11",
       "status": "active"
     }
   ],
@@ -119,11 +163,27 @@
     "database",
     "mysql",
     "sequelize",
-    "schema"
+    "schema",
+    "performance",
+    "session",
+    "ai-service",
+    "async",
+    "optimization",
+    "bottleneck",
+    "workspace-pattern",
+    "task-management",
+    "risk-management",
+    "project-management",
+    "document-management",
+    "standards",
+    "organization",
+    "workflow",
+    "task-tracking",
+    "development-process"
   ],
   "stats": {
-    "totalKnowledge": 3,
-    "activeKnowledge": 3,
+    "totalKnowledge": 7,
+    "activeKnowledge": 7,
     "archivedKnowledge": 0
   }
 }

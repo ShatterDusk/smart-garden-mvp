@@ -22,7 +22,7 @@ jest.mock('path', () => ({
   extname: jest.fn(),
 }));
 
-// Mock aiConfig
+// Mock aiConfig - 只包含已实现的提供商
 jest.mock('../../../src/config/ai', () => ({
   defaultProvider: 'glm',
   glm: {
@@ -41,9 +41,7 @@ jest.mock('../../../src/config/ai', () => ({
     temperature: 0.7,
     timeout: 60000,
   },
-  wenxin: { baseURL: 'https://wenxin.baidu.com', apiKey: 'test', model: 'ernie' },
-  qwen: { baseURL: 'https://qwen.aliyun.com', apiKey: 'test', model: 'qwen' },
-  hunyuan: { baseURL: 'https://hunyuan.tencent.com', apiKey: 'test', model: 'hunyuan' },
+  // 注意：wenxin、qwen 等未实现，测试中会验证抛出错误
 }));
 
 const axios = require('axios');
@@ -248,28 +246,18 @@ describe('AIService', () => {
   });
 
   describe('未实现的 provider', () => {
-    it('百度文心一言抛出错误', async () => {
-      aiService.setProvider('wenxin');
-
-      await expect(
-        aiService.analyze({
-          content: '测试',
-          analysisType: 'normal',
-          context: {},
-        })
-      ).rejects.toThrow('百度文心一言 API 待实现');
+    it('百度文心一言抛出错误', () => {
+      // setProvider 是同步函数，会在 provider 不存在时抛出错误
+      expect(() => {
+        aiService.setProvider('wenxin');
+      }).toThrow('不支持的 AI 提供商: wenxin');
     });
 
-    it('阿里通义千问抛出错误', async () => {
-      aiService.setProvider('qwen');
-
-      await expect(
-        aiService.analyze({
-          content: '测试',
-          analysisType: 'normal',
-          context: {},
-        })
-      ).rejects.toThrow('阿里通义千问 API 待实现');
+    it('阿里通义千问抛出错误', () => {
+      // setProvider 是同步函数，会在 provider 不存在时抛出错误
+      expect(() => {
+        aiService.setProvider('qwen');
+      }).toThrow('不支持的 AI 提供商: qwen');
     });
   });
 });

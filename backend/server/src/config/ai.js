@@ -1,5 +1,5 @@
 /**
- * AI 服务配置抱歉
+ * AI 服务配置
  * 支持多厂商 AI 服务
  */
 
@@ -35,33 +35,9 @@ const aiConfig = {
     timeout: parseInt(process.env.GLM_TIMEOUT) || 60000,
   },
 
-  // 百度文心一言配置
-  wenxin: {
-    apiKey: process.env.WENXIN_API_KEY,
-    secretKey: process.env.WENXIN_SECRET_KEY,
-    model: process.env.WENXIN_MODEL || 'ernie-bot-4',
-    maxTokens: parseInt(process.env.WENXIN_MAX_TOKENS) || 2000,
-    temperature: parseFloat(process.env.WENXIN_TEMPERATURE) || 0.7,
-    timeout: parseInt(process.env.WENXIN_TIMEOUT) || 30000,
-  },
-
-  // 阿里通义千问配置
-  qwen: {
-    apiKey: process.env.QWEN_API_KEY,
-    model: process.env.QWEN_MODEL || 'qwen-max',
-    maxTokens: parseInt(process.env.QWEN_MAX_TOKENS) || 2000,
-    temperature: parseFloat(process.env.QWEN_TEMPERATURE) || 0.7,
-    timeout: parseInt(process.env.QWEN_TIMEOUT) || 30000,
-  },
-
-  // 腾讯混元配置
-  hunyuan: {
-    apiKey: process.env.HUNYUAN_API_KEY,
-    model: process.env.HUNYUAN_MODEL || 'hunyuan-lite',
-    maxTokens: parseInt(process.env.HUNYUAN_MAX_TOKENS) || 2000,
-    temperature: parseFloat(process.env.HUNYUAN_TEMPERATURE) || 0.7,
-    timeout: parseInt(process.env.HUNYUAN_TIMEOUT) || 30000,
-  },
+  // TODO: 以下 AI 提供商待实现
+  // 百度文心一言、阿里通义千问、腾讯混元
+  // 实现时需要添加对应的 callXxx 方法到 aiService.js
 };
 
 module.exports = aiConfig;

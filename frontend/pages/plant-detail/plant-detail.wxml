@@ -247,13 +247,18 @@
                 <view 
                   wx:for="{{weatherMetrics}}" 
                   wx:key="metricCode"
-                  class="data-card"
-                  bindtap="viewWeatherDetail"
+                  class="data-card {{item.metricCode === 'weatherCondition' || item.metricCode === 'windDirection360' ? 'no-click' : ''}}"
+                  bindtap="{{item.metricCode === 'weatherCondition' || item.metricCode === 'windDirection360' ? '' : 'viewWeatherDetail'}}"
                   data-metric="{{item.metricCode}}"
                 >
                   <text class="card-icon">{{item.icon}}</text>
                   <text class="card-name">{{item.name}}</text>
-                  <text class="card-value">{{item.valueText || item.value}}{{item.unit}}</text>
+                  <!-- 天气状况特殊显示：只显示天气名称，不显示代码值 -->
+                  <text wx:if="{{item.metricCode === 'weatherCondition'}}" class="card-value">{{item.valueText}}</text>
+                  <!-- 风向特殊显示：只显示风向名称 -->
+                  <text wx:elif="{{item.metricCode === 'windDirection360'}}" class="card-value">{{item.valueText}}</text>
+                  <!-- 其他指标正常显示：值+单位 -->
+                  <text wx:else class="card-value">{{item.value}}{{item.unit}}</text>
                 </view>
               </view>
             </scroll-view>
@@ -264,7 +269,7 @@
                 <text class="location-icon">📍</text>
                 <text class="location-text">{{weatherData.location || plantInfo.location || '点击设置位置'}}</text>
               </view>
-              <view class="weather-update">
+              <view class="weather-update" wx:if="{{weatherData.updateTime}}">
                 <text class="update-icon">🔄</text>
                 <text class="update-text">更新于 {{weatherData.updateTime}}</text>
               </view>

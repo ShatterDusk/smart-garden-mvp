@@ -46,7 +46,7 @@ describe('会话模块 API 测试', () => {
         });
 
       expect(res.status).toBe(200);
-      expect(res.body.code).toBe(200);
+      expect(res.body.code).toBe(0);
       expect(res.body.data).toBeDefined();
       expect(res.body.data.sessionId).toBeDefined();
       expect(res.body.data.type).toBe('consultation');
@@ -65,7 +65,7 @@ describe('会话模块 API 测试', () => {
         });
 
       expect(res.status).toBe(200);
-      expect(res.body.code).toBe(200);
+      expect(res.body.code).toBe(0);
       expect(res.body.data).toBeDefined();
       expect(res.body.data.sessionId).toBeDefined();
       expect(res.body.data.type).toBe('plant');
@@ -98,7 +98,7 @@ describe('会话模块 API 测试', () => {
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(res.status).toBe(200);
-      expect(res.body.code).toBe(200);
+      expect(res.body.code).toBe(0);
       expect(res.body.data).toBeDefined();
       expect(res.body.data.list).toBeDefined();
       expect(Array.isArray(res.body.data.list)).toBe(true);
@@ -115,7 +115,7 @@ describe('会话模块 API 测试', () => {
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(res.status).toBe(200);
-      expect(res.body.code).toBe(200);
+      expect(res.body.code).toBe(0);
       expect(res.body.data.list).toBeDefined();
     });
 
@@ -126,7 +126,7 @@ describe('会话模块 API 测试', () => {
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(res.status).toBe(200);
-      expect(res.body.code).toBe(200);
+      expect(res.body.code).toBe(0);
       expect(res.body.data.list).toBeDefined();
     });
   });
@@ -153,7 +153,7 @@ describe('会话模块 API 测试', () => {
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(res.status).toBe(200);
-      expect(res.body.code).toBe(200);
+      expect(res.body.code).toBe(0);
       expect(res.body.data).toBeDefined();
       expect(res.body.data.sessionId).toBe(testSession.session_id);
       expect(res.body.data.type).toBe(testSession.type);
@@ -196,7 +196,7 @@ describe('会话模块 API 测试', () => {
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(res.status).toBe(200);
-      expect(res.body.code).toBe(200);
+      expect(res.body.code).toBe(0);
       expect(res.body.data).toBeDefined();
       expect(res.body.data.list).toBeDefined();
       expect(Array.isArray(res.body.data.list)).toBe(true);
@@ -240,7 +240,7 @@ describe('会话模块 API 测试', () => {
         });
 
       expect(res.status).toBe(200);
-      expect(res.body.code).toBe(200);
+      expect(res.body.code).toBe(0);
       expect(res.body.data).toBeDefined();
       expect(res.body.data.userMessage).toBeDefined();
       expect(res.body.data.userMessage.messageId).toBeDefined();
@@ -291,7 +291,7 @@ describe('会话模块 API 测试', () => {
         });
 
       expect(res.status).toBe(200);
-      expect(res.body.code).toBe(200);
+      expect(res.body.code).toBe(0);
       expect(res.body.data).toBeDefined();
       expect(res.body.data.sessionId).toBe(testSession.session_id);
       expect(res.body.data.title).toBe('更新后的会话标题');
@@ -336,7 +336,7 @@ describe('会话模块 API 测试', () => {
         .set('Authorization', `Bearer ${userToken}`);
 
       expect(res.status).toBe(200);
-      expect(res.body.code).toBe(200);
+      expect(res.body.code).toBe(0);
       expect(res.body.message).toBe('删除成功');
 
       const deletedSession = await Session.findByPk(sessionToDelete.session_id);
@@ -354,7 +354,7 @@ describe('会话模块 API 测试', () => {
   });
 
   describe('认证测试', () => {
-    it('无 token 访问返回 401', async () => {
+    it('无token访问返回401', async () => {
       const res = await request(app)
         .get('/api/sessions');
 
@@ -363,7 +363,7 @@ describe('会话模块 API 测试', () => {
       expect(res.body.message).toContain('Authorization');
     });
 
-    it('无效 token 返回 401', async () => {
+    it('无效token返回401', async () => {
       const res = await request(app)
         .get('/api/sessions')
         .set('Authorization', 'Bearer invalid_token');

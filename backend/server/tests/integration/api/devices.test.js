@@ -46,7 +46,7 @@ describe('设备模块 API 测试', () => {
         });
 
       expect(res.status).toBe(200);
-      expect(res.body.code).toBe(200);
+      expect(res.body.code).toBe(0);
       expect(res.body.data).toHaveProperty('deviceId');
       expect(res.body.data.macAddress).toBe('AA:BB:CC:DD:EE:FF');
       expect(res.body.data.deviceName).toBe('测试设备');
@@ -70,7 +70,7 @@ describe('设备模块 API 测试', () => {
         });
 
       expect(res.status).toBe(200);
-      expect(res.body.code).toBe(200);
+      expect(res.body.code).toBe(0);
       expect(res.body.data).toHaveProperty('deviceId');
       expect(res.body.data.boundPlantId).toBeNull();
     });
@@ -105,7 +105,7 @@ describe('设备模块 API 测试', () => {
         .set('Authorization', `Bearer ${userToken}`);
 
       expect(res.status).toBe(200);
-      expect(res.body.code).toBe(200);
+      expect(res.body.code).toBe(0);
       expect(Array.isArray(res.body.data)).toBe(true);
       expect(res.body.data.length).toBeGreaterThan(0);
 
@@ -144,7 +144,7 @@ describe('设备模块 API 测试', () => {
         .set('Authorization', `Bearer ${userToken}`);
 
       expect(res.status).toBe(200);
-      expect(res.body.code).toBe(200);
+      expect(res.body.code).toBe(0);
       expect(res.body.data.deviceId).toBe(device.device_id);
       expect(res.body.data.macAddress).toBeDefined();
     });
@@ -192,7 +192,7 @@ describe('设备模块 API 测试', () => {
         });
 
       expect(res.status).toBe(200);
-      expect(res.body.code).toBe(200);
+      expect(res.body.code).toBe(0);
       expect(res.body.message).toBe('设备解绑成功');
 
       const updatedDevice = await Device.findByPk(device.device_id);

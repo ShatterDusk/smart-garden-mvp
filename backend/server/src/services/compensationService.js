@@ -4,7 +4,7 @@
  */
 
 const { v4: uuidv4 } = require('uuid');
-const { EnvironmentReading, EnvironmentReadingValue, ReadingTask, Plant } = require('../models');
+const { EnvironmentReading, EnvironmentReadingValue, ReadingTask, Plant, EnvironmentMetric } = require('../models');
 const { Op } = require('sequelize');
 const logger = require('../utils/logger');
 const { TOLERANCE_PERIOD, TASK_STATUS, DATA_SOURCE } = require('../config/environment');
@@ -16,6 +16,74 @@ const { TOLERANCE_PERIOD, TASK_STATUS, DATA_SOURCE } = require('../config/enviro
  */
 function generateId(prefix) {
   return `${prefix}_${uuidv4().replace(/-/g, '').substring(0, 16)}`;
+}
+
+/**
+ * 验证指标是否存在
+ * @param {Array} metrics - 指标数组 [{metricCode, value}, ...]
+ * @returns {Promise<boolean>} 验证结果
+ */
+async function validateMetrics(metrics) {
+  try {
+    const metricCodes = metrics.map(metric => metric.metricCode);
+    
+    logger.debug('[validateMetrics] 验证指标', {
+      inputCodes: metricCodes,
+      count: metricCodes.length,
+    });
+    
+    const existingMetrics = await EnvironmentMetric.findAll({
+      where: {
+        metric_code: {
+          [Op.in]: metricCodes
+        }
+      },
+      attributes: ['metric_code']
+    });
+    
+    const existingCodes = new Set(existingMetrics.map(m => m.metric_code));
+    const invalidMetrics = metricCodes.filter(code => !existingCodes.has(code));
+    
+    logger.debug('[validateMetrics] 验证结果', {
+      existingCodes: Array.from(existingCodes),
+      invalidMetrics,
+      isValid: invalidMetrics.length === 0,
+    });
+    
+    if (invalidMetrics.length > 0) {
+      throw new Error(`无效的指标代码: ${invalidMetrics.join(', ')}`);
+    }
+    
+    return true;
+  } catch (error) {
+    logger.error('[validateMetrics] 指标验证失败', { 
+      error: error.message,
+      inputMetrics: metrics.map(m => m.metricCode),
+    });
+    throw error;
+  }
+}
+
+/**
+ * 验证单个指标是否存在
+ * @param {string} metricCode - 指标代码
+ * @returns {Promise<boolean>} 验证结果
+ */
+async function validateMetric(metricCode) {
+  try {
+    const metric = await EnvironmentMetric.findOne({
+      where: { metric_code: metricCode }
+    });
+    
+    if (!metric) {
+      throw new Error(`无效的指标代码: ${metricCode}`);
+    }
+    
+    return true;
+  } catch (error) {
+    logger.error('指标验证失败', { error: error.message });
+    throw error;
+  }
 }
 
 /**
@@ -36,11 +104,26 @@ async function checkAndCompensateAll() {
 
     logger.info(`发现 ${pendingTasks.length} 个待补偿任务`);
 
+    // 优化：单个任务失败不影响其他任务
+    let successCount = 0;
+    let failCount = 0;
+
     for (const task of pendingTasks) {
-      await compensateSensorReading(task);
+      try {
+        await compensateSensorReading(task);
+        successCount++;
+      } catch (error) {
+        failCount++;
+        logger.error('单个任务补偿失败，继续处理下一个', {
+          taskId: task.task_id,
+          error: error.message,
+        });
+        // 继续处理下一个任务，不中断流程
+      }
     }
 
-    return pendingTasks.length;
+    logger.info('补偿检查完成', { successCount, failCount, total: pendingTasks.length });
+    return successCount;
   } catch (error) {
     logger.error('补偿检查失败', { error: error.message });
     throw error;
@@ -114,6 +197,9 @@ async function coverCompensatedData(task, data) {
   const transaction = await EnvironmentReading.sequelize.transaction();
 
   try {
+    // 验证指标是否有效
+    await validateMetrics(data.metrics);
+
     const compensatedReading = await EnvironmentReading.findOne({
       where: {
         plant_id: task.plant_id,
@@ -138,7 +224,7 @@ async function coverCompensatedData(task, data) {
         plant_id: data.plantId,
         data_source: DATA_SOURCE.SENSOR,
         source_id: data.deviceId,
-        recorded_at: data.recorded_at,
+        recorded_at: data.recordedAt,
         is_stale: false,
       },
       { transaction }
@@ -185,13 +271,16 @@ async function createSensorReading(task, data) {
   const transaction = await EnvironmentReading.sequelize.transaction();
 
   try {
+    // 验证指标是否有效
+    await validateMetrics(data.metrics);
+
     const reading = await EnvironmentReading.create(
       {
         reading_id: generateId('READ'),
         plant_id: data.plantId,
         data_source: DATA_SOURCE.SENSOR,
         source_id: data.deviceId,
-        recorded_at: data.recorded_at,
+        recorded_at: data.recordedAt,
         is_stale: false,
       },
       { transaction }
@@ -236,10 +325,76 @@ async function createSensorReading(task, data) {
  * @param {string} locationCode - 位置编码
  * @returns {Object} 新创建的 reading
  */
+/**
+ * 检查当天是否已有日照时长数据
+ */
+async function hasSunHoursToday(plantId, date) {
+  const startOfDay = new Date(date);
+  startOfDay.setHours(0, 0, 0, 0);
+  
+  const endOfDay = new Date(date);
+  endOfDay.setHours(23, 59, 59, 999);
+  
+  const existing = await EnvironmentReading.findOne({
+    where: {
+      plant_id: plantId,
+      data_source: DATA_SOURCE.WEATHER_API,
+      recorded_at: {
+        [Op.gte]: startOfDay,
+        [Op.lte]: endOfDay,
+      },
+    },
+    include: [{
+      model: EnvironmentReadingValue,
+      as: 'values',
+      where: { metric_code: 'sun_hours' },
+      required: true,
+    }],
+  });
+  
+  return !!existing;
+}
+
 async function createWeatherReading(plantId, recordedAt, metrics, locationCode) {
   const transaction = await EnvironmentReading.sequelize.transaction();
 
   try {
+    // 分离日照时长（每天只记录一次）
+    let sunHours = null;
+    let shouldWriteSunHours = false;
+    
+    if ('sun_hours' in metrics) {
+      sunHours = metrics.sun_hours;
+      delete metrics.sun_hours; // 从常规指标中移除
+      
+      // 检查当天是否已有日照时长数据
+      const hasToday = await hasSunHoursToday(plantId, recordedAt);
+      if (!hasToday) {
+        shouldWriteSunHours = true;
+        logger.debug('[createWeatherReading] 当天首次记录日照时长', { plantId, recordedAt, sunHours });
+      } else {
+        logger.debug('[createWeatherReading] 当天已有日照时长，跳过', { plantId, recordedAt });
+      }
+    }
+    
+    // 验证指标是否有效
+    const metricsArray = Object.entries(metrics).map(([metricCode, value]) => ({
+      metricCode,
+      value
+    }));
+    
+    logger.debug('[createWeatherReading] 准备创建天气读数', {
+      plantId,
+      recordedAt,
+      locationCode,
+      metricCodes: metricsArray.map(m => m.metricCode),
+      hasSunHours: sunHours !== null,
+      shouldWriteSunHours,
+      sunHoursValue: sunHours,
+    });
+    
+    await validateMetrics(metricsArray);
+
     const reading = await EnvironmentReading.create(
       {
         reading_id: generateId('READ'),
@@ -252,6 +407,7 @@ async function createWeatherReading(plantId, recordedAt, metrics, locationCode) 
       { transaction }
     );
 
+    // 写入常规指标
     const valuePromises = Object.entries(metrics).map(([metricCode, value]) =>
       EnvironmentReadingValue.create(
         {
@@ -263,14 +419,32 @@ async function createWeatherReading(plantId, recordedAt, metrics, locationCode) 
         { transaction }
       )
     );
+    
+    // 如果需要，写入日照时长
+    if (shouldWriteSunHours && sunHours !== null) {
+      valuePromises.push(
+        EnvironmentReadingValue.create(
+          {
+            value_id: generateId('VAL'),
+            reading_id: reading.reading_id,
+            metric_code: 'sun_hours',
+            value: sunHours,
+          },
+          { transaction }
+        )
+      );
+    }
+    
     await Promise.all(valuePromises);
 
     await transaction.commit();
 
-    logger.info('创建天气数据成功', {
+    logger.info('[createWeatherReading] 创建天气数据成功', {
       readingId: reading.reading_id,
       plantId,
       recordedAt,
+      metricCount: Object.keys(metrics).length,
+      metrics: Object.keys(metrics),
     });
 
     return reading;
@@ -288,4 +462,6 @@ module.exports = {
   createSensorReading,
   createWeatherReading,
   generateId,
+  validateMetrics,
+  validateMetric,
 };

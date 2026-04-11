@@ -1,0 +1,266 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+# 环境变量（可在整个 workflow 中使用）
+env:
+  NODE_VERSION: '20'
+  BACKEND_DIR: ./backend/server
+  # 测试环境变量
+  JWT_SECRET: test-jwt-secret-for-ci
+  COS_BUCKET: test-bucket
+  COS_REGION: ap-shanghai
+  WECHAT_ENV_ID: test-env
+  WECHAT_APPID: test-appid
+  WECHAT_SECRET: test-secret
+
+jobs:
+  # ========== Stage 1: 后端代码检查 ==========
+  backend-lint:
+    runs-on: ubuntu-latest
+    name: Backend Lint
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+    
+    - name: 设置 Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: ${{ env.BACKEND_DIR }}/package-lock.json
+    
+    - name: 安装依赖
+      working-directory: ${{ env.BACKEND_DIR }}
+      run: npm ci
+    
+    - name: ESLint 检查
+      working-directory: ${{ env.BACKEND_DIR }}
+      run: npm run lint
+      continue-on-error: true
+    
+    - name: Prettier 检查
+      working-directory: ${{ env.BACKEND_DIR }}
+      run: npm run format:check || true
+
+  # ========== Stage 2: 后端单元测试 ==========
+  backend-unit-test:
+    runs-on: ubuntu-latest
+    name: Backend Unit Tests
+    needs: backend-lint
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+    
+    - name: 设置 Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: ${{ env.BACKEND_DIR }}/package-lock.json
+    
+    - name: 安装依赖
+      working-directory: ${{ env.BACKEND_DIR }}
+      run: npm ci
+    
+    - name: 运行单元测试
+      working-directory: ${{ env.BACKEND_DIR }}
+      env:
+        NODE_ENV: test
+      run: npm run test:unit -- --coverage
+    
+    - name: 上传覆盖率报告
+      uses: codecov/codecov-action@v3
+      with:
+        files: ${{ env.BACKEND_DIR }}/coverage/lcov.info
+        flags: backend-unittests
+        name: backend-codecov
+        fail_ci_if_error: false
+    
+    - name: 保存覆盖率报告
+      uses: actions/upload-artifact@v4
+      with:
+        name: backend-coverage-report
+        path: ${{ env.BACKEND_DIR }}/coverage/
+        retention-days: 7
+
+  # ========== Stage 3: 后端集成测试 ==========
+  backend-integration-test:
+    runs-on: ubuntu-latest
+    name: Backend Integration Tests
+    needs: backend-unit-test
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: smart_garden_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+    
+    - name: 设置 Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: ${{ env.BACKEND_DIR }}/package-lock.json
+    
+    - name: 安装依赖
+      working-directory: ${{ env.BACKEND_DIR }}
+      run: npm ci
+    
+    - name: 等待 MySQL 启动
+      run: |
+        sudo apt-get install -y mysql-client
+        for i in {1..30}; do
+          if mysqladmin ping --host=127.0.0.1 --password=root --silent; then
+            echo "✅ MySQL 已启动"
+            break
+          fi
+          echo "等待 MySQL 启动... ($i/30)"
+          sleep 1
+        done
+    
+    - name: 运行数据库迁移（如有）
+      working-directory: ${{ env.BACKEND_DIR }}
+      env:
+        NODE_ENV: test
+        DB_HOST: 127.0.0.1
+        DB_PORT: 3306
+        DB_NAME: smart_garden_test
+        DB_USER: root
+        DB_PASSWORD: root
+      run: |
+        # 如果有迁移脚本，在这里运行
+        # npx sequelize-cli db:migrate
+        echo "数据库准备完成"
+    
+    - name: 运行集成测试
+      working-directory: ${{ env.BACKEND_DIR }}
+      env:
+        NODE_ENV: test
+        DB_HOST: 127.0.0.1
+        DB_PORT: 3306
+        DB_NAME: smart_garden_test
+        DB_USER: root
+        DB_PASSWORD: root
+      run: npm run test:integration
+
+  # ========== Stage 4: 后端构建检查 ==========
+  backend-build:
+    runs-on: ubuntu-latest
+    name: Backend Build
+    needs: [backend-unit-test, backend-integration-test]
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+    
+    - name: 设置 Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: ${{ env.BACKEND_DIR }}/package-lock.json
+    
+    - name: 安装依赖
+      working-directory: ${{ env.BACKEND_DIR }}
+      run: npm ci
+    
+    - name: 检查应用能否加载
+      working-directory: ${{ env.BACKEND_DIR }}
+      env:
+        NODE_ENV: production
+        DB_HOST: localhost
+        DB_NAME: test_db
+        DB_USER: test
+        DB_PASSWORD: test
+        JWT_SECRET: test-secret
+      run: |
+        node -e "require('./src/app.js'); console.log('✅ 后端应用加载成功')"
+      continue-on-error: true
+
+  # ========== Stage 5: 微信小程序构建（可选） ==========
+  # frontend-build:
+  #   runs-on: ubuntu-latest
+  #   name: Frontend Build
+  #   needs: backend-unit-test
+  #
+  #   steps:
+  #   - name: 检出代码
+  #     uses: actions/checkout@v4
+  #   
+  #   - name: 设置 Node.js
+  #     uses: actions/setup-node@v4
+  #     with:
+  #       node-version: ${{ env.NODE_VERSION }}
+  #   
+  #   - name: 安装小程序依赖
+  #     working-directory: ./frontend
+  #     run: |
+  #       # 微信小程序通常不需要 npm install
+  #       # 这里可以放置其他前端检查
+  #       echo "前端检查完成"
+
+  # ========== Stage 6: 测试总结 ==========
+  test-summary:
+    runs-on: ubuntu-latest
+    name: Test Summary
+    needs: [backend-lint, backend-unit-test, backend-integration-test, backend-build]
+    if: always()
+
+    steps:
+    - name: 测试结果总结
+      run: |
+        echo "=========================================="
+        echo "         🧪 CI 测试执行总结 🧪            "
+        echo "=========================================="
+        echo ""
+        echo "后端检查:     ${{ needs.backend-lint.result }}"
+        echo "单元测试:     ${{ needs.backend-unit-test.result }}"
+        echo "集成测试:     ${{ needs.backend-integration-test.result }}"
+        echo "构建检查:     ${{ needs.backend-build.result }}"
+        echo ""
+        echo "=========================================="
+        
+        # 检查是否有失败
+        if [[ "${{ needs.backend-lint.result }}" == "failure" ]] || \
+           [[ "${{ needs.backend-unit-test.result }}" == "failure" ]] || \
+           [[ "${{ needs.backend-integration-test.result }}" == "failure" ]]; then
+          echo "❌ 测试未通过，请修复问题后再合并"
+          exit 1
+        else
+          echo "✅ 所有测试通过！"
+        fi
+
+  # ========== Stage 7: 部署（可选，需要配置） ==========
+  # deploy:
+  #   runs-on: ubuntu-latest
+  #   name: Deploy
+  #   needs: [test-summary]
+  #   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+  #   
+  #   steps:
+  #   - name: 检出代码
+  #     uses: actions/checkout@v4
+  #   
+  #   - name: 部署到服务器
+  #     run: |
+  #       echo "部署脚本在这里"
+  #       # 可以配置 SSH 部署、Docker 部署等

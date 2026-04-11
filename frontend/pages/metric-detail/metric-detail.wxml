@@ -32,6 +32,10 @@
       <text class="chart-title">趋势图</text>
       <text class="chart-subtitle">{{chartSubtitle}}</text>
     </view>
+    <!-- 指标说明提示 -->
+    <view wx:if="{{metricInfo && metricInfo.code === 'precip'}}" class="metric-hint">
+      <text class="hint-text">💡 过去1小时降水量（毫米）</text>
+    </view>
     <view class="chart-container">
       <canvas 
         type="2d" 
@@ -92,7 +96,7 @@
     <view class="history-list">
       <view 
         wx:for="{{historyData}}" 
-        wx:key="timestamp"
+        wx:key="time"
         class="history-item {{item.status}}"
       >
         <text class="history-time">{{item.displayTime}}</text>

@@ -14,6 +14,10 @@ const weatherService = require('../services/weatherService');
 let syncIntervalId = null;
 let compensateIntervalId = null;
 
+// 并发控制标志
+let isSyncRunning = false;
+let isCompensationRunning = false;
+
 /**
  * 生成唯一ID
  */
@@ -250,8 +254,16 @@ async function fetchWeatherForAllPlants() {
 
 /**
  * 执行完整的同步流程
+ * 添加了并发控制，防止任务重叠执行
  */
 async function runSync() {
+  // 并发控制检查
+  if (isSyncRunning) {
+    logger.warn('上一次同步任务尚未完成，跳过本次执行');
+    return;
+  }
+
+  isSyncRunning = true;
   logger.info('========== 环境数据同步开始 ==========');
 
   try {
@@ -261,13 +273,23 @@ async function runSync() {
     logger.info('========== 环境数据同步完成 ==========');
   } catch (error) {
     logger.error('环境数据同步失败', { error: error.message });
+  } finally {
+    isSyncRunning = false;
   }
 }
 
 /**
  * 执行补偿检查
+ * 添加了并发控制，防止任务重叠执行
  */
 async function runCompensation() {
+  // 并发控制检查
+  if (isCompensationRunning) {
+    logger.warn('上一次补偿检查尚未完成，跳过本次执行');
+    return;
+  }
+
+  isCompensationRunning = true;
   logger.info('========== 补偿检查开始 ==========');
 
   try {
@@ -275,6 +297,8 @@ async function runCompensation() {
     logger.info(`========== 补偿检查完成，处理 ${count} 个任务 ==========`);
   } catch (error) {
     logger.error('补偿检查失败', { error: error.message });
+  } finally {
+    isCompensationRunning = false;
   }
 }
 

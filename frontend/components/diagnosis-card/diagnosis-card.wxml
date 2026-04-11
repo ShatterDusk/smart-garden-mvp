@@ -36,7 +36,7 @@
 
   <!-- 问题列表 -->
   <view wx:if="{{expanded && issues && issues.length > 0 && showIssues}}" class="issues-list">
-    <view wx:for="{{issues}}" wx:key="index" class="issue-item {{item.severity}}">
+    <view wx:for="{{issues}}" wx:key="name" class="issue-item {{item.severity}}">
       <text class="issue-icon">!</text>
       <view class="issue-content">
         <text class="issue-name">{{item.name}}</text>
@@ -48,7 +48,7 @@
   <!-- 建议列表 -->
   <view wx:if="{{expanded && suggestions && suggestions.length > 0 && showSuggestions}}" class="suggestions-list">
     <text class="suggestions-title">养护建议</text>
-    <view wx:for="{{suggestions}}" wx:key="index" class="suggestion-item">
+    <view wx:for="{{suggestions}}" wx:key="action" class="suggestion-item">
       <text class="suggestion-action">{{item.action}}</text>
       <text wx:if="{{item.details}}" class="suggestion-details">{{item.details}}</text>
     </view>

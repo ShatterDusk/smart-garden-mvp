@@ -123,6 +123,75 @@ MVP/
 - 新增 API 时，检查是否需要添加认证中间件
 - **文档引用优先使用 `docs/current/` 目录**
 
+### 日志查询规范（优先使用数据库 MCP）
+
+**何时查询日志**：
+- 用户报告问题时，直接查询数据库获取相关日志进行分析
+- 调试后端/前端问题时，查看最近的日志内容
+- 排查错误时，搜索特定关键词的日志
+- 系统异常时，检查前后端日志记录
+
+**日志存储**：当前生产环境使用 **数据库模式**（`LOG_STORAGE_MODE: database`）
+
+**日志表结构**：
+
+| 表名 | 说明 | 关键字段 |
+|:---|:---|:---|
+| `system_logs` | 后端系统日志 | `level`, `message`, `source`, `request_id`, `created_at`, `error_stack` |
+| `client_logs` | 前端客户端日志 | `user_id`, `session_id`, `level`, `message`, `page_path`, `action`, `created_at` |
+
+**查询方式**：使用 `mcp_MySQL_execute_sql` 直接查询数据库（**优先推荐**）
+
+**查询示例**：
+
+```sql
+-- 查询最近 100 条后端错误日志
+SELECT id, level, message, source, request_id, created_at, error_stack
+FROM system_logs
+WHERE level IN ('error', 'fatal')
+ORDER BY created_at DESC
+LIMIT 100;
+
+-- 查询最近 100 条前端错误日志
+SELECT id, user_id, session_id, level, message, page_path, action, created_at
+FROM client_logs
+WHERE level IN ('error', 'fatal')
+ORDER BY created_at DESC
+LIMIT 100;
+
+-- 按关键词搜索后端日志
+SELECT id, level, message, source, created_at
+FROM system_logs
+WHERE message LIKE '%关键词%'
+ORDER BY created_at DESC
+LIMIT 50;
+
+-- 查询特定用户的客户端日志
+SELECT id, level, message, page_path, action, created_at
+FROM client_logs
+WHERE user_id = '用户ID'
+ORDER BY created_at DESC
+LIMIT 100;
+
+-- 按时间范围查询（最近 1 小时）
+SELECT id, level, message, source, created_at
+FROM system_logs
+WHERE created_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
+ORDER BY created_at DESC
+LIMIT 100;
+
+-- 按 request_id 查询关联日志（追踪请求链路）
+SELECT id, level, message, source, request_id, created_at
+FROM system_logs
+WHERE request_id = '请求ID'
+ORDER BY created_at ASC;
+```
+
+**注意**：
+- 日志级别枚举：`debug`, `info`, `warn`, `error`, `fatal`
+- 数据库使用 `created_at` 字段（自动 timestamps），无需手动指定
+- `system_logs.metadata` 和 `client_logs.metadata` / `device_info` 为 JSON 字段，存储额外信息
+
 ---
 
 ## 六、输出偏好

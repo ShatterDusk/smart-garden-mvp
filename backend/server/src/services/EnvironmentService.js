@@ -5,6 +5,7 @@ const { Op } = require('sequelize');
 const logger = require('../utils/logger');
 const { TASK_STATUS, DATA_SOURCE } = require('../config/environment');
 const compensationService = require('./compensationService');
+const namingConverter = require('../utils/namingConverter');
 
 class EnvironmentService extends BaseService {
   constructor() {
@@ -110,12 +111,14 @@ class EnvironmentService extends BaseService {
       nearestIntervalTime.setMinutes(0, 0, 0);
       nearestIntervalTime.setHours(Math.floor(nearestIntervalTime.getHours() / 2) * 2);
 
-      const plant = await Plant.findOne({
-        where: { plant_id: plantId },
-        attributes: ['plant_id', 'location_name', 'location_code'],
+      logger.debug('[EnvironmentService.getCurrentData] 开始查询', {
+        plantId,
+        targetTime: targetTime.toISOString(),
+        nearestIntervalTime: nearestIntervalTime.toISOString(),
       });
 
-      const [sensorReading, weatherReading, task] = await Promise.all([
+      // 查询特定时间点的数据
+      let [sensorReading, weatherReading, task] = await Promise.all([
         EnvironmentReading.findOne({
           where: {
             plant_id: plantId,
@@ -137,10 +140,64 @@ class EnvironmentService extends BaseService {
         }),
       ]);
 
+      logger.debug('[EnvironmentService.getCurrentData] 初始查询结果', {
+        hasSensorReading: !!sensorReading,
+        hasWeatherReading: !!weatherReading,
+        hasTask: !!task,
+        sensorValuesCount: sensorReading ? (sensorReading.values || []).length : 0,
+        weatherValuesCount: weatherReading ? (weatherReading.values || []).length : 0,
+      });
+
+      // 如果没有找到当前时间点的天气数据，查询最近的历史数据
+      if (!weatherReading) {
+        logger.debug('[EnvironmentService.getCurrentData] 未找到当前时间点天气数据，查询历史数据');
+        weatherReading = await EnvironmentReading.findOne({
+          where: {
+            plant_id: plantId,
+            data_source: DATA_SOURCE.WEATHER_API,
+            recorded_at: {
+              [Op.lte]: nearestIntervalTime,
+            },
+          },
+          include: [{ model: EnvironmentReadingValue, as: 'values' }],
+          order: [['recorded_at', 'DESC']],
+        });
+        if (weatherReading) {
+          logger.debug('[EnvironmentService.getCurrentData] 找到历史天气数据', {
+            recordedAt: weatherReading.recorded_at,
+            valuesCount: (weatherReading.values || []).length,
+          });
+        }
+      }
+
+      // 如果没有找到当前时间点的设备数据，查询最近的历史数据
+      if (!sensorReading) {
+        logger.debug('[EnvironmentService.getCurrentData] 未找到当前时间点设备数据，查询历史数据');
+        sensorReading = await EnvironmentReading.findOne({
+          where: {
+            plant_id: plantId,
+            data_source: DATA_SOURCE.SENSOR,
+            recorded_at: {
+              [Op.lte]: nearestIntervalTime,
+            },
+          },
+          include: [{ model: EnvironmentReadingValue, as: 'values' }],
+          order: [['recorded_at', 'DESC']],
+        });
+        if (sensorReading) {
+          logger.debug('[EnvironmentService.getCurrentData] 找到历史设备数据', {
+            recordedAt: sensorReading.recorded_at,
+            valuesCount: (sensorReading.values || []).length,
+          });
+        }
+      }
+
       const allMetrics = await EnvironmentMetric.findAll({
         attributes: ['metric_code', 'name', 'unit', 'icon', 'min_value', 'max_value'],
       });
       const metricMap = new Map(allMetrics.map(m => [m.metric_code, m]));
+
+// ... 省略其他代码 ...
 
       const buildMetricsData = (reading) => {
         if (!reading || !reading.values) return [];
@@ -156,7 +213,7 @@ class EnvironmentService extends BaseService {
             }
           }
           return {
-            metricCode: v.metric_code,
+            metricCode: namingConverter.snakeToCamel(v.metric_code),
             name: metricDef.name || v.metric_code,
             value,
             unit: metricDef.unit || '',
@@ -169,14 +226,23 @@ class EnvironmentService extends BaseService {
         });
       };
 
-      const updateTime = weatherReading ? weatherReading.created_at : null;
+      const updateTime = weatherReading ? weatherReading.recorded_at : null;
+
+      const deviceMetrics = buildMetricsData(sensorReading);
+      const weatherMetrics = buildMetricsData(weatherReading);
+
+      logger.debug('[EnvironmentService.getCurrentData] 构建结果', {
+        deviceMetricsCount: deviceMetrics.length,
+        weatherMetricsCount: weatherMetrics.length,
+        updateTime: updateTime ? new Date(updateTime).toISOString() : null,
+      });
 
       return {
         plantId,
         recordedAt: nearestIntervalTime.toISOString(),
-        location: plant ? plant.location_name : null,
-        deviceMetrics: buildMetricsData(sensorReading),
-        weatherMetrics: buildMetricsData(weatherReading),
+        location: null,
+        deviceMetrics,
+        weatherMetrics,
         updateTime: updateTime ? new Date(updateTime).toISOString() : null,
         taskStatus: task
           ? {
@@ -186,14 +252,46 @@ class EnvironmentService extends BaseService {
           : null,
       };
     } catch (err) {
-      logger.error('EnvironmentService.getCurrentData error:', err);
+      logger.error('[EnvironmentService.getCurrentData] 查询失败', {
+        plantId,
+        error: err.message,
+        stack: err.stack,
+      });
       throw err;
     }
   }
 
   async getHistoryData(plantId, query = {}) {
     try {
-      const { metricCode, timeRange = '7d', dataSource } = query;
+      let { metricCode, timeRange = '7d', dataSource } = query;
+
+      // 将 camelCase 转换为 snake_case
+      // 前端传递的是 camelCase (如 weatherCondition)，数据库中是 snake_case (如 weather_condition)
+      const metricCodeSnake = namingConverter.camelToSnake(metricCode);
+      
+      logger.debug('[EnvironmentService.getHistoryData] 指标代码转换', {
+        original: metricCode,
+        converted: metricCodeSnake,
+      });
+
+      // 验证指标是否存在
+      const metric = await EnvironmentMetric.findOne({
+        where: { metric_code: metricCodeSnake },
+        attributes: ['metric_code', 'name', 'unit', 'icon'],
+      });
+      
+      if (!metric) {
+        logger.warn(`[EnvironmentService.getHistoryData] 无效的指标代码: ${metricCode} (转换后: ${metricCodeSnake})`);
+        // 返回空数据而非抛出错误，避免影响用户体验
+        return {
+          list: [],
+          metricCode: metricCode,
+          metricName: metricCode,
+          unit: '',
+          timeRange,
+          message: `不支持的指标类型: ${metricCode}`,
+        };
+      }
 
       const now = new Date();
       let startDate;
@@ -231,7 +329,9 @@ class EnvironmentService extends BaseService {
       if (readings.length === 0) {
         return {
           list: [],
-          metricCode,
+          metricCode: namingConverter.snakeToCamel(metricCodeSnake),
+          metricName: metric.name,
+          unit: metric.unit,
           timeRange,
         };
       }
@@ -241,17 +341,12 @@ class EnvironmentService extends BaseService {
       const values = await EnvironmentReadingValue.findAll({
         where: {
           reading_id: readingIds,
-          metric_code: metricCode,
+          metric_code: metricCodeSnake, // 使用 snake_case 查询
         },
         attributes: ['reading_id', 'value'],
       });
 
       const valueMap = new Map(values.map(v => [v.reading_id, parseFloat(v.value)]));
-
-      const metric = await EnvironmentMetric.findOne({
-        where: { metric_code: metricCode },
-        attributes: ['metric_code', 'name', 'unit', 'icon'],
-      });
 
       const dataPoints = readings
         .filter(r => valueMap.has(r.reading_id))
@@ -263,9 +358,9 @@ class EnvironmentService extends BaseService {
 
       return {
         list: dataPoints,
-        metricCode,
-        metricName: metric ? metric.name : metricCode,
-        unit: metric ? metric.unit : '',
+        metricCode: namingConverter.snakeToCamel(metricCode),
+        metricName: metric.name,
+        unit: metric.unit,
         timeRange,
       };
     } catch (err) {

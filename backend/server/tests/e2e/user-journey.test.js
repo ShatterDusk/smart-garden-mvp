@@ -40,7 +40,7 @@ describe('用户完整旅程 E2E 测试', () => {
         .post('/api/users/guest-login')
         .expect(200);
 
-      expect(res.body.code).toBe(200);
+      expect(res.body.code).toBe(0);
       expect(res.body.message).toBe('游客登录成功');
       expect(res.body.data).toBeDefined();
       expect(res.body.data.token).toBeDefined();
@@ -63,7 +63,7 @@ describe('用户完整旅程 E2E 测试', () => {
         })
         .expect(200);
 
-      expect(res.body.code).toBe(200);
+      expect(res.body.code).toBe(0);
       expect(res.body.data).toBeDefined();
       expect(res.body.data.plantId).toBeDefined();
       expect(res.body.data.nickname).toBe('我的第一盆植物');
@@ -84,7 +84,7 @@ describe('用户完整旅程 E2E 测试', () => {
         })
         .expect(200);
 
-      expect(res.body.code).toBe(200);
+      expect(res.body.code).toBe(0);
       expect(res.body.data).toBeDefined();
       expect(res.body.data.sessionId).toBeDefined();
       expect(res.body.data.type).toBe('plant');
@@ -104,7 +104,7 @@ describe('用户完整旅程 E2E 测试', () => {
         })
         .expect(200);
 
-      expect(res.body.code).toBe(200);
+      expect(res.body.code).toBe(0);
       expect(res.body.data).toBeDefined();
       expect(res.body.data.userMessage).toBeDefined();
       expect(res.body.data.userMessage.messageId).toBeDefined();
@@ -114,15 +114,15 @@ describe('用户完整旅程 E2E 测试', () => {
       expect(res.body.data.userMessage.status).toBe('normal');
 
       messageIds.push(res.body.data.userMessage.messageId);
-    }, 60000); // AI接口调用增加到60秒
+    }, 60000); // AI接口调用增加60秒超时
 
-    it('步骤5：验证消息历史保留', async () => {
+    it('步骤5：验证消息历史保存', async () => {
       const res = await request(app)
         .get(`/api/sessions/${sessionId}/messages`)
         .set('Authorization', `Bearer ${authToken}`)
         .expect(200);
 
-      expect(res.body.code).toBe(200);
+      expect(res.body.code).toBe(0);
       expect(res.body.data).toBeDefined();
       expect(res.body.data.list).toBeDefined();
       expect(Array.isArray(res.body.data.list)).toBe(true);
@@ -139,7 +139,7 @@ describe('用户完整旅程 E2E 测试', () => {
         .set('Authorization', `Bearer ${authToken}`)
         .expect(200);
 
-      expect(res.body.code).toBe(200);
+      expect(res.body.code).toBe(0);
       expect(res.body.data.list).toBeDefined();
       expect(res.body.data.list.length).toBeGreaterThanOrEqual(1);
 
@@ -154,7 +154,7 @@ describe('用户完整旅程 E2E 测试', () => {
         .set('Authorization', `Bearer ${authToken}`)
         .expect(200);
 
-      expect(res.body.code).toBe(200);
+      expect(res.body.code).toBe(0);
       expect(res.body.data.list).toBeDefined();
       expect(res.body.data.list.length).toBeGreaterThanOrEqual(1);
 
@@ -266,7 +266,7 @@ describe('用户完整旅程 E2E 测试', () => {
         .set('Authorization', `Bearer ${user2Token}`)
         .expect(200);
 
-      expect(res.body.code).toBe(200);
+      expect(res.body.code).toBe(0);
       const plantIds = res.body.data.list.map(p => p.plantId);
       expect(plantIds).not.toContain(user1PlantId);
     });
@@ -277,7 +277,7 @@ describe('用户完整旅程 E2E 测试', () => {
         .set('Authorization', `Bearer ${user2Token}`)
         .expect(200);
 
-      expect(res.body.code).toBe(200);
+      expect(res.body.code).toBe(0);
       const sessionIds = res.body.data.list.map(s => s.sessionId);
       expect(sessionIds).not.toContain(user1SessionId);
     });

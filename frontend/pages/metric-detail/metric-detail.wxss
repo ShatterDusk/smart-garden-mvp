@@ -109,6 +109,21 @@
   margin-bottom: 20rpx;
 }
 
+/* 指标说明提示 */
+.metric-hint {
+  background: #e3f2fd;
+  border-left: 4rpx solid #2196F3;
+  padding: 16rpx 20rpx;
+  margin-bottom: 20rpx;
+  border-radius: 8rpx;
+}
+
+.hint-text {
+  font-size: 26rpx;
+  color: #1976D2;
+  line-height: 1.5;
+}
+
 .chart-title {
   font-size: 32rpx;
   font-weight: 600;

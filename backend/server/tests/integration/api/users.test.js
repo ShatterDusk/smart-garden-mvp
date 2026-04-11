@@ -23,7 +23,7 @@ describe('用户模块 API 测试', () => {
         .post('/api/users/guest-login')
         .expect(200);
 
-      expect(response.body).toHaveProperty('code', 200);
+      expect(response.body).toHaveProperty('code', 0);
       expect(response.body).toHaveProperty('message', '游客登录成功');
       expect(response.body).toHaveProperty('data');
       expect(response.body.data).toHaveProperty('token');
@@ -45,7 +45,7 @@ describe('用户模块 API 测试', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
-      expect(profileResponse.body).toHaveProperty('code', 200);
+      expect(profileResponse.body).toHaveProperty('code', 0);
       expect(profileResponse.body.data).toHaveProperty('userId');
     });
   });
@@ -70,7 +70,7 @@ describe('用户模块 API 测试', () => {
         .set('Authorization', `Bearer ${testToken}`)
         .expect(200);
 
-      expect(response.body).toHaveProperty('code', 200);
+      expect(response.body).toHaveProperty('code', 0);
       expect(response.body).toHaveProperty('data');
       expect(response.body.data).toHaveProperty('userId');
       expect(response.body.data).toHaveProperty('nickname');
@@ -119,7 +119,7 @@ describe('用户模块 API 测试', () => {
         .send(updateData)
         .expect(200);
 
-      expect(response.body).toHaveProperty('code', 200);
+      expect(response.body).toHaveProperty('code', 0);
       expect(response.body).toHaveProperty('message', '更新成功');
       expect(response.body).toHaveProperty('data');
       expect(response.body.data).toHaveProperty('userId');
@@ -160,7 +160,7 @@ describe('用户模块 API 测试', () => {
         .set('Authorization', `Bearer ${userToken}`)
         .expect(200);
 
-      expect(response.body).toHaveProperty('code', 200);
+      expect(response.body).toHaveProperty('code', 0);
       expect(response.body).toHaveProperty('data');
       expect(response.body.data).toHaveProperty('notification');
       expect(response.body.data.notification).toHaveProperty('diagnosisReminder');
@@ -212,7 +212,7 @@ describe('用户模块 API 测试', () => {
         .send(configData)
         .expect(200);
 
-      expect(response.body).toHaveProperty('code', 200);
+      expect(response.body).toHaveProperty('code', 0);
       expect(response.body).toHaveProperty('data');
       expect(response.body.data).toHaveProperty('configKey', 'test_config');
       expect(response.body.data).toHaveProperty('configValue');
@@ -274,7 +274,7 @@ describe('用户模块 API 测试', () => {
         .set('Authorization', `Bearer ${userToken}`)
         .expect(200);
 
-      expect(response.body).toHaveProperty('code', 200);
+      expect(response.body).toHaveProperty('code', 0);
       expect(response.body).toHaveProperty('data');
       expect(response.body.data).toHaveProperty('configKey', 'existing_config');
       expect(response.body.data).toHaveProperty('configValue');
@@ -286,7 +286,7 @@ describe('用户模块 API 测试', () => {
         .set('Authorization', `Bearer ${userToken}`)
         .expect(200);
 
-      expect(response.body).toHaveProperty('code', 200);
+      expect(response.body).toHaveProperty('code', 0);
       expect(response.body).toHaveProperty('data');
       expect(response.body.data).toHaveProperty('configKey', 'non_existent_config');
       expect(response.body.data).toHaveProperty('configValue', null);

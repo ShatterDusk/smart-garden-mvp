@@ -1,31 +1,31 @@
 // index.js - 首页
-// 引入 API 服务
 const api = require('../../utils/api.js');
 
 Page({
   data: {
-    welcomeMessage: '',
+    // 用户信息
+    greeting: '早上好',
+    userNickname: '小园丁',
+    notificationCount: 0,
+    
+    // 植物数据
     plantCount: 0,
-    healthyCount: 0,
-    warningCount: 0,
-    pendingTasks: 0,
     myPlants: [],
+    
+    // 养护小贴士
     dailyTip: {
-      icon: '💡',
-      title: '今日养护小贴士',
-      content: ''
+      icon: '💧',
+      title: '浇水提示',
+      content: '夏季多肉植物需减少浇水频率，避免积水烂根。建议每周检查土壤湿度，干透后再浇水。'
     },
-    deviceStatus: {
-      online: 0,
-      offline: 0,
-      unbound: 0
-    },
-    loading: true,
-    notificationCount: 0
+    
+    // 加载状态
+    loading: true
   },
 
   onLoad() {
     this.initApp();
+    this.setGreeting();
   },
 
   onShow() {
@@ -40,17 +40,27 @@ Page({
     });
   },
 
-  refreshDashboard() {
-    this.loadHomeData();
+  onReady() {
+    // 页面渲染完成后绘制健康环
+    this.drawHealthRings();
   },
 
-  initApp() {
-    const that = this;
-    const token = api.getToken();
+  // 设置问候语
+  setGreeting() {
+    const hour = new Date().getHours();
+    let greeting = '早上好';
+    if (hour >= 12 && hour < 18) {
+      greeting = '下午好';
+    } else if (hour >= 18) {
+      greeting = '晚上好';
+    }
+    this.setData({ greeting });
+  },
 
+  // 初始化应用
+  initApp() {
+    const token = api.getToken();
     if (!token) {
-      this.setData({ loading: true });
-      // 没有token时跳转到登录页
       wx.redirectTo({
         url: '/pages/login/login'
       });
@@ -59,75 +69,72 @@ Page({
     }
   },
 
+  // 加载首页数据
   loadHomeData() {
-    const that = this;
     this.setData({ loading: true });
     
     return Promise.all([
       api.getUserProfile(),
       api.getPlantList(),
       api.getDeviceList()
-    ]).then(function(results) {
+    ]).then((results) => {
       const user = results[0];
       const plants = results[1] || [];
       const devices = results[2] || [];
       
-      const plantCount = plants.length;
-      const healthyCount = plants.filter(function(p) { 
-        return p.latestDiagnosis && p.latestDiagnosis.status === 'healthy'; 
-      }).length;
-      const warningCount = plants.filter(function(p) { 
-        return p.latestDiagnosis && (p.latestDiagnosis.status === 'warning' || p.latestDiagnosis.status === 'critical'); 
-      }).length;
+      // 创建设备映射
+      const deviceMap = new Map();
+      devices.forEach(device => {
+        deviceMap.set(device.deviceId, device);
+      });
       
-      const deviceStatus = {
-        online: devices.filter(function(d) { return d.status === 'online'; }).length,
-        offline: devices.filter(function(d) { return d.status === 'offline'; }).length,
-        unbound: devices.filter(function(d) { return d.status === 'unbound'; }).length
-      };
-      
+      // 处理植物数据
       const emojiMap = {
         succulent: '🌵',
         flower: '🌹',
         foliage: '🌿',
-        vegetable: '🥬'
+        vegetable: '🥬',
+        other: '🌱'
       };
       
-      const myPlants = plants.map(function(plant) {
+      const myPlants = plants.map((plant) => {
+        const device = plant.currentDeviceId ? deviceMap.get(plant.currentDeviceId) : null;
+        const healthScore = plant.latestDiagnosis ? plant.latestDiagnosis.healthScore : 80;
+        const status = plant.latestDiagnosis ? plant.latestDiagnosis.status : 'healthy';
+        
         return {
           id: plant.plantId,
           name: plant.nickname,
           type: emojiMap[plant.plantCategory] || '🌱',
-          status: plant.latestDiagnosis ? plant.latestDiagnosis.status : 'healthy',
-          score: plant.latestDiagnosis ? plant.latestDiagnosis.healthScore : 80,
+          status: status,
+          score: healthScore,
           hasDevice: !!plant.currentDeviceId,
+          deviceStatus: device ? device.status : 'unbound',
           image: plant.coverImageUrl
         };
       });
       
-      const tips = [
-        { icon: '💧', title: '浇水提示', content: '夏季多肉植物需减少浇水频率，避免积水烂根' },
-        { icon: '☀️', title: '光照提示', content: '保证每天4-6小时的散射光照射，避免强光直射' },
-        { icon: '🌡️', title: '温度提示', content: '保持环境温度在15-28°C之间，避免温差过大' },
-        { icon: '🌱', title: '施肥提示', content: '生长期每月施肥一次，休眠期停止施肥' }
-      ];
-      const dailyTip = tips[Math.floor(Math.random() * tips.length)];
+      // 计算需要关注的植物数（作为通知数）
+      const warningCount = plants.filter(p => {
+        return p.latestDiagnosis && (p.latestDiagnosis.status === 'warning' || p.latestDiagnosis.status === 'critical');
+      }).length;
       
-      that.setData({
-        welcomeMessage: '早上好' + (user.nickname || '用户') + '！',
-        plantCount: plantCount,
-        healthyCount: healthyCount,
-        warningCount: warningCount,
-        pendingTasks: warningCount,
+      this.setData({
+        userNickname: user.nickname || '小园丁',
+        plantCount: plants.length,
         myPlants: myPlants,
-        dailyTip: dailyTip,
-        deviceStatus: deviceStatus,
         notificationCount: warningCount,
         loading: false
       });
-    }).catch(function(err) {
+      
+      // 绘制健康环
+      setTimeout(() => {
+        this.drawHealthRings();
+      }, 100);
+      
+    }).catch((err) => {
       console.error('加载首页数据失败:', err);
-      that.setData({ loading: false });
+      this.setData({ loading: false });
       wx.showToast({
         title: '加载数据失败',
         icon: 'none'
@@ -135,6 +142,79 @@ Page({
     });
   },
 
+  // 绘制健康评分环
+  drawHealthRings() {
+    const plants = this.data.myPlants;
+    if (!plants || plants.length === 0) return;
+    
+    plants.forEach((plant, index) => {
+      const canvasId = `healthRing${index}`;
+      const query = wx.createSelectorQuery();
+      query.select(`#${canvasId}`).fields({ node: true, size: true }).exec((res) => {
+        if (!res[0]) return;
+        
+        const canvas = res[0].node;
+        const ctx = canvas.getContext('2d');
+        const dpr = wx.getSystemInfoSync().pixelRatio;
+        
+        canvas.width = 80 * dpr;
+        canvas.height = 80 * dpr;
+        ctx.scale(dpr, dpr);
+        
+        const centerX = 40;
+        const centerY = 40;
+        const radius = 32;
+        const lineWidth = 6;
+        
+        // 清空画布
+        ctx.clearRect(0, 0, 80, 80);
+        
+        // 绘制背景圆环
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+        ctx.strokeStyle = '#e8f5e9';
+        ctx.lineWidth = lineWidth;
+        ctx.stroke();
+        
+        // 计算进度
+        const score = plant.score || 80;
+        const percentage = score / 100;
+        const startAngle = -Math.PI / 2;
+        const endAngle = startAngle + (2 * Math.PI * percentage);
+        
+        // 确定颜色
+        let strokeColor = '#4CAF50';
+        if (plant.status === 'warning' || plant.status === 'critical') {
+          strokeColor = '#FF9800';
+        }
+        
+        // 绘制进度圆环
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = lineWidth;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+      });
+    });
+  },
+
+  // 刷新养护小贴士
+  refreshTip() {
+    const tips = [
+      { icon: '💧', title: '浇水提示', content: '夏季多肉植物需减少浇水频率，避免积水烂根。建议每周检查土壤湿度，干透后再浇水。' },
+      { icon: '☀️', title: '光照提示', content: '保证每天4-6小时的散射光照射，避免强光直射。室内植物可放置在明亮的窗边。' },
+      { icon: '🌡️', title: '温度提示', content: '保持环境温度在15-28°C之间，避免温差过大。冬季注意防寒保暖。' },
+      { icon: '🌱', title: '施肥提示', content: '生长期每月施肥一次，休眠期停止施肥。薄肥勤施，避免烧根。' },
+      { icon: '💨', title: '通风提示', content: '保持良好的通风环境，有助于植物呼吸和减少病虫害发生。' },
+      { icon: '✂️', title: '修剪提示', content: '及时修剪枯黄叶片，促进新芽生长。修剪工具要消毒，避免感染。' }
+    ];
+    
+    const randomTip = tips[Math.floor(Math.random() * tips.length)];
+    this.setData({ dailyTip: randomTip });
+  },
+
+  // 页面跳转方法
   goToPlants() {
     wx.navigateTo({
       url: '/pages/plants/plants'
@@ -143,19 +223,15 @@ Page({
 
   goToPlantDetail(e) {
     // 防止重复跳转
-    if (this._navigatingToDetail) {
-      return;
-    }
+    if (this._navigatingToDetail) return;
     this._navigatingToDetail = true;
     
     const { id } = e.currentTarget.dataset;
-    const that = this;
     wx.navigateTo({
-      url: '/pages/plant-detail/plant-detail?id=' + id,
+      url: `/pages/plant-detail/plant-detail?id=${id}`,
       complete: () => {
-        // 跳转完成后重置标志
         setTimeout(() => {
-          that._navigatingToDetail = false;
+          this._navigatingToDetail = false;
         }, 500);
       }
     });
@@ -173,12 +249,6 @@ Page({
     });
   },
 
-  goToDevices() {
-    wx.navigateTo({
-      url: '/pages/device-manage/device-manage'
-    });
-  },
-
   goToSessions() {
     wx.navigateTo({
       url: '/pages/sessions/sessions'
@@ -192,13 +262,6 @@ Page({
     });
   },
 
-  goToProfile() {
-    wx.showToast({
-      title: '个人中心开发中',
-      icon: 'none'
-    });
-  },
-
   goToSettings() {
     wx.showToast({
       title: '设置功能开发中',
@@ -206,43 +269,7 @@ Page({
     });
   },
 
-  goToIdentify() {
-    wx.navigateTo({
-      url: '/pages/quick-analyze/quick-analyze'
-    });
-  },
-
-  goToQna() {
-    wx.navigateTo({
-      url: '/pages/sessions/sessions'
-    });
-  },
-
-  goToExpert() {
-    wx.showToast({
-      title: '专家咨询开发中',
-      icon: 'none'
-    });
-  },
-
-  handleTask(e) {
-    const { type } = e.currentTarget.dataset;
-    
-    switch(type) {
-      case 'water':
-        wx.showToast({ title: '已提醒浇水', icon: 'success' });
-        break;
-      case 'fertilize':
-        wx.showToast({ title: '已提醒施肥', icon: 'success' });
-        break;
-      case 'check':
-        wx.navigateTo({
-          url: '/pages/plant-detail/plant-detail?id=PLANT_002'
-        });
-        break;
-    }
-  },
-
+  // 分享
   onShareAppMessage() {
     return {
       title: '智能园艺助手 - 让植物养护更简单',

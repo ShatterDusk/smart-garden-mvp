@@ -1,5 +1,6 @@
 /**
  * 文件上传路由
+ * @deprecated 此路由已废弃，请使用 /api/cos/* 进行 COS 直传
  */
 
 const express = require('express');

@@ -12,16 +12,30 @@ const REQUIRED_VARS = [
   'DB_USER',
   'DB_PASSWORD',
   'JWT_SECRET',
+  'WECHAT_APPID',
+  'WECHAT_SECRET',
+  'COS_BUCKET',
+  'COS_SECRET_ID',
+  'COS_SECRET_KEY',
+];
+
+// AI 服务至少需要一个
+const AI_REQUIRED_VARS = [
+  'GLM_API_KEY',
+  'OPENAI_API_KEY',
+  'WENXIN_API_KEY',
+  'QWEN_API_KEY',
+  'HUNYUAN_API_KEY',
 ];
 
 // 开发环境可选的环境变量
 const OPTIONAL_VARS = [
-  'WECHAT_APPID',
-  'WECHAT_SECRET',
   'DB_PORT',
   'DB_DIALECT',
   'DB_SSL',
   'DB_LOGGING',
+  'WEATHER_API_KEY',
+  'LOG_ACCESS_KEY',
 ];
 
 /**
@@ -32,10 +46,17 @@ const OPTIONAL_VARS = [
 function validateEnv(isProduction = false) {
   const missing = [];
 
+  // 检查基础必需变量
   for (const varName of REQUIRED_VARS) {
     if (!process.env[varName]) {
       missing.push(varName);
     }
+  }
+
+  // 检查 AI 服务（至少需要一个）
+  const hasAIKey = AI_REQUIRED_VARS.some(varName => process.env[varName]);
+  if (!hasAIKey) {
+    missing.push('至少一个 AI API Key (GLM_API_KEY / OPENAI_API_KEY / WENXIN_API_KEY / QWEN_API_KEY / HUNYUAN_API_KEY)');
   }
 
   if (missing.length > 0) {

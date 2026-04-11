@@ -1,69 +1,65 @@
 /**
  * 前端全局配置文件
- * 管理不同环境的 API 地址和其他配置
+ * 使用微信小程序环境自动检测
  */
 
-// 环境配置
-const ENV = {
-  // 开发环境
-  development: {
-    API_BASE_URL: 'http://localhost:3000',
-    COS_BASE_URL: 'https://7072-prod-4g7ephngc4e53ec3-1401681523.cos.ap-shanghai.myqcloud.com',
-    ENV_TYPE: 'development'
-  },
+/**
+ * 获取当前运行环境配置
+ * 基于微信小程序的 __wxConfig.envVersion 自动检测
+ */
+const getEnvConfig = () => {
+  // 获取小程序运行环境版本
+  // develop: 开发版（微信开发者工具预览）
+  // trial: 体验版（上传为体验版）
+  // release: 正式版（发布版本）
 
-  // 生产环境（微信云托管）
-  production: {
-    // 云托管服务地址（包含 /api 前缀）
-    API_BASE_URL: 'https://plant-backend-240450-4-1401681523.sh.run.tcloudbase.com/api',
-    COS_BASE_URL: 'https://7072-prod-4g7ephngc4e53ec3-1401681523.cos.ap-shanghai.myqcloud.com',
-    ENV_TYPE: 'production'
-  },
+  // 【临时强制指定为体验版】调试用，用完请恢复自动检测
+  const envVersion = 'trial';
 
-  // 测试环境
-  test: {
-    API_BASE_URL: 'https://test-api.example.com',
-    COS_BASE_URL: 'https://test-cos.example.com',
-    ENV_TYPE: 'test'
-  }
+  // 【自动检测】恢复时请使用下面这行
+  // const envVersion = typeof __wxConfig !== 'undefined'
+  //   ? __wxConfig.envVersion
+  //   : 'release';
+
+  const configs = {
+    // 开发版（微信开发者工具预览）
+    develop: {
+      API_BASE_URL: 'http://localhost:3000',
+      ENV_TYPE: 'develop'
+    },
+
+    // 体验版（上传为体验版）
+    trial: {
+      API_BASE_URL: 'https://plant-backend-240450-4-1401681523.sh.run.tcloudbase.com/api',
+      ENV_TYPE: 'trial'
+    },
+
+    // 正式版（发布版本）
+    release: {
+      API_BASE_URL: 'https://plant-backend-240450-4-1401681523.sh.run.tcloudbase.com/api',
+      ENV_TYPE: 'production'
+    }
+  };
+
+  return configs[envVersion] || configs.release;
 };
 
-// 当前环境（可以根据需要修改）
-// const CURRENT_ENV = 'development'; // 开发时用这个
-const CURRENT_ENV = 'production'; // 发布时用这个
-
-// 获取当前环境配置
-function getConfig() {
-  return ENV[CURRENT_ENV] || ENV.development;
-}
+const currentConfig = getEnvConfig();
 
 // 导出配置
 module.exports = {
   // 环境类型
-  ENV_TYPE: getConfig().ENV_TYPE,
-  
+  ENV_TYPE: currentConfig.ENV_TYPE,
+
   // API 基础地址
-  API_BASE_URL: getConfig().API_BASE_URL,
-  
-  // COS 基础地址
-  COS_BASE_URL: getConfig().COS_BASE_URL,
-  
+  API_BASE_URL: currentConfig.API_BASE_URL,
+
   // 是否是开发环境
-  isDev: () => CURRENT_ENV === 'development',
-  
+  isDev: () => currentConfig.ENV_TYPE === 'develop',
+
   // 是否是生产环境
-  isProd: () => CURRENT_ENV === 'production',
-  
-  // 切换环境（用于调试）
-  switchEnv: (env) => {
-    if (ENV[env]) {
-      console.log(`[Config] 切换到 ${env} 环境`);
-      return ENV[env];
-    }
-    console.warn(`[Config] 未知环境: ${env}`);
-    return ENV.development;
-  },
-  
+  isProd: () => currentConfig.ENV_TYPE === 'production',
+
   // 获取完整配置
-  getConfig
+  getConfig: () => currentConfig
 };

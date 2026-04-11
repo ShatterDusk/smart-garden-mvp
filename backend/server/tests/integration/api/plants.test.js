@@ -44,7 +44,7 @@ describe('植物模块 API 测试', () => {
         });
 
       expect(res.status).toBe(200);
-      expect(res.body.code).toBe(200);
+      expect(res.body.code).toBe(0);
       expect(res.body.data).toHaveProperty('plantId');
       expect(res.body.data.nickname).toBe('测试绿萝');
       expect(res.body.data.species).toBe('绿萝');
@@ -89,7 +89,7 @@ describe('植物模块 API 测试', () => {
         .set('Authorization', `Bearer ${userToken}`);
 
       expect(res.status).toBe(200);
-      expect(res.body.code).toBe(200);
+      expect(res.body.code).toBe(0);
       expect(res.body.data).toHaveProperty('list');
       expect(res.body.data).toHaveProperty('pagination');
       expect(Array.isArray(res.body.data.list)).toBe(true);
@@ -124,7 +124,7 @@ describe('植物模块 API 测试', () => {
         .set('Authorization', `Bearer ${userToken}`);
 
       expect(res.status).toBe(200);
-      expect(res.body.code).toBe(200);
+      expect(res.body.code).toBe(0);
       expect(res.body.data).toHaveProperty('plantId', plantId);
       expect(res.body.data).toHaveProperty('nickname');
       expect(res.body.data).toHaveProperty('species');
@@ -173,7 +173,7 @@ describe('植物模块 API 测试', () => {
         });
 
       expect(res.status).toBe(200);
-      expect(res.body.code).toBe(200);
+      expect(res.body.code).toBe(0);
       expect(res.body.data.nickname).toBe('更新后的绿萝');
       expect(res.body.data.locationName).toBe('阳台');
     });
@@ -206,7 +206,7 @@ describe('植物模块 API 测试', () => {
         .set('Authorization', `Bearer ${userToken}`);
 
       expect(res.status).toBe(200);
-      expect(res.body.code).toBe(200);
+      expect(res.body.code).toBe(0);
       expect(res.body.message).toBe('删除成功');
 
       const deletedPlant = await Plant.findByPk(plantId);

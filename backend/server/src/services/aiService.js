@@ -10,6 +10,22 @@ const path = require('path');
 const aiConfig = require('../config/ai');
 const logger = require('../utils/logger');
 
+// ==================== 常量定义 ====================
+
+// 图片处理常量
+const IMAGE_CONSTANTS = {
+  // 图片下载超时时间（毫秒）
+  DOWNLOAD_TIMEOUT: 60000,
+  // 最大图片大小（10MB）
+  MAX_IMAGE_SIZE: 10 * 1024 * 1024,
+  // 压缩阈值（1MB）
+  COMPRESSION_THRESHOLD: 1024 * 1024,
+  // 最大图片尺寸（像素）
+  MAX_DIMENSION: 1920,
+  // 压缩质量（0-100）
+  COMPRESSION_QUALITY: 80,
+};
+
 // 尝试导入 sharp，如果未安装则使用备用方案
 let sharp;
 try {
@@ -24,8 +40,8 @@ try {
 // - 可通过环境变量 SSL_VERIFY=false 在特殊环境禁用
 // - 仅在遇到证书问题时临时禁用
 const imageDownloadClient = axios.create({
-  timeout: 60000,
-  maxContentLength: 10 * 1024 * 1024, // 最大 10MB
+  timeout: IMAGE_CONSTANTS.DOWNLOAD_TIMEOUT,
+  maxContentLength: IMAGE_CONSTANTS.MAX_IMAGE_SIZE,
   httpsAgent: new https.Agent({
     rejectUnauthorized: process.env.SSL_VERIFY !== 'false',
   }),
@@ -232,6 +248,18 @@ class AIService {
 
     // 已经是 base64 格式
     if (imageUrl.startsWith('data:')) {
+      // 检查 base64 图片大小
+      const base64Data = imageUrl.split(',')[1];
+      if (base64Data) {
+        const sizeInBytes = Buffer.from(base64Data, 'base64').length;
+        if (sizeInBytes > IMAGE_CONSTANTS.MAX_IMAGE_SIZE) {
+          logger.warn('Base64 图片超过最大限制', {
+            size: `${(sizeInBytes / 1024 / 1024).toFixed(2)}MB`,
+            maxSize: `${(IMAGE_CONSTANTS.MAX_IMAGE_SIZE / 1024 / 1024).toFixed(2)}MB`,
+          });
+          throw new Error('图片过大，请上传小于 10MB 的图片');
+        }
+      }
       return imageUrl;
     }
 
@@ -264,7 +292,9 @@ class AIService {
       try {
         // 直接下载图片转 base64
         // tcb.qcloud.la 的 URL 自带签名，可以直接访问
-        logger.info('开始下载远程图片', { 
+        // TODO[LOW]: 考虑添加图片 URL 缓存，避免重复下载相同图片
+        // 可以使用图片 URL + ETag 作为缓存键
+        logger.info('开始下载远程图片', {
           imageUrl: imageUrl.substring(0, 100) + '...',
           urlDomain: new URL(imageUrl).hostname,
         });
@@ -274,9 +304,19 @@ class AIService {
         });
         const downloadTime = Date.now() - downloadStart;
 
+        // 检查下载的图片大小
+        const contentLength = response.data?.length;
+        if (contentLength > IMAGE_CONSTANTS.MAX_IMAGE_SIZE) {
+          logger.warn('下载的图片超过最大限制', {
+            size: `${(contentLength / 1024 / 1024).toFixed(2)}MB`,
+            maxSize: `${(IMAGE_CONSTANTS.MAX_IMAGE_SIZE / 1024 / 1024).toFixed(2)}MB`,
+          });
+          throw new Error('图片过大，请上传小于 10MB 的图片');
+        }
+
         logger.info('图片下载完成', {
           downloadTime: `${downloadTime}ms`,
-          contentLength: response.data?.length,
+          contentLength,
           contentType: response.headers['content-type'],
         });
 
@@ -344,8 +384,8 @@ class AIService {
    * @returns {Promise<Buffer>} - 压缩后的 buffer
    */
   async compressImage(buffer, mimeType) {
-    // 如果图片小于 1MB，不压缩
-    if (buffer.length < 1024 * 1024) {
+    // 如果图片小于压缩阈值，不压缩
+    if (buffer.length < IMAGE_CONSTANTS.COMPRESSION_THRESHOLD) {
       return buffer;
     }
 
@@ -355,9 +395,10 @@ class AIService {
       return buffer;
     }
 
+    let sharpInstance = null;
     try {
       const startTime = Date.now();
-      let sharpInstance = sharp(buffer);
+      sharpInstance = sharp(buffer);
 
       // 获取图片信息
       const metadata = await sharpInstance.metadata();
@@ -369,9 +410,8 @@ class AIService {
       });
 
       // 如果图片尺寸太大，先缩小
-      const maxDimension = 1920;
-      if (metadata.width > maxDimension || metadata.height > maxDimension) {
-        sharpInstance = sharpInstance.resize(maxDimension, maxDimension, {
+      if (metadata.width > IMAGE_CONSTANTS.MAX_DIMENSION || metadata.height > IMAGE_CONSTANTS.MAX_DIMENSION) {
+        sharpInstance = sharpInstance.resize(IMAGE_CONSTANTS.MAX_DIMENSION, IMAGE_CONSTANTS.MAX_DIMENSION, {
           fit: 'inside',
           withoutEnlargement: true,
         });
@@ -379,18 +419,19 @@ class AIService {
 
       // 根据格式压缩
       let compressedBuffer;
+      const quality = IMAGE_CONSTANTS.COMPRESSION_QUALITY;
       if (mimeType.includes('png')) {
         compressedBuffer = await sharpInstance
-          .png({ quality: 80, compressionLevel: 9 })
+          .png({ quality: quality, compressionLevel: 9 })
           .toBuffer();
       } else if (mimeType.includes('webp')) {
         compressedBuffer = await sharpInstance
-          .webp({ quality: 80 })
+          .webp({ quality: quality })
           .toBuffer();
       } else {
         // 默认 jpeg
         compressedBuffer = await sharpInstance
-          .jpeg({ quality: 80, progressive: true })
+          .jpeg({ quality: quality, progressive: true })
           .toBuffer();
       }
 
@@ -408,6 +449,11 @@ class AIService {
     } catch (err) {
       logger.error('图片压缩失败，使用原图', { error: err.message });
       return buffer;
+    } finally {
+      // 显式销毁 sharp 实例，释放内存
+      if (sharpInstance) {
+        sharpInstance.destroy();
+      }
     }
   }
 
@@ -452,17 +498,8 @@ class AIService {
         case 'glm':
           response = await this.callGLM(prompt, processedImageUrl);
           break;
-        case 'wenxin':
-          response = await this.callWenxin(prompt, processedImageUrl);
-          break;
-        case 'qwen':
-          response = await this.callQwen(prompt, processedImageUrl);
-          break;
-        case 'hunyuan':
-          response = await this.callHunyuan(prompt, processedImageUrl);
-          break;
         default:
-          throw new Error(`未实现的 AI 提供商: ${this.provider}`);
+          throw new Error(`不支持的 AI 提供商: ${this.provider}。当前支持的提供商: openai, glm`);
       }
       logger.info('AI 服务调用完成', { stageTime: `${Date.now() - aiStart}ms` });
 
@@ -755,18 +792,6 @@ class AIService {
 
       throw err;
     }
-  }
-
-  async callWenxin(prompt) {
-    throw new Error('百度文心一言 API 待实现');
-  }
-
-  async callQwen(prompt) {
-    throw new Error('阿里通义千问 API 待实现');
-  }
-
-  async callHunyuan(prompt) {
-    throw new Error('腾讯混元 API 待实现');
   }
 
   parseResponse(response) {

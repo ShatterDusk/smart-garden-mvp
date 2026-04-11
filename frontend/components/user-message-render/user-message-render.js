@@ -38,12 +38,13 @@ Component({
         
         // 检测分割线 (--- 或 *** 或 ___)
         if (/^[-*_]{3,}$/.test(line.trim())) {
-          nodes.push({ type: 'hr' });
+          nodes.push({ type: 'hr', id: 'hr-' + i });
         } else {
           // 普通文本
           if (line || i < lines.length - 1) {
-            nodes.push({ 
-              type: 'text', 
+            nodes.push({
+              type: 'text',
+              id: 'text-' + i,
               content: line + (i < lines.length - 1 ? '\n' : '')
             });
           }

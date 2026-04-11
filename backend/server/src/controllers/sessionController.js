@@ -296,7 +296,8 @@ const sendMessage = async (req, res) => {
     const imageUrl = imageUrls && imageUrls.length > 0 ? imageUrls[0] : null;
 
     try {
-      const AI_TIMEOUT = 55000;
+      // 优化：减少超时时间，更快反馈
+      const AI_TIMEOUT = 30000; // 30秒超时（原55秒）
       const aiPromise = aiService.analyze({
         content,
         imageUrl,

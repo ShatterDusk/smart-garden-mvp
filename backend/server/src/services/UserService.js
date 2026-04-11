@@ -99,18 +99,14 @@ class UserService extends BaseService {
         return null;
       }
 
-      // camelCase -> snake_case 字段映射
-      const fieldMapping = {
-        nickname: 'nickname',
-        avatarUrl: 'avatar_url',
-      };
-
+      // 构建更新数据（API camelCase -> DB snake_case）
       const filteredData = {};
-      Object.keys(fieldMapping).forEach(camelField => {
-        if (updateData[camelField] !== undefined) {
-          filteredData[fieldMapping[camelField]] = updateData[camelField];
-        }
-      });
+      if (updateData.nickname !== undefined) {
+        filteredData.nickname = updateData.nickname;
+      }
+      if (updateData.avatarUrl !== undefined) {
+        filteredData.avatar_url = updateData.avatarUrl;
+      }
 
       if (Object.keys(filteredData).length === 0) {
         return this.getUserById(userId);

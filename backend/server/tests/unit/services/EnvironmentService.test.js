@@ -32,7 +32,9 @@ jest.mock('../../../src/services/compensationService', () => ({
 
 jest.mock('../../../src/utils/logger', () => ({
   error: jest.fn(),
-  info: jest.fn()
+  info: jest.fn(),
+  debug: jest.fn(),
+  warn: jest.fn()
 }))
 
 const EnvironmentService = require('../../../src/services/EnvironmentService')
@@ -391,33 +393,43 @@ describe('EnvironmentService', () => {
 
     it('应该返回空列表当无数据时', async () => {
       EnvironmentReading.findAll.mockResolvedValue([])
+      EnvironmentMetric.findOne.mockResolvedValue({
+        metric_code: 'temperature',
+        name: '温度',
+        unit: '℃'
+      })
 
       const result = await service.getHistoryData(1, { metricCode: 'temperature' })
 
       expect(result).toEqual({
         list: [],
         metricCode: 'temperature',
+        metricName: '温度',
+        unit: '℃',
         timeRange: '7d'
       })
     })
 
     it('应该处理未知指标代码', async () => {
-      const mockReadings = [{ reading_id: 'READ_001', recorded_at: new Date(), is_stale: false }]
-      const mockValues = [{ reading_id: 'READ_001', value: '25' }]
-
-      EnvironmentReading.findAll.mockResolvedValue(mockReadings)
-      EnvironmentReadingValue.findAll.mockResolvedValue(mockValues)
+      EnvironmentReading.findAll.mockResolvedValue([])
       EnvironmentMetric.findOne.mockResolvedValue(null)
 
       const result = await service.getHistoryData(1, { metricCode: 'unknown_metric' })
 
-      expect(result).toHaveProperty('metricName', 'unknown_metric')
-      expect(result).toHaveProperty('unit', '')
+      // 当指标不存在时，返回空列表并使用指标代码作为名称
+      expect(result).toEqual({
+        list: [],
+        metricCode: 'unknown_metric',
+        metricName: 'unknown_metric',
+        unit: '',
+        timeRange: '7d',
+        message: '不支持的指标类型: unknown_metric'
+      })
     })
 
     it('应该处理数据库错误', async () => {
       const error = new Error('数据库错误')
-      EnvironmentReading.findAll.mockRejectedValue(error)
+      EnvironmentMetric.findOne.mockRejectedValue(error)
 
       await expect(service.getHistoryData(1, { metricCode: 'temperature' })).rejects.toThrow('数据库错误')
     })

@@ -3,76 +3,9 @@
  * 使用微信云托管内置对象存储（免密钥）
  */
 
-const axios = require('axios');
-const https = require('https');
 const logger = require('../utils/logger');
 const { success, error } = require('../utils/response');
-
-// 云托管环境配置
-const envConfig = {
-  envId: process.env.WECHAT_ENV_ID,
-  bucket: process.env.COS_BUCKET || '7072-prod-4g7ephngc4e53ec3-1401681523',
-  region: process.env.COS_REGION || 'ap-shanghai',
-};
-
-// 创建 axios 实例
-// SSL 证书验证配置：
-// - 默认启用验证（安全）
-// - 可通过环境变量 SSL_VERIFY=false 在特殊环境禁用
-// - 仅在遇到证书问题时临时禁用
-const axiosInstance = axios.create({
-  httpsAgent: new https.Agent({
-    rejectUnauthorized: process.env.SSL_VERIFY !== 'false',
-  }),
-});
-
-/**
- * 获取微信 access_token
- */
-let accessTokenCache = null;
-let accessTokenExpiresAt = 0;
-
-const getAccessToken = async () => {
-  // 检查缓存
-  if (accessTokenCache && Date.now() < accessTokenExpiresAt) {
-    return accessTokenCache;
-  }
-
-  const appId = process.env.WECHAT_APPID;
-  const secret = process.env.WECHAT_SECRET;
-
-  if (!appId || !secret) {
-    throw new Error('WECHAT_APPID 或 WECHAT_SECRET 环境变量未设置');
-  }
-
-  const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appId}&secret=${secret}`;
-
-  try {
-    const response = await axiosInstance.get(url);
-    const { access_token, expires_in, errcode, errmsg } = response.data;
-
-    if (errcode && errcode !== 0) {
-      throw new Error(`微信接口错误: ${errcode} - ${errmsg}`);
-    }
-
-    if (!access_token) {
-      throw new Error('获取 access_token 失败: ' + JSON.stringify(response.data));
-    }
-
-    // 缓存 token（提前 5 分钟过期）
-    accessTokenCache = access_token;
-    accessTokenExpiresAt = Date.now() + (expires_in - 300) * 1000;
-
-    logger.info('获取 access_token 成功，有效期:', expires_in, '秒');
-
-    return access_token;
-  } catch (err) {
-    // 清除缓存，下次重新获取
-    accessTokenCache = null;
-    accessTokenExpiresAt = 0;
-    throw err;
-  }
-};
+const cosService = require('../utils/cosService');
 
 /**
  * 获取云托管存储上传链接
@@ -92,55 +25,11 @@ const getUploadSign = async (req, res) => {
     const ext = filename.split('.').pop() || 'jpg';
     const key = `uploads/${userId}/${date}/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
 
-    // 获取 access_token
-    let accessToken;
-    try {
-      accessToken = await getAccessToken();
-    } catch (err) {
-      logger.error('获取 access_token 失败', { error: err.message });
-      return error(res, '获取上传凭证失败，请检查微信配置', 500);
-    }
-
-    // 调用微信云托管存储 API 获取上传链接
-    const uploadUrl = `https://api.weixin.qq.com/tcb/uploadfile?access_token=${accessToken}`;
-    
-    const response = await axiosInstance.post(uploadUrl, {
-      env: envConfig.envId,
-      path: key,
-    });
-
-    if (response.data.errcode !== 0) {
-      logger.error('获取上传链接失败', response.data);
-      // 如果是 token 失效，清除缓存
-      if (response.data.errcode === 40001 || response.data.errcode === 42001) {
-        accessTokenCache = null;
-        accessTokenExpiresAt = 0;
-        logger.info('access_token 已失效，已清除缓存');
-      }
-      return error(res, '获取上传链接失败: ' + response.data.errmsg, 500);
-    }
-
-    const { url, token, authorization, cos_file_id, file_id } = response.data;
-
-    // 构建访问 URL - 使用微信云托管 CDN 域名（带签名）
-    // 注意：tcb.qcloud.la 域名自带签名，可以直接访问
-    const fileUrl = `https://${envConfig.bucket}.tcb.qcloud.la/${key}`;
-
-    logger.info('获取云托管上传链接成功', { userId, key, fileId: file_id, fileUrl });
-
-    return success(res, {
-      uploadUrl: url,
-      token,
-      authorization,
-      cosFileId: cos_file_id,
-      fileId: file_id,
-      fileUrl,
-      key,
-      expiresIn: 3600,
-    });
+    const result = await cosService.getUploadSign({ key, userId });
+    return success(res, result);
 
   } catch (err) {
-    logger.error('获取上传链接失败', { error: err.message, stack: err.stack });
+    logger.error('[COS Controller] 获取上传链接失败', { error: err.message, stack: err.stack });
     return error(res, '获取上传链接失败: ' + err.message, 500);
   }
 };
@@ -160,32 +49,13 @@ const getTempFileUrl = async (req, res) => {
       return error(res, '文件 fileId 不能为空', 400);
     }
 
-    // 获取 access_token
-    const accessToken = await getAccessToken();
-
-    // 调用微信云托管 API 获取临时访问链接
-    const tempUrl = `https://api.weixin.qq.com/tcb/getTempFileURL?access_token=${accessToken}`;
-    
-    const response = await axiosInstance.post(tempUrl, {
-      env: envConfig.envId,
-      file_list: [{
-        fileid: fileId,
-        max_age: 3600, // 1小时有效期
-      }],
-    });
-
-    if (response.data.errcode !== 0) {
-      logger.error('获取临时访问链接失败', response.data);
-      return error(res, '获取临时访问链接失败: ' + response.data.errmsg, 500);
-    }
-
-    const tempFileUrl = response.data.file_list?.[0]?.temp_file_url;
+    const tempFileUrl = await cosService.getTempFileUrl(fileId, 3600);
     
     if (!tempFileUrl) {
       return error(res, '无法获取临时访问链接', 500);
     }
 
-    logger.info('获取云托管临时访问链接成功', { userId, fileId });
+    logger.info('[COS Controller] 获取临时访问链接成功', { userId, fileId });
     
     return success(res, {
       tempFileUrl,
@@ -193,7 +63,7 @@ const getTempFileUrl = async (req, res) => {
     });
 
   } catch (err) {
-    logger.error('获取临时访问链接失败', { error: err.message });
+    logger.error('[COS Controller] 获取临时访问链接失败', { error: err.message });
     return error(res, '获取临时访问链接失败: ' + err.message, 500);
   }
 };
@@ -211,27 +81,13 @@ const deleteFile = async (req, res) => {
       return error(res, '文件 fileId 不能为空', 400);
     }
 
-    // 获取 access_token
-    const accessToken = await getAccessToken();
+    await cosService.deleteFile(fileId);
 
-    // 调用微信云托管存储 API 删除文件
-    const deleteUrl = `https://api.weixin.qq.com/tcb/deletefile?access_token=${accessToken}`;
-    
-    const response = await axiosInstance.post(deleteUrl, {
-      env: envConfig.envId,
-      fileid_list: [fileId],
-    });
-
-    if (response.data.errcode !== 0) {
-      logger.error('删除文件失败', response.data);
-      return error(res, '删除文件失败: ' + response.data.errmsg, 500);
-    }
-
-    logger.info('删除云托管文件成功', { userId, fileId });
+    logger.info('[COS Controller] 删除文件成功', { userId, fileId });
     return success(res, { message: '删除成功' });
 
   } catch (err) {
-    logger.error('删除文件失败', { error: err.message });
+    logger.error('[COS Controller] 删除文件失败', { error: err.message });
     return error(res, '删除文件失败: ' + err.message, 500);
   }
 };

@@ -157,5 +157,90 @@ describe('namingConverter utils', () => {
         { user_id: '2', 'plant_category': 'foliage' },
       ]);
     });
+
+    it('处理 null 和 undefined', () => {
+      expect(keysToSnake(null)).toBeNull();
+      expect(keysToSnake(undefined)).toBeUndefined();
+    });
+
+    it('处理原始类型', () => {
+      expect(keysToSnake('string')).toBe('string');
+      expect(keysToSnake(123)).toBe(123);
+      expect(keysToSnake(true)).toBe(true);
+    });
+
+    it('处理多层嵌套对象', () => {
+      const input = {
+        userId: '123',
+        profileData: {
+          firstName: 'John',
+          lastName: 'Doe',
+          contactInfo: {
+            phoneNumber: '1234567890',
+            emailAddress: 'john@example.com',
+          },
+        },
+      };
+
+      const result = keysToSnake(input);
+
+      expect(result).toEqual({
+        user_id: '123',
+        profile_data: {
+          first_name: 'John',
+          last_name: 'Doe',
+          contact_info: {
+            phone_number: '1234567890',
+            email_address: 'john@example.com',
+          },
+        },
+      });
+    });
+
+    it('处理空对象和空数组', () => {
+      expect(keysToSnake({})).toEqual({});
+      expect(keysToSnake([])).toEqual([]);
+      expect(keysToCamel({})).toEqual({});
+      expect(keysToCamel([])).toEqual([]);
+    });
+
+    it('处理包含特殊字符的键名', () => {
+      const input = {
+        'user-id': '123',
+        'plant.category': 'succulent',
+      };
+
+      const result = keysToCamel(input);
+
+      expect(result).toEqual({
+        'user-id': '123',
+        'plant.category': 'succulent',
+      });
+    });
+
+    it('处理连续大写字母', () => {
+      expect(camelToSnake('HTTPRequest')).toBe('h_t_t_p_request');
+      expect(camelToSnake('XMLParser')).toBe('x_m_l_parser');
+    });
+
+    it('处理连续下划线', () => {
+      // 连续下划线的实际行为：第二个下划线后跟小写字母会被转换为大写
+      expect(snakeToCamel('user__id')).toBe('user_Id');
+      expect(snakeToCamel('created__at')).toBe('created_At');
+    });
+
+    it('处理以数字开头的键名', () => {
+      const input = {
+        '1st_place': 'gold',
+        '2nd_place': 'silver',
+      };
+
+      const result = keysToCamel(input);
+
+      expect(result).toEqual({
+        '1stPlace': 'gold',
+        '2ndPlace': 'silver',
+      });
+    });
   });
 });

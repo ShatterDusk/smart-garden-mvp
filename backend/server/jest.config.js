@@ -5,6 +5,8 @@ module.exports = {
     'src/**/*.js',
     '!src/**/*.test.js',
   ],
+  // 在测试框架启动前加载环境变量
+  setupFiles: ['<rootDir>/tests/setup/loadEnv.js'],
   setupFilesAfterEnv: ['<rootDir>/tests/setup/jest.setup.js'],
   transform: {
     '^.+\.js$': 'babel-jest',

@@ -62,10 +62,28 @@ const getMetricHistory = async (req, res) => {
       dataSource,
     });
 
+    // 如果返回了消息（如无效指标），记录日志但返回成功
+    if (data.message) {
+      logger.warn('[getMetricHistory] 获取指标历史数据异常', {
+        userId,
+        plantId,
+        metricCode,
+        message: data.message,
+      });
+    }
+
     return success(res, data);
   } catch (err) {
-    logger.error('获取指标历史失败', { error: err.message });
-    return error(res, '获取指标历史失败', 500);
+    logger.error('获取指标历史失败', { error: err.message, stack: err.stack });
+    // 降级处理：返回空数据而非 500 错误
+    return success(res, {
+      list: [],
+      metricCode: req.query.metricCode,
+      metricName: req.query.metricCode,
+      unit: '',
+      timeRange: req.query.timeRange || '7d',
+      message: '数据获取失败，请稍后重试',
+    });
   }
 };
 

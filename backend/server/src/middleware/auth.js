@@ -8,13 +8,26 @@
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 
-// JWT 密钥必须从环境变量读取，禁止硬编码
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET 环境变量必须设置，用于 JWT 签名和验证');
-}
-
+// JWT 配置
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+
+/**
+ * 获取 JWT_SECRET
+ * 使用函数延迟获取，确保环境变量已加载
+ */
+function getJwtSecret() {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    // 测试环境使用默认值，生产环境必须设置
+    if (process.env.NODE_ENV === 'test') {
+      console.warn('[Auth] 警告: JWT_SECRET 未设置，使用测试默认值');
+      process.env.JWT_SECRET = 'test_jwt_secret_for_testing_only';
+      return process.env.JWT_SECRET;
+    }
+    throw new Error('JWT_SECRET 环境变量必须设置，用于 JWT 签名和验证');
+  }
+  return secret;
+}
 
 /**
  * JWT 认证中间件
@@ -48,7 +61,7 @@ async function authMiddleware(req, res, next) {
     // 验证 Token
     let decoded;
     try {
-      decoded = jwt.verify(token, JWT_SECRET);
+      decoded = jwt.verify(token, getJwtSecret());
     } catch (err) {
       if (err.name === 'TokenExpiredError') {
         return res.status(401).json({
@@ -109,7 +122,7 @@ async function optionalAuthMiddleware(req, res, next) {
     }
 
     const token = parts[1];
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, getJwtSecret());
 
     const user = await User.findByPk(decoded.user_id, {
       attributes: ['user_id', 'nickname', 'avatar_url', 'created_at'],
@@ -137,7 +150,7 @@ async function optionalAuthMiddleware(req, res, next) {
  * @returns {string} JWT Token
  */
 function generateToken(payload) {
-  return jwt.sign(payload, JWT_SECRET, {
+  return jwt.sign(payload, getJwtSecret(), {
     expiresIn: JWT_EXPIRES_IN,
   });
 }
@@ -148,7 +161,7 @@ function generateToken(payload) {
  * @returns {Object} 解码后的载荷
  */
 function verifyToken(token) {
-  return jwt.verify(token, JWT_SECRET);
+  return jwt.verify(token, getJwtSecret());
 }
 
 module.exports = {
@@ -156,6 +169,6 @@ module.exports = {
   optionalAuthMiddleware,
   generateToken,
   verifyToken,
-  JWT_SECRET,
+  // 注意：JWT_EXPIRES_IN 可以导出，但 getJwtSecret 不应导出（安全考虑）
   JWT_EXPIRES_IN,
 };

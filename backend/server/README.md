@@ -17,52 +17,93 @@
 ```
 server/
 ├── src/
-│   ├── config/          # 配置文件
-│   │   ├── database.js  # 数据库配置
-│   │   └── ai.js        # AI 服务配置
-│   ├── controllers/     # 控制器
+│   ├── config/              # 配置文件
+│   │   ├── database.js      # 数据库配置
+│   │   ├── environment.js   # 环境配置
+│   │   ├── ai.js            # AI 服务配置
+│   │   └── sequelize-cli.js # Sequelize CLI 配置
+│   ├── controllers/         # 控制器
 │   │   ├── userController.js
 │   │   ├── plantController.js
 │   │   ├── sessionController.js
 │   │   ├── careRecordController.js
 │   │   ├── deviceController.js
 │   │   ├── diagnosisController.js
+│   │   ├── environmentController.js
+│   │   ├── weatherController.js
+│   │   ├── cosController.js
+│   │   ├── storageController.js
+│   │   ├── logController.js
 │   │   └── aiController.js
-│   ├── models/          # 数据模型
+│   ├── models/              # 数据模型
 │   │   ├── index.js
+│   │   ├── associations.config.js
 │   │   ├── User.js
+│   │   ├── UserConfig.js
 │   │   ├── Plant.js
 │   │   ├── Session.js
 │   │   ├── Message.js
 │   │   ├── DiagnosisCard.js
 │   │   ├── Device.js
 │   │   ├── CareRecord.js
-│   │   └── ...
-│   ├── routes/          # 路由
+│   │   ├── EnvironmentReading.js
+│   │   ├── EnvironmentReadingValue.js
+│   │   ├── EnvironmentMetric.js
+│   │   ├── ReadingTask.js
+│   │   ├── SystemLog.js
+│   │   └── ClientLog.js
+│   ├── routes/              # 路由
 │   │   ├── users.js
 │   │   ├── plants.js
 │   │   ├── sessions.js
 │   │   ├── careRecords.js
 │   │   ├── devices.js
 │   │   ├── diagnosis.js
+│   │   ├── environment.js
+│   │   ├── weather.js
+│   │   ├── upload.js
+│   │   ├── storage.js
+│   │   ├── cos.js
+│   │   ├── logs.js
 │   │   └── ai.js
-│   ├── middleware/      # 中间件
-│   │   ├── auth.js      # JWT 认证
-│   │   ├── errorHandler.js
-│   │   └── response.js
-│   ├── services/        # 业务服务
-│   │   └── aiService.js # AI 服务封装
-│   ├── utils/           # 工具函数
+│   ├── middleware/          # 中间件
+│   │   ├── auth.js          # JWT 认证
+│   │   ├── logAuth.js       # 日志认证
+│   │   ├── deviceAuth.js    # 设备认证
+│   │   ├── validator.js     # 参数校验
+│   │   ├── errorHandler.js  # 错误处理
+│   │   └── response.js      # 响应格式化
+│   ├── services/            # 业务服务
+│   │   ├── UserService.js
+│   │   ├── PlantService.js
+│   │   ├── CareRecordService.js
+│   │   ├── DeviceService.js
+│   │   └── EnvironmentService.js
+│   ├── utils/               # 工具函数
 │   │   ├── logger.js
-│   │   └── response.js
-│   └── app.js           # 应用入口
-├── migrations/          # 数据库迁移
-├── seeders/             # 种子数据
-├── logs/                # 日志文件
-├── .env                 # 环境变量
-├── .env.example         # 环境变量示例
+│   │   ├── response.js
+│   │   ├── namingConverter.js
+│   │   ├── validators.js
+│   │   ├── formatters.js
+│   │   ├── envValidator.js
+│   │   ├── cosTempUrl.js
+│   │   ├── cosSdkTempUrl.js
+│   │   ├── cosPresignedUrl.js
+│   │   ├── syncDatabase.js
+│   │   └── initDatabase.js
+│   ├── jobs/                # 定时任务
+│   │   └── environmentSyncJob.js
+│   └── app.js               # 应用入口
+├── migrations/              # 数据库迁移
+├── seeders/                 # 种子数据
+├── tests/                   # 测试文件
+│   ├── unit/
+│   ├── integration/
+│   └── e2e/
+├── .env.json                # 环境变量（JSON 格式）
+├── .env.test.example        # 测试环境配置示例
 ├── package.json
-└── server.js            # 启动脚本
+└── server.js                # 启动脚本
 ```
 
 ## 快速开始
@@ -76,9 +117,38 @@ npm install
 
 ### 2. 配置环境变量
 
+项目使用 JSON 格式的环境变量文件 `.env.json`：
+
 ```bash
-cp .env.example .env
-# 编辑 .env 文件，填写数据库连接信息和 AI 服务密钥
+# 复制测试环境配置示例
+cp .env.test.example .env.test
+
+# 或者创建生产环境配置 .env.json
+# 参考以下结构：
+```
+
+`.env.json` 示例结构：
+```json
+{
+  "NODE_ENV": "development",
+  "PORT": "3000",
+  "HOST": "0.0.0.0",
+  "DB_HOST": "localhost",
+  "DB_PORT": "3306",
+  "DB_NAME": "smart_garden",
+  "DB_USER": "root",
+  "DB_PASSWORD": "your_password",
+  "DB_DIALECT": "mysql",
+  "JWT_SECRET": "your_jwt_secret",
+  "JWT_EXPIRES_IN": "7d",
+  "AI_PROVIDER": "glm",
+  "GLM_API_KEY": "your_glm_api_key",
+  "GLM_MODEL": "glm-4.6v",
+  "COS_BUCKET": "your_cos_bucket",
+  "COS_REGION": "ap-shanghai",
+  "WECHAT_APPID": "your_wechat_appid",
+  "WECHAT_SECRET": "your_wechat_secret"
+}
 ```
 
 ### 3. 执行数据库迁移
@@ -169,24 +239,133 @@ npm start
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | POST | /api/ai/analyze | 触发 AI 分析 |
+| POST | /api/ai/chat | AI 对话 |
+
+### 环境数据模块
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | /api/environment | 获取环境数据列表 |
+| GET | /api/environment/current | 获取当前环境数据 |
+| GET | /api/environment/history | 获取环境历史数据 |
+| GET | /api/environment/metrics | 获取环境指标定义 |
+
+### 天气模块
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | /api/weather/current | 获取当前天气 |
+| GET | /api/weather/forecast | 获取天气预报 |
+
+### 文件上传模块
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | /api/upload/image | 上传图片 |
+| POST | /api/upload/file | 上传文件 |
+
+### 存储模块
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | /api/storage/url | 获取文件临时 URL |
+| POST | /api/storage/delete | 删除文件 |
+
+### COS 模块
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | /api/cos/upload-url | 获取 COS 上传临时 URL |
+| GET | /api/cos/download-url | 获取 COS 下载临时 URL |
+
+### 日志模块
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | /api/logs/client | 上报客户端日志 |
+| GET | /api/logs/query | 查询日志（管理端） |
 
 ## 环境变量
+
+### 基础配置
 
 | 变量名 | 说明 | 默认值 |
 |--------|------|--------|
 | NODE_ENV | 运行环境 | development |
 | PORT | 服务端口 | 3000 |
+| HOST | 服务主机 | 0.0.0.0 |
+
+### 数据库配置
+
+| 变量名 | 说明 | 默认值 |
+|--------|------|--------|
 | DB_HOST | 数据库主机 | localhost |
 | DB_PORT | 数据库端口 | 3306 |
 | DB_NAME | 数据库名称 | smart_garden |
 | DB_USER | 数据库用户名 | root |
 | DB_PASSWORD | 数据库密码 | - |
+| DB_DIALECT | 数据库类型 | mysql |
+| DB_SSL | 启用 SSL | false |
+| DB_LOGGING | 启用 SQL 日志 | false |
+
+### JWT 认证配置
+
+| 变量名 | 说明 | 默认值 |
+|--------|------|--------|
 | JWT_SECRET | JWT 密钥 | - |
 | JWT_EXPIRES_IN | Token 有效期 | 7d |
+
+### AI 服务配置
+
+| 变量名 | 说明 | 默认值 |
+|--------|------|--------|
 | AI_PROVIDER | AI 提供商 | glm |
 | GLM_API_KEY | 智谱 AI API 密钥 | - |
+| GLM_BASE_URL | GLM API 基础 URL | https://open.bigmodel.cn/api/paas/v4 |
 | GLM_MODEL | GLM 模型 | glm-4.6v |
-| OPENAI_API_KEY | OpenAI API 密钥 | - |
+| GLM_MAX_TOKENS | 最大 Token 数 | 5000 |
+| GLM_TEMPERATURE | 温度参数 | 0.7 |
+| GLM_TIMEOUT | 请求超时时间(ms) | 60000 |
+
+### 腾讯云 COS 配置
+
+| 变量名 | 说明 | 默认值 |
+|--------|------|--------|
+| COS_BUCKET | COS 存储桶名称 | - |
+| COS_REGION | COS 地域 | - |
+| COS_BASE_URL | COS 基础 URL | - |
+
+### 文件上传配置
+
+| 变量名 | 说明 | 默认值 |
+|--------|------|--------|
+| UPLOAD_PATH | 上传文件存储路径 | /tmp/uploads |
+| MAX_FILE_SIZE | 最大文件大小(字节) | 5242880 |
+
+### 微信小程序配置
+
+| 变量名 | 说明 | 默认值 |
+|--------|------|--------|
+| WECHAT_APPID | 微信小程序 AppID | - |
+| WECHAT_SECRET | 微信小程序 Secret | - |
+| WECHAT_ENV_ID | 微信云开发环境 ID | - |
+
+### 日志配置
+
+| 变量名 | 说明 | 默认值 |
+|--------|------|--------|
+| LOG_LEVEL | 日志级别 | info |
+| LOG_STORAGE_MODE | 日志存储模式 | database |
+| LOG_RETENTION_DAYS | 日志保留天数 | 30 |
+| LOG_ACCESS_KEY | 日志访问密钥 | - |
+
+### 天气服务配置
+
+| 变量名 | 说明 | 默认值 |
+|--------|------|--------|
+| WEATHER_API_KEY | 和风天气 API 密钥 | - |
+| WEATHER_BASE_URL | 天气 API 基础 URL | https://devapi.qweather.com/v7 |
+| GEO_API_URL | 地理位置 API URL | https://geoapi.qweather.com/v2 |
 
 ## 开发命令
 
@@ -209,12 +388,31 @@ npm run format
 
 ## 设计文档参考
 
-- [需求规格说明书](../设计文档/00-需求规格说明书.md)
-- [系统架构设计](../设计文档/01-系统架构设计.md)
-- [数据库设计](../设计文档/02-数据库设计.md)
-- [API接口设计](../设计文档/03-API接口设计.md)
-- [AI交互与数据流转](../设计文档/04-AI交互与数据流转-设计.md)
+- [需求规格说明书](../../docs/current/01-product/00-需求规格说明书.md)
+- [系统架构设计](../../docs/current/02-architecture/01-系统架构设计.md)
+- [数据库设计](../../docs/current/02-architecture/02-数据库设计.md)
+- [API接口设计](../../docs/current/02-architecture/03-API接口设计.md)
+- [AI交互与数据流转](../../docs/current/02-architecture/04-AI交互与数据流转-设计.md)
+
+## 测试
+
+```bash
+# 运行所有测试
+npm test
+
+# 运行单元测试
+npm run test:unit
+
+# 运行集成测试
+npm run test:integration
+
+# 运行端到端测试
+npm run test:e2e
+
+# 生成测试覆盖率报告
+npm run test:coverage
+```
 
 ## 许可证
 
-ISC
+MIT

@@ -1,6 +1,21 @@
 // plant-detail.js - 植物详情页
 // 引入 API 服务
 const api = require('../../utils/api.js');
+const { getWeatherInfo, getWindDirection } = require('../../utils/metricConstants.js');
+
+// 调试日志工具
+const DEBUG = true;
+function log(tag, ...args) {
+  if (DEBUG) {
+    console.log(`[plant-detail][${tag}]`, ...args);
+  }
+}
+function warn(tag, ...args) {
+  console.warn(`[plant-detail][${tag}]`, ...args);
+}
+function error(tag, ...args) {
+  console.error(`[plant-detail][${tag}]`, ...args);
+}
 
 Page({
   data: {
@@ -99,62 +114,83 @@ Page({
     var that = this;
     var plantId = this.data.plantId;
     
+    log('loadPlantDetail', '开始加载植物详情:', plantId);
+    
     if (!plantId || plantId === 'undefined') {
-      console.warn('植物ID无效，跳过加载');
+      warn('loadPlantDetail', '植物ID无效，跳过加载');
       return Promise.resolve();
     }
     
     this.setData({ loading: true });
     
-    return api.getPlantDetail(plantId).then(function(plantData) {
-      if (!plantData) {
-        wx.showToast({ title: '植物不存在', icon: 'error' });
+    return api.getPlantDetail(plantId)
+      .then(function(plantData) {
+        log('loadPlantDetail', 'API 返回数据:', {
+          hasPlantData: !!plantData,
+          hasEnvironmentData: !!(plantData && plantData.environmentData),
+          deviceMetricsCount: plantData && plantData.environmentData ? (plantData.environmentData.deviceMetrics || []).length : 0,
+          weatherMetricsCount: plantData && plantData.environmentData ? (plantData.environmentData.weatherMetrics || []).length : 0
+        });
+        
+        if (!plantData) {
+          warn('loadPlantDetail', '植物不存在:', plantId);
+          wx.showToast({ title: '植物不存在', icon: 'error' });
+          that.setData({ loading: false });
+          return;
+        }
+        
+        // 格式化养护记录，添加 icon、actionName、displayTime
+        var formattedCareRecords = that.formatCareRecords(plantData.careRecords || []);
+
+        // 格式化诊断卡数据，添加 displayTime
+        var formattedDiagnosisCards = that.formatDiagnosisCards(plantData.diagnosisCards || []);
+
+        // 格式化天气指标
+        var rawWeatherMetrics = (plantData.environmentData && plantData.environmentData.weatherMetrics) || [];
+        var formattedWeatherMetrics = that.formatWeatherMetrics(rawWeatherMetrics);
+        log('loadPlantDetail', '天气指标格式化:', {
+          rawCount: rawWeatherMetrics.length,
+          formattedCount: formattedWeatherMetrics.length
+        });
+
+        that.setData({
+          plantInfo: {
+            plantId: plantData.plantId,
+            nickname: plantData.nickname,
+            species: plantData.species,
+            plantCategory: plantData.plantCategory,
+            coverImageUrl: plantData.coverImageUrl,
+            currentDeviceId: plantData.currentDeviceId,
+            createdAt: plantData.createdAt,
+            location: plantData.locationName,
+            remark: plantData.remark
+          },
+          diagnosisCards: formattedDiagnosisCards,
+          careRecords: formattedCareRecords,
+          careRecordsPreview: formattedCareRecords.slice(0, 3),
+          deviceInfo: plantData.device || { status: 'unbound' },
+          environmentData: plantData.environmentData || { current: {} },
+          deviceMetrics: (plantData.environmentData && plantData.environmentData.deviceMetrics) || [],
+          weatherMetrics: formattedWeatherMetrics,
+          weatherData: (plantData.environmentData && plantData.environmentData.weatherMetrics) ? {
+            location: (plantData.environmentData && plantData.environmentData.location) || plantData.locationName || null,
+            updateTime: plantData.environmentData && plantData.environmentData.updateTime ? that.formatDateTime(plantData.environmentData.updateTime) : '',
+            recordedAt: plantData.environmentData && plantData.environmentData.recordedAt
+          } : null
+        });
+        
+        that.updateComputedProperties();
         that.setData({ loading: false });
-        return;
-      }
-      
-      // 格式化养护记录，添加 icon、actionName、displayTime
-      var formattedCareRecords = that.formatCareRecords(plantData.careRecords || []);
-
-      // 格式化诊断卡数据，添加 displayTime
-      var formattedDiagnosisCards = that.formatDiagnosisCards(plantData.diagnosisCards || []);
-
-      that.setData({
-        plantInfo: {
-          plantId: plantData.plantId,
-          nickname: plantData.nickname,
-          species: plantData.species,
-          plantCategory: plantData.plantCategory,
-          coverImageUrl: plantData.coverImageUrl,
-          currentDeviceId: plantData.currentDeviceId,
-          createdAt: plantData.createdAt,
-          location: plantData.locationName,
-          remark: plantData.remark
-        },
-        diagnosisCards: formattedDiagnosisCards,
-        careRecords: formattedCareRecords,
-        careRecordsPreview: formattedCareRecords.slice(0, 3),
-        deviceInfo: plantData.device || { status: 'unbound' },
-        environmentData: plantData.environmentData || { current: {} },
-        deviceMetrics: (plantData.environmentData && plantData.environmentData.deviceMetrics) || [],
-        weatherMetrics: (plantData.environmentData && plantData.environmentData.weatherMetrics) || [],
-        weatherData: (plantData.environmentData && plantData.environmentData.weatherMetrics) ? {
-          location: (plantData.environmentData && plantData.environmentData.location) || plantData.locationName || null,
-          updateTime: plantData.environmentData && plantData.environmentData.updateTime ? that.formatDateTime(plantData.environmentData.updateTime) : null,
-          recordedAt: plantData.environmentData && plantData.environmentData.recordedAt
-        } : null
+        log('loadPlantDetail', '植物详情加载完成');
+      })
+      .catch(function(err) {
+        error('loadPlantDetail', '加载植物详情失败:', err);
+        that.setData({ loading: false });
+        wx.showToast({
+          title: '加载数据失败',
+          icon: 'none'
+        });
       });
-      
-      that.updateComputedProperties();
-      that.setData({ loading: false });
-    }).catch(function(err) {
-      console.error('加载植物详情失败:', err);
-      that.setData({ loading: false });
-      wx.showToast({
-        title: '加载数据失败',
-        icon: 'none'
-      });
-    });
   },
 
   updateComputedProperties: function() {
@@ -249,6 +285,33 @@ Page({
         ...item,
         displayTime: that.formatDateTime(item.createdAt)
       };
+    });
+  },
+
+  /**
+   * 格式化天气指标数据
+   * 将天气代码转换为可读文字和图标
+   */
+  formatWeatherMetrics: function(metrics) {
+    const that = this;
+    return metrics.map(function(metric) {
+      var formatted = { ...metric };
+
+      // 注意：后端返回的 metricCode 是 camelCase
+      if (metric.metricCode === 'weatherCondition' && metric.value !== null && metric.value !== undefined) {
+        var weatherInfo = getWeatherInfo(metric.value);
+        formatted.valueText = weatherInfo.text;
+        if (weatherInfo.icon && weatherInfo.icon !== metric.icon) {
+          formatted.icon = weatherInfo.icon;
+        }
+      }
+
+      if (metric.metricCode === 'windDirection360' && metric.value !== null && metric.value !== undefined) {
+        var windDirInfo = getWindDirection(metric.value);
+        formatted.valueText = windDirInfo.text;
+      }
+
+      return formatted;
     });
   },
 
@@ -577,8 +640,14 @@ Page({
     this.setData({ envDataSource: source });
   },
 
+  // 不应该打开详情页的指标（枚举类型，无趋势意义）
+  DISABLED_METRICS: ['weatherCondition', 'windDirection360'],
+
   viewMetricDetail: function(e) {
     const metric = e.currentTarget.dataset.metric;
+    if (this.DISABLED_METRICS.includes(metric)) {
+      return;
+    }
     wx.navigateTo({
       url: '/pages/metric-detail/metric-detail?plantId=' + this.data.plantId + '&metric=' + metric + '&source=device'
     });
@@ -586,6 +655,9 @@ Page({
 
   viewWeatherDetail: function(e) {
     const metric = e.currentTarget.dataset.metric;
+    if (this.DISABLED_METRICS.includes(metric)) {
+      return;
+    }
     wx.navigateTo({
       url: '/pages/metric-detail/metric-detail?plantId=' + this.data.plantId + '&metric=' + metric + '&source=weather'
     });
