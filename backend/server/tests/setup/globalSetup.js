@@ -12,10 +12,21 @@ module.exports = async () => {
     console.log('[Global Setup] 使用 CI 环境变量');
   }
   
-  console.log('测试环境配置:', {
+  // 确保所有必需的环境变量都有值
+  const requiredEnvVars = ['DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASSWORD'];
+  const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+  
+  if (missingVars.length > 0) {
+    console.error('[Global Setup] 缺少必需的环境变量:', missingVars);
+    throw new Error(`缺少必需的环境变量: ${missingVars.join(', ')}`);
+  }
+  
+  console.log('[Global Setup] 测试环境配置:', {
     DB_HOST: process.env.DB_HOST,
+    DB_PORT: process.env.DB_PORT,
     DB_NAME: process.env.DB_NAME,
     DB_USER: process.env.DB_USER,
+    DB_PASSWORD: process.env.DB_PASSWORD ? '***已设置***' : '***未设置***',
   });
 
   const rootSequelize = new Sequelize('', process.env.DB_USER, process.env.DB_PASSWORD, {
