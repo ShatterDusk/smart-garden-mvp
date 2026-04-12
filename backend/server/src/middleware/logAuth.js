@@ -218,13 +218,10 @@ const cleanupRateLimitStore = () => {
 };
 
 // 每5分钟清理一次
-let cleanupInterval;
+let cleanupInterval = null;
 
-// 只在非测试环境启动定时器，或导出清理函数供测试使用
+// 只在非测试环境启动定时器
 if (process.env.NODE_ENV !== 'test') {
-  cleanupInterval = setInterval(cleanupRateLimitStore, 300000);
-} else {
-  // 测试环境：启动定时器但保存引用以便清理
   cleanupInterval = setInterval(cleanupRateLimitStore, 300000);
 }
 

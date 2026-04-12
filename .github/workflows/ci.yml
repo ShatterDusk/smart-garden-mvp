@@ -160,7 +160,21 @@ jobs:
         DB_NAME: smart_garden_test
         DB_USER: root
         DB_PASSWORD: root
-      run: npm run test:integration
+        JWT_SECRET: test-jwt-secret-for-ci
+        COS_BUCKET: test-bucket
+        COS_REGION: ap-shanghai
+        WECHAT_ENV_ID: test-env
+        WECHAT_APPID: test-appid
+        WECHAT_SECRET: test-secret
+      run: |
+        echo "=== 环境变量检查 ==="
+        echo "DB_HOST: $DB_HOST"
+        echo "DB_PORT: $DB_PORT"
+        echo "DB_NAME: $DB_NAME"
+        echo "DB_USER: $DB_USER"
+        echo "NODE_ENV: $NODE_ENV"
+        echo "==================="
+        npm run test:integration
 
   # ========== Stage 4: 后端构建检查 ==========
   backend-build:

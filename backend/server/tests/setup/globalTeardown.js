@@ -1,5 +1,3 @@
-require('dotenv').config({ path: '.env.test' });
-
 module.exports = async () => {
   try {
     // 延迟一点确保所有测试资源已释放
