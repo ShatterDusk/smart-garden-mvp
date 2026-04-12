@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [ main, master, develop ]
 
+# 并发控制：同一分支的多个 workflow 只保留最新的
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 # 环境变量（可在整个 workflow 中使用）
 env:
   NODE_VERSION: '20'

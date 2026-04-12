@@ -1,0 +1,63 @@
+# CODEOWNERS - 代码审查规则
+# 定义哪些文件/目录需要特定人员审查
+# 格式：<文件模式> <审查者>
+
+# ============================================
+# 全局默认审查者
+# ============================================
+# 所有文件默认需要 ShatterDusk 审查
+* @ShatterDusk
+
+# ============================================
+# 后端代码审查
+# ============================================
+# 核心业务逻辑需要额外审查
+/backend/server/src/services/ @ShatterDusk
+/backend/server/src/controllers/ @ShatterDusk
+/backend/server/src/models/ @ShatterDusk
+
+# 中间件和安全相关代码
+/backend/server/src/middleware/ @ShatterDusk
+/backend/server/src/config/ @ShatterDusk
+
+# 路由定义
+/backend/server/src/routes/ @ShatterDusk
+
+# ============================================
+# 测试代码审查
+# ============================================
+# 测试文件变更需要审查
+/backend/server/tests/ @ShatterDusk
+
+# ============================================
+# CI/CD 配置审查
+# ============================================
+/.github/workflows/ @ShatterDusk
+/.github/CODEOWNERS @ShatterDusk
+
+# ============================================
+# 前端代码审查
+# ============================================
+# 小程序核心页面
+/frontend/pages/ @ShatterDusk
+/frontend/components/ @ShatterDusk
+/frontend/utils/api.js @ShatterDusk
+
+# ============================================
+# 文档审查
+# ============================================
+/docs/current/ @ShatterDusk
+/README.md @ShatterDusk
+
+# ============================================
+# 数据库相关审查
+# ============================================
+/_dev/DataBase/ @ShatterDusk
+/backend/server/src/models/ @ShatterDusk
+
+# ============================================
+# 环境配置审查
+# ============================================
+# 环境配置文件变更需要严格审查
+**/.env* @ShatterDusk
+/backend/server/src/config/environment.js @ShatterDusk
