@@ -265,6 +265,9 @@ const getMessages = async (req, res) => {
  * POST /api/sessions/:sessionId/messages
  */
 const sendMessage = async (req, res) => {
+  const startTime = Date.now();
+  const requestId = req.requestId || Date.now().toString(36);
+
   try {
     const { sessionId } = req.params;
     const { content, contentType = 'text', imageUrls, contextConfig } = req.body;
@@ -296,8 +299,7 @@ const sendMessage = async (req, res) => {
     const imageUrl = imageUrls && imageUrls.length > 0 ? imageUrls[0] : null;
 
     try {
-      // 优化：减少超时时间，更快反馈
-      const AI_TIMEOUT = 30000; // 30秒超时（原55秒）
+      const AI_TIMEOUT = 30000;
       const aiPromise = aiService.analyze({
         content,
         imageUrl,
@@ -393,6 +395,15 @@ const sendMessage = async (req, res) => {
       });
     }
 
+    const totalTime = Date.now() - startTime;
+    logger.info('sendMessage completed', {
+      requestId,
+      sessionId,
+      totalTimeMs: totalTime,
+      hasImage: !!imageUrl,
+      hasDiagnosisCard: !!diagnosisCardData,
+    });
+
     return success(res, {
       userMessage: {
         messageId: userMessage.messageId,
@@ -416,7 +427,13 @@ const sendMessage = async (req, res) => {
       },
     });
   } catch (err) {
-    logger.error('发送消息失败', { error: err.message });
+    const totalTime = Date.now() - startTime;
+    logger.error('sendMessage failed', {
+      requestId,
+      sessionId,
+      totalTimeMs: totalTime,
+      error: err.message,
+    });
     return error(res, '发送消息失败: ' + err.message, 500);
   }
 };

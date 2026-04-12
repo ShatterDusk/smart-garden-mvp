@@ -79,6 +79,50 @@
       "created": "2026-04-11",
       "updated": "2026-04-11",
       "status": "active"
+    },
+    {
+      "id": "KNOW-2026-04-11-004",
+      "title": "日志API安全加固方案",
+      "type": "solution",
+      "category": "project-insights/solutions",
+      "tags": ["security", "api", "jwt", "sql-injection", "path-traversal", "rate-limiting", "nodejs", "express"],
+      "path": "project-insights/solutions/log-api-security-hardening.md",
+      "created": "2026-04-11",
+      "updated": "2026-04-11",
+      "status": "active"
+    },
+    {
+      "id": "KNOW-2026-04-11-005",
+      "title": "Sequelize JSON 字段更新模式",
+      "type": "pattern",
+      "category": "project-insights/patterns",
+      "tags": ["sequelize", "json", "database", "nodejs", "pattern", "troubleshooting"],
+      "path": "project-insights/patterns/sequelize-json-field-update.md",
+      "created": "2026-04-11",
+      "updated": "2026-04-11",
+      "status": "active"
+    },
+    {
+      "id": "KNOW-2026-04-11-006",
+      "title": "未读消息红点提示模式",
+      "type": "pattern",
+      "category": "project-insights/patterns",
+      "tags": ["unread-message", "notification", "user-config", "json", "wechat-miniprogram", "pattern"],
+      "path": "project-insights/patterns/unread-message-red-dot.md",
+      "created": "2026-04-11",
+      "updated": "2026-04-11",
+      "status": "active"
+    },
+    {
+      "id": "KNOW-2026-04-12-001",
+      "title": "AI 养护任务系统",
+      "type": "technical",
+      "category": "domain-knowledge/technical/care-task-system",
+      "tags": ["ai", "care-task", "plant-care", "system-design", "architecture"],
+      "path": "domain-knowledge/technical/care-task-system/README.md",
+      "created": "2026-04-12",
+      "updated": "2026-04-12",
+      "status": "active"
     }
   ],
   "categories": [
@@ -142,7 +186,14 @@
         {
           "id": "technical",
           "name": "技术知识",
-          "path": "domain-knowledge/technical"
+          "path": "domain-knowledge/technical",
+          "subcategories": [
+            {
+              "id": "care-task-system",
+              "name": "养护任务系统",
+              "path": "domain-knowledge/technical/care-task-system"
+            }
+          ]
         },
         {
           "id": "architecture",
@@ -181,9 +232,53 @@
     "task-tracking",
     "development-process"
   ],
+  "tags": [
+    "knowledge-management",
+    "documentation",
+    "ai-memory",
+    "best-practice",
+    "architecture",
+    "decision",
+    "ai",
+    "database",
+    "mysql",
+    "sequelize",
+    "schema",
+    "performance",
+    "session",
+    "ai-service",
+    "async",
+    "optimization",
+    "bottleneck",
+    "workspace-pattern",
+    "task-management",
+    "risk-management",
+    "project-management",
+    "document-management",
+    "standards",
+    "organization",
+    "workflow",
+    "task-tracking",
+    "development-process",
+    "security",
+    "api",
+    "jwt",
+    "sql-injection",
+    "path-traversal",
+    "rate-limiting",
+    "nodejs",
+    "express",
+    "json",
+    "pattern",
+    "troubleshooting",
+    "unread-message",
+    "notification",
+    "user-config",
+    "wechat-miniprogram"
+  ],
   "stats": {
-    "totalKnowledge": 7,
-    "activeKnowledge": 7,
+    "totalKnowledge": 10,
+    "activeKnowledge": 10,
     "archivedKnowledge": 0
   }
 }

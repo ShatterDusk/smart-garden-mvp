@@ -15,6 +15,12 @@ const REQUIRED_VARS = [
   'WECHAT_APPID',
   'WECHAT_SECRET',
   'COS_BUCKET',
+  // 注意：微信云托管不需要 COS_SECRET_ID 和 COS_SECRET_KEY
+  // 它们只在需要生成预签名 URL 时使用，且有降级方案
+];
+
+// COS 密钥（可选，微信云托管环境不需要）
+const COS_VARS = [
   'COS_SECRET_ID',
   'COS_SECRET_KEY',
 ];

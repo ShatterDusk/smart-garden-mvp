@@ -41,10 +41,11 @@ describe('envValidator utils', () => {
     });
 
     it('OPTIONAL_VARS 包含可选的环境变量', () => {
-      expect(OPTIONAL_VARS).toContain('WECHAT_APPID');
-      expect(OPTIONAL_VARS).toContain('WECHAT_SECRET');
+      // WECHAT_APPID 和 WECHAT_SECRET 在 REQUIRED_VARS 中
       expect(OPTIONAL_VARS).toContain('DB_PORT');
       expect(OPTIONAL_VARS).toContain('DB_DIALECT');
+      expect(OPTIONAL_VARS).toContain('DB_SSL');
+      expect(OPTIONAL_VARS).toContain('DB_LOGGING');
     });
   });
 
@@ -55,6 +56,10 @@ describe('envValidator utils', () => {
       process.env.DB_USER = 'test_user';
       process.env.DB_PASSWORD = 'test_password';
       process.env.JWT_SECRET = 'test_secret';
+      process.env.WECHAT_APPID = 'test_appid';
+      process.env.WECHAT_SECRET = 'test_secret';
+      process.env.COS_BUCKET = 'test_bucket';
+      process.env.GLM_API_KEY = 'test_glm_key';
 
       const result = validateEnv(true);
 

@@ -12,6 +12,14 @@ const LOG_ACCESS_KEY = process.env.LOG_ACCESS_KEY;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
 /**
+ * 获取JWT密钥
+ * @returns {string} JWT密钥
+ */
+const getJwtSecret = () => {
+  return JWT_SECRET || (NODE_ENV === 'development' ? 'dev-secret-key' : null);
+};
+
+/**
  * 验证JWT签名
  * @param {string} headerB64 - Base64编码的header
  * @param {string} payloadB64 - Base64编码的payload
@@ -20,8 +28,13 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
  */
 const verifySignature = (headerB64, payloadB64, signatureB64) => {
   try {
+    const secret = getJwtSecret();
+    if (!secret) {
+      return false;
+    }
+    
     const expectedSignature = crypto
-      .createHmac('sha256', JWT_SECRET)
+      .createHmac('sha256', secret)
       .update(`${headerB64}.${payloadB64}`)
       .digest('base64url');
     
@@ -52,18 +65,10 @@ const verifyToken = (token) => {
       return null;
     }
 
-    // 开发环境简化验证：检查是否以 log-token- 开头
-    if (NODE_ENV === 'development' && token.startsWith('log-token-')) {
-      return {
-        userId: 'developer',
-        role: 'admin',
-        source: 'dev-token'
-      };
-    }
-
-    // 生产环境需要JWT_SECRET
-    if (!JWT_SECRET) {
-      console.error('[logAuth] 生产环境必须设置 JWT_SECRET');
+    // 开发环境也需要JWT_SECRET，但可以用弱密钥
+    const secret = JWT_SECRET || (NODE_ENV === 'development' ? 'dev-secret-key' : null);
+    if (!secret) {
+      console.error('[logAuth] JWT_SECRET未设置');
       return null;
     }
 
@@ -166,13 +171,8 @@ const verifyLogAccess = (req, res, next) => {
  * @returns {string} Token
  */
 const generateLogAccessToken = (userId, role = 'viewer', expiresInHours = 1) => {
-  // 开发环境简化Token
-  if (NODE_ENV === 'development') {
-    return `log-token-${userId}-${Date.now()}`;
-  }
-
-  // 生产环境需要JWT_SECRET
-  if (!JWT_SECRET) {
+  const secret = getJwtSecret();
+  if (!secret) {
     throw new Error('JWT_SECRET未设置，无法生成Token');
   }
 
@@ -188,9 +188,9 @@ const generateLogAccessToken = (userId, role = 'viewer', expiresInHours = 1) => 
   const base64Header = Buffer.from(JSON.stringify(header)).toString('base64url');
   const base64Payload = Buffer.from(JSON.stringify(payload)).toString('base64url');
 
-  // 使用HMAC-SHA256生成签名（安全修复）
+  // 使用HMAC-SHA256生成签名
   const signature = crypto
-    .createHmac('sha256', JWT_SECRET)
+    .createHmac('sha256', secret)
     .update(`${base64Header}.${base64Payload}`)
     .digest('base64url');
 
@@ -218,7 +218,25 @@ const cleanupRateLimitStore = () => {
 };
 
 // 每5分钟清理一次
-setInterval(cleanupRateLimitStore, 300000);
+let cleanupInterval;
+
+// 只在非测试环境启动定时器，或导出清理函数供测试使用
+if (process.env.NODE_ENV !== 'test') {
+  cleanupInterval = setInterval(cleanupRateLimitStore, 300000);
+} else {
+  // 测试环境：启动定时器但保存引用以便清理
+  cleanupInterval = setInterval(cleanupRateLimitStore, 300000);
+}
+
+/**
+ * 清理定时器（用于测试）
+ */
+const clearCleanupInterval = () => {
+  if (cleanupInterval) {
+    clearInterval(cleanupInterval);
+    cleanupInterval = null;
+  }
+};
 
 /**
  * 检查是否超过限流阈值
@@ -281,5 +299,6 @@ const verifyClientLogPush = (req, res, next) => {
 module.exports = {
   verifyLogAccess,
   verifyClientLogPush,
-  generateLogAccessToken
+  generateLogAccessToken,
+  clearCleanupInterval
 };

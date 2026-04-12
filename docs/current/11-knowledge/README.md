@@ -4,7 +4,7 @@ type: "meta"
 category: "knowledge-base"
 tags: ["meta", "index", "knowledge-management"]
 created: "2026-04-09"
-updated: "2026-04-09"
+updated: "2026-04-11"
 author: "AI"
 status: "active"
 ---
@@ -141,8 +141,19 @@ status: "active"
 
 ## 统计信息
 
-- **总知识数**: 7
-- **活跃知识**: 7
+- **总知识数**: 10
+- **活跃知识**: 10
 - **已归档**: 0
 
 *最后更新: 2026-04-11*
+
+## 最新知识
+
+| ID | 标题 | 类型 | 创建日期 |
+|:---|:---|:---:|:---:|
+| KNOW-2026-04-11-006 | 未读消息红点提示模式 | pattern | 2026-04-11 |
+| KNOW-2026-04-11-005 | Sequelize JSON 字段更新模式 | pattern | 2026-04-11 |
+| KNOW-2026-04-11-004 | 日志API安全加固方案 | solution | 2026-04-11 |
+| KNOW-2026-04-11-003 | 三线并行工作流 | best-practice | 2026-04-11 |
+| KNOW-2026-04-11-002 | 文档管理规范 | best-practice | 2026-04-11 |
+| KNOW-2026-04-11-001 | 工作区模式 | best-practice | 2026-04-11 |

@@ -1,8 +1,8 @@
 const jwt = require('jsonwebtoken');
-const { authMiddleware, optionalAuthMiddleware, generateToken, verifyToken, getJwtSecret } = require('../../../src/middleware/auth');
+const { authMiddleware, optionalAuthMiddleware, generateToken, verifyToken } = require('../../../src/middleware/auth');
 
 // 使用环境变量中的 JWT_SECRET，确保与模块一致
-const JWT_SECRET = getJwtSecret();
+const JWT_SECRET = process.env.JWT_SECRET || 'test_jwt_secret_for_testing_only';
 
 jest.mock('../../../src/models', () => ({
   User: {

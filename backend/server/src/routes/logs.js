@@ -1,7 +1,6 @@
 /**
- * 日志API路由 - 整改版
- * 提供统一的日志查询、搜索、导出和管理功能
- * 支持文件模式和数据库模式
+ * 日志API路由
+ * 提供统一的日志查询、搜索、导出和管理功能（数据库模式）
  */
 
 const express = require('express');
@@ -59,8 +58,7 @@ router.get('/export', verifyLogAccess, asyncHandler(logController.exportLogs));
 
 /**
  * @route   GET /api/logs/files
- * @desc    获取日志文件列表（文件模式专用）
- * @query   source(backend|frontend)
+ * @desc    获取日志文件列表（已废弃）
  * @access  Private
  * @deprecated 建议使用 GET /api/logs 替代
  */
@@ -68,8 +66,7 @@ router.get('/files', verifyLogAccess, asyncHandler(logController.getLogFiles));
 
 /**
  * @route   GET /api/logs/content
- * @desc    获取日志文件内容（文件模式专用）
- * @query   file, lines, source
+ * @desc    获取日志文件内容（已废弃）
  * @access  Private
  * @deprecated 建议使用 GET /api/logs 替代
  */

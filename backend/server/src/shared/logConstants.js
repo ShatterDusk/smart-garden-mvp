@@ -92,6 +92,22 @@ const PUSH_LIMITS = {
   PUSH_INTERVAL_MS: 10000
 };
 
+// 字段长度限制（与数据库模型保持一致）
+const FIELD_LIMITS = {
+  USER_ID: 64,
+  SESSION_ID: 64,
+  MESSAGE: 1000,
+  PAGE_PATH: 200,
+  ACTION: 100,
+  NETWORK_TYPE: 20,
+  REQUEST_ID: 64,
+  IP_ADDRESS: 45,      // IPv6最大长度
+  USER_AGENT: 500,
+  URL: 2048,
+  METHOD: 10,
+  KEYWORD_SEARCH: 100  // 搜索关键词最大长度
+};
+
 // 验证日志级别是否有效
 const isValidLogLevel = (level) => {
   if (!level) return false;
@@ -116,6 +132,7 @@ module.exports = {
   DB_FIELD_MAP,
   DEFAULT_QUERY_PARAMS,
   PUSH_LIMITS,
+  FIELD_LIMITS,
   isValidLogLevel,
   getLogLevelPriority,
   isLogLevelGte

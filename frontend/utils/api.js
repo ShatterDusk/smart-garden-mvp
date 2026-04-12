@@ -1,17 +1,49 @@
 /**
  * 智能园艺助手 - API 服务层
- * 替代 mock-data.js，调用真实后端 API
+ * 调用真实后端 API
  */
 
 // 引入配置文件
-const config = require('./config.js');
-const cosUpload = require('./cos-upload.js');
+var config = require('./config.js');
+var cosUpload = require('./cos-upload.js');
 
 // API 基础地址配置
-const API_BASE_URL = config.API_BASE_URL;
+var API_BASE_URL = config.API_BASE_URL;
 
 // Token 存储 Key
-const TOKEN_KEY = 'auth_token';
+var TOKEN_KEY = 'auth_token';
+
+// ==================== 常量定义 ====================
+
+/**
+ * 分页默认配置
+ */
+var PAGINATION = {
+  DEFAULT_PAGE: 1,
+  DEFAULT_PAGE_SIZE: 20,
+  DEFAULT_LIMIT: 20
+};
+
+/**
+ * 请求超时配置（毫秒）
+ */
+var TIMEOUT = {
+  DEFAULT: 30000,
+  AI_MESSAGE: 35000  // AI消息需要更长的超时时间
+};
+
+/**
+ * 对话历史配置
+ */
+var CONVERSATION = {
+  MAX_HISTORY_MESSAGES: 6  // 保留最近6条消息作为上下文
+};
+
+/**
+ * 调试日志开关
+ * 仅在开发环境启用
+ */
+var DEBUG = false;
 
 /**
  * 获取存储的 Token
@@ -26,23 +58,33 @@ function getToken() {
 
 /**
  * 保存 Token
+ * @returns {boolean} 是否保存成功
  */
 function setToken(token) {
   try {
     wx.setStorageSync(TOKEN_KEY, token);
+    return true;
   } catch (e) {
-    console.error('保存 Token 失败', e);
+    if (DEBUG) {
+      console.error('保存 Token 失败', e);
+    }
+    return false;
   }
 }
 
 /**
  * 清除 Token
+ * @returns {boolean} 是否清除成功
  */
 function clearToken() {
   try {
     wx.removeStorageSync(TOKEN_KEY);
+    return true;
   } catch (e) {
-    console.error('清除 Token 失败', e);
+    if (DEBUG) {
+      console.error('清除 Token 失败', e);
+    }
+    return false;
   }
 }
 
@@ -51,22 +93,35 @@ function clearToken() {
  */
 function request(options) {
   return new Promise(function(resolve, reject) {
-    const token = getToken();
-    
-    // 调试日志
-    console.log('发送请求:', options.method || 'GET', options.url, options.data || '');
-    
+    var token = getToken();
+
+    // 调试日志（仅在开发环境）
+    if (DEBUG) {
+      console.log('发送请求:', options.method || 'GET', options.url, options.data || '');
+    }
+
+    // 构建 header，ES5 不支持对象展开运算符
+    var header = {
+      'Content-Type': 'application/json',
+      'Authorization': token ? 'Bearer ' + token : ''
+    };
+    if (options.header) {
+      for (var key in options.header) {
+        if (options.header.hasOwnProperty(key)) {
+          header[key] = options.header[key];
+        }
+      }
+    }
+
     wx.request({
       url: API_BASE_URL + options.url,
       method: options.method || 'GET',
       data: options.data || {},
-      header: {
-        'Content-Type': 'application/json',
-        'Authorization': token ? 'Bearer ' + token : '',
-        ...options.header
-      },
+      header: header,
       success: function(res) {
-        console.log('收到响应:', options.url, res.statusCode, res.data);
+        if (DEBUG) {
+          console.log('收到响应:', options.url, res.statusCode, res.data);
+        }
         if (res.statusCode === 200) {
           // 后端返回格式: { code, message, data }
           if (res.data.code === 0) {
@@ -84,13 +139,8 @@ function request(options) {
       },
       fail: function(err) {
         reject(new Error('网络请求失败'));
-      },
-      complete: function(res) {
-        // 调试日志
-        if (res.statusCode !== 200) {
-          console.log('API 请求失败:', options.url, res.statusCode, res.data);
-        }
       }
+      // 移除 complete 回调，避免重复处理
     });
   });
 }
@@ -152,6 +202,27 @@ function handleActionResponse(res) {
   return !!res;
 }
 
+/**
+ * 构建分页查询参数
+ * @param {number} page - 页码
+ * @param {number} pageSize - 每页数量
+ * @returns {string} 查询参数字符串
+ */
+function buildPaginationParams(page, pageSize) {
+  var finalPage = page || PAGINATION.DEFAULT_PAGE;
+  var finalPageSize = pageSize || PAGINATION.DEFAULT_PAGE_SIZE;
+  return '?page=' + finalPage + '&pageSize=' + finalPageSize;
+}
+
+/**
+ * 构建限制查询参数
+ * @param {number} limit - 限制数量
+ * @returns {string} 查询参数字符串
+ */
+function buildLimitParams(limit) {
+  return '?limit=' + (limit || PAGINATION.DEFAULT_LIMIT);
+}
+
 // ==================== 用户模块 ====================
 
 /**
@@ -199,10 +270,7 @@ function updateUserProfile(data) {
  * 获取植物列表
  */
 function getPlantList(page, pageSize) {
-  var params = '?page=' + (page || 1) + '&pageSize=' + (pageSize || 20);
-  return get('/plants' + params).then(function(res) {
-    return res.list || [];
-  });
+  return get('/plants' + buildPaginationParams(page, pageSize)).then(handleListResponse);
 }
 
 /**
@@ -239,12 +307,10 @@ function deletePlant(plantId) {
  * 获取会话列表
  */
 function getSessionList(type, plantId, page, pageSize) {
-  var params = '?page=' + (page || 1) + '&pageSize=' + (pageSize || 20);
+  var params = buildPaginationParams(page, pageSize);
   if (type) params += '&type=' + type;
   if (plantId) params += '&plantId=' + plantId;
-  return get('/sessions' + params).then(function(res) {
-    return res.list || [];
-  });
+  return get('/sessions' + params).then(handleListResponse);
 }
 
 /**
@@ -265,11 +331,9 @@ function getSessionDetail(sessionId) {
  * 获取会话消息
  */
 function getSessionMessages(sessionId, before, limit) {
-  var params = '?limit=' + (limit || 20);
+  var params = buildLimitParams(limit);
   if (before) params += '&before=' + before;
-  return get('/sessions/' + sessionId + '/messages' + params).then(function(res) {
-    return res.list || [];
-  });
+  return get('/sessions/' + sessionId + '/messages' + params).then(handleListResponse);
 }
 
 /**
@@ -285,12 +349,14 @@ function markSessionAsRead(sessionId) {
  */
 function sendMessage(sessionId, data) {
   return new Promise(function(resolve, reject) {
-    const token = getToken();
-    const startTime = Date.now();
-    
-    console.log('发送消息:', sessionId, data);
-    
-    const requestTask = wx.request({
+    var token = getToken();
+    var startTime = Date.now();
+
+    if (DEBUG) {
+      console.log('发送消息:', sessionId, data);
+    }
+
+    var requestTask = wx.request({
       url: API_BASE_URL + '/sessions/' + sessionId + '/messages',
       method: 'POST',
       data: data || {},
@@ -298,11 +364,13 @@ function sendMessage(sessionId, data) {
         'Content-Type': 'application/json',
         'Authorization': token ? 'Bearer ' + token : '',
       },
-      // 优化：设置35秒超时（后端30秒 + 5秒缓冲）
-      timeout: 35000,
+      // AI消息需要更长的超时时间
+      timeout: TIMEOUT.AI_MESSAGE,
       success: function(res) {
-        const duration = Date.now() - startTime;
-        console.log('收到响应:', '/sessions/' + sessionId + '/messages', res.statusCode, duration + 'ms');
+        var duration = Date.now() - startTime;
+        if (DEBUG) {
+          console.log('收到响应:', '/sessions/' + sessionId + '/messages', res.statusCode, duration + 'ms');
+        }
         
         if (res.statusCode === 200) {
           if (res.data.code === 0) {
@@ -318,9 +386,11 @@ function sendMessage(sessionId, data) {
         }
       },
       fail: function(err) {
-        const duration = Date.now() - startTime;
-        console.error('请求失败:', '/sessions/' + sessionId + '/messages', err, duration + 'ms');
-        
+        var duration = Date.now() - startTime;
+        if (DEBUG) {
+          console.error('请求失败:', '/sessions/' + sessionId + '/messages', err, duration + 'ms');
+        }
+
         // 优化：区分超时错误和其他网络错误
         if (err.errMsg && err.errMsg.includes('timeout')) {
           reject(new Error('AI 分析超时，请稍后刷新页面查看结果'));
@@ -352,11 +422,9 @@ function deleteSession(sessionId) {
  * 获取养护记录
  */
 function getCareRecords(plantId, page, pageSize) {
-  var params = '?page=' + (page || 1) + '&pageSize=' + (pageSize || 20);
+  var params = buildPaginationParams(page, pageSize);
   if (plantId) params += '&plantId=' + plantId;
-  return get('/care-records' + params).then(function(res) {
-    return res.list || [];
-  });
+  return get('/care-records' + params).then(handleListResponse);
 }
 
 /**
@@ -416,11 +484,9 @@ function getDeviceDetail(deviceId) {
  * 获取诊断历史
  */
 function getDiagnosisHistory(plantId, page, pageSize) {
-  var params = '?page=' + (page || 1) + '&pageSize=' + (pageSize || 20);
+  var params = buildPaginationParams(page, pageSize);
   if (plantId) params += '&plantId=' + plantId;
-  return get('/diagnosis' + params).then(function(res) {
-    return res.list || [];
-  });
+  return get('/diagnosis' + params).then(handleListResponse);
 }
 
 /**
@@ -503,7 +569,7 @@ function getStorageUploadLink(filename, contentType) {
  * @returns {Promise<{url: string, fileId: string}>}
  */
 function uploadImage(filePath, onProgress) {
-  const fileName = filePath.split('/').pop() || 'image.jpg';
+  var fileName = filePath.split('/').pop() || 'image.jpg';
   return cosUpload.uploadToCloudStorage(filePath, {
     filename: fileName,
     contentType: 'image/jpeg',

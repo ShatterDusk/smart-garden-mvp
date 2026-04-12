@@ -325,6 +325,9 @@ class SessionService extends BaseService {
         plantCategory: plant.plantCategory,
         locationName: plant.locationName,
         locationCode: plant.locationCode,
+        // 注意：growthStage 和 healthScore 字段在 plants 表中不存在
+        // 如需这些字段，需要在数据库中添加
+        location: plant.locationName, // 兼容 buildPrompt 中使用的 location 字段
       };
     }
 

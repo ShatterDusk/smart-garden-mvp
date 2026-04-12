@@ -4,8 +4,9 @@
  */
 
 const { v4: uuidv4 } = require('uuid');
-const { Session, Message, DiagnosisCard, Plant, CareRecord, EnvironmentReading, EnvironmentReadingValue, EnvironmentMetric } = require('../models');
+const { Session, Message, DiagnosisCard } = require('../models');
 const aiService = require('../services/aiService');
+const SessionService = require('../services/SessionService');
 const { success, error } = require('../utils/response');
 const logger = require('../utils/logger');
 
@@ -34,8 +35,9 @@ const analyze = async (req, res) => {
     // 确定分析类型
     const analysisType = session.type === 'plant' ? 'deep' : 'normal';
 
-    // 准备上下文数据
-    const context = await prepareContext(session, session.context_config);
+    // 准备上下文数据（使用 SessionService 统一的方法）
+    const sessionService = new SessionService();
+    const context = await sessionService.prepareContext(session, session.context_config);
 
     // 调用 AI 服务
     const aiResult = await aiService.analyze({
@@ -126,104 +128,6 @@ const analyze = async (req, res) => {
     return error(res, 'AI 分析失败: ' + err.message, 500);
   }
 };
-
-/**
- * 准备上下文数据
- * @param {Object} session - 会话对象
- * @param {Object} contextConfig - 上下文配置
- * @returns {Promise<Object>} 上下文数据
- */
-async function prepareContext(session, contextConfig) {
-  const context = {};
-
-  if (!session.plant_id) {
-    return context;
-  }
-
-  // 植物档案（必填）
-  const plant = await Plant.findOne({
-    where: { plant_id: session.plant_id },
-  });
-
-  if (plant) {
-    context.plantInfo = {
-      plantId: plant.plant_id,
-      nickname: plant.nickname,
-      species: plant.species,
-      plantCategory: plant.plant_category,
-      locationName: plant.location_name,
-      locationCode: plant.location_code,
-    };
-  }
-
-  // 环境数据
-    if (contextConfig.environmentData) {
-      const latestReading = await EnvironmentReading.findOne({
-        where: { plant_id: session.plant_id },
-        order: [['recorded_at', 'DESC']],
-      });
-
-      if (latestReading) {
-        // 获取环境读数值
-        const readingValues = await EnvironmentReadingValue.findAll({
-          where: { reading_id: latestReading.reading_id },
-        });
-
-        // 获取指标定义（通过 metric_code 关联）
-        const metricCodes = readingValues.map(v => v.metric_code);
-        const metrics = metricCodes.length > 0
-          ? await EnvironmentMetric.findAll({
-              where: { metric_code: metricCodes },
-              attributes: ['metric_code', 'name', 'unit'],
-            })
-          : [];
-        const metricMap = new Map(metrics.map(m => [m.metric_code, m]));
-
-        context.environmentData = readingValues.map((v) => {
-          const metric = metricMap.get(v.metric_code);
-          return {
-            metricCode: metric?.metric_code || '',
-            metricName: metric?.name || '',
-            value: v.value,
-            unit: metric?.unit || '',
-          };
-        });
-      }
-    }
-
-  // 养护记录
-  if (contextConfig.careRecords) {
-    const careRecords = await CareRecord.findAll({
-      where: { plant_id: session.plant_id },
-      order: [['performed_at', 'DESC']],
-      limit: 5,
-    });
-
-    context.careRecords = careRecords.map((record) => ({
-      actionType: record.action_type,
-      description: record.description,
-      performedAt: record.performed_at,
-    }));
-  }
-
-  // 历史诊断
-  if (contextConfig.historyDiagnosis) {
-    const historyDiagnosis = await DiagnosisCard.findAll({
-      where: { plant_id: session.plant_id },
-      order: [['created_at', 'DESC']],
-      limit: 3,
-    });
-
-    context.historyDiagnosis = historyDiagnosis.map((diag) => ({
-      healthScore: diag.health_score,
-      status: diag.status,
-      issues: diag.issues,
-      createdAt: diag.created_at,
-    }));
-  }
-
-  return context;
-}
 
 module.exports = {
   analyze,

@@ -25,8 +25,12 @@ const LOG_SOURCES = {
  * 优先从全局数据获取，支持JWT Token或AccessKey
  */
 const getAuthToken = () => {
-  const app = getApp();
-  return app.globalData?.logAccessToken || null;
+  try {
+    const app = getApp();
+    return app?.globalData?.logAccessToken || null;
+  } catch (e) {
+    return null;
+  }
 };
 
 /**

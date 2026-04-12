@@ -35,6 +35,13 @@ jest.mock('../../../src/services/aiService', () => ({
   analyze: jest.fn(),
 }));
 
+// Mock SessionService
+jest.mock('../../../src/services/SessionService', () => {
+  return jest.fn().mockImplementation(() => ({
+    prepareContext: jest.fn().mockResolvedValue({}),
+  }));
+});
+
 jest.mock('../../../src/utils/response', () => ({
   success: jest.fn((res, data) => res.json({ code: 0, data })),
   error: jest.fn((res, message, code, statusCode) => {
@@ -51,6 +58,7 @@ jest.mock('../../../src/utils/logger', () => ({
 const aiController = require('../../../src/controllers/aiController');
 const { Session, Message, DiagnosisCard, Plant, CareRecord, EnvironmentReading, EnvironmentReadingValue, EnvironmentMetric } = require('../../../src/models');
 const aiService = require('../../../src/services/aiService');
+const SessionService = require('../../../src/services/SessionService');
 
 describe('AIController', () => {
   let req;
@@ -105,10 +113,20 @@ describe('AIController', () => {
         },
       };
 
+      const mockContext = {
+        plantInfo: {
+          plantId: 'PLANT_1',
+          nickname: '小绿',
+          species: '绿萝',
+        },
+      };
+
       Session.findOne.mockResolvedValue(mockSession);
       Plant.findOne.mockResolvedValue(mockPlant);
-      EnvironmentReading.findOne.mockResolvedValue(null);
-      CareRecord.findAll.mockResolvedValue([]);
+      // 模拟 SessionService 返回包含植物信息的上下文
+      SessionService.mockImplementation(() => ({
+        prepareContext: jest.fn().mockResolvedValue(mockContext),
+      }));
       aiService.analyze.mockResolvedValue(mockAiResult);
       Message.create.mockResolvedValue({ message_id: 'MSG_AI', created_at: new Date() });
       DiagnosisCard.create.mockResolvedValue({});
@@ -150,6 +168,10 @@ describe('AIController', () => {
       };
 
       Session.findOne.mockResolvedValue(mockSession);
+      // 模拟 SessionService 返回空上下文（无植物ID时）
+      SessionService.mockImplementation(() => ({
+        prepareContext: jest.fn().mockResolvedValue({}),
+      }));
       aiService.analyze.mockResolvedValue(mockAiResult);
       Message.create.mockResolvedValue({ message_id: 'MSG_AI', created_at: new Date() });
 
@@ -256,32 +278,23 @@ describe('AIController', () => {
         context_config: { environmentData: true },
       };
 
-      const mockPlant = {
-        plant_id: 'PLANT_1',
-        nickname: '小绿',
-        species: '绿萝',
+      const mockContext = {
+        plantInfo: {
+          plantId: 'PLANT_1',
+          nickname: '小绿',
+          species: '绿萝',
+        },
+        environmentData: [
+          { metricName: '温度', value: 25, unit: '°C' },
+          { metricName: '湿度', value: 60, unit: '%' },
+        ],
       };
-
-      const mockReading = {
-        reading_id: 'READING_1',
-        recorded_at: new Date(),
-      };
-
-      const mockReadingValues = [
-        { metric_code: 'TEMP', value: 25 },
-        { metric_code: 'HUMIDITY', value: 60 },
-      ];
-
-      const mockMetrics = [
-        { metric_code: 'TEMP', name: '温度', unit: '°C' },
-        { metric_code: 'HUMIDITY', name: '湿度', unit: '%' },
-      ];
 
       Session.findOne.mockResolvedValue(mockSession);
-      Plant.findOne.mockResolvedValue(mockPlant);
-      EnvironmentReading.findOne.mockResolvedValue(mockReading);
-      EnvironmentReadingValue.findAll.mockResolvedValue(mockReadingValues);
-      EnvironmentMetric.findAll.mockResolvedValue(mockMetrics);
+      // 模拟 SessionService 返回包含环境数据的上下文
+      SessionService.mockImplementation(() => ({
+        prepareContext: jest.fn().mockResolvedValue(mockContext),
+      }));
       aiService.analyze.mockResolvedValue({ content: '分析结果', diagnosisCard: null });
       Message.create.mockResolvedValue({ message_id: 'MSG_AI', created_at: new Date() });
 
@@ -313,20 +326,23 @@ describe('AIController', () => {
         context_config: { careRecords: true },
       };
 
-      const mockPlant = {
-        plant_id: 'PLANT_1',
-        nickname: '小绿',
-        species: '绿萝',
+      const mockContext = {
+        plantInfo: {
+          plantId: 'PLANT_1',
+          nickname: '小绿',
+          species: '绿萝',
+        },
+        careRecords: [
+          { actionType: 'water', description: '浇水', performedAt: new Date() },
+          { actionType: 'fertilize', description: '施肥', performedAt: new Date() },
+        ],
       };
 
-      const mockCareRecords = [
-        { action_type: 'water', description: '浇水', performed_at: new Date() },
-        { action_type: 'fertilize', description: '施肥', performed_at: new Date() },
-      ];
-
       Session.findOne.mockResolvedValue(mockSession);
-      Plant.findOne.mockResolvedValue(mockPlant);
-      CareRecord.findAll.mockResolvedValue(mockCareRecords);
+      // 模拟 SessionService 返回包含养护记录的上下文
+      SessionService.mockImplementation(() => ({
+        prepareContext: jest.fn().mockResolvedValue(mockContext),
+      }));
       aiService.analyze.mockResolvedValue({ content: '分析结果', diagnosisCard: null });
       Message.create.mockResolvedValue({ message_id: 'MSG_AI', created_at: new Date() });
 
@@ -357,19 +373,22 @@ describe('AIController', () => {
         context_config: { historyDiagnosis: true },
       };
 
-      const mockPlant = {
-        plant_id: 'PLANT_1',
-        nickname: '小绿',
-        species: '绿萝',
+      const mockContext = {
+        plantInfo: {
+          plantId: 'PLANT_1',
+          nickname: '小绿',
+          species: '绿萝',
+        },
+        historyDiagnosis: [
+          { healthScore: 85, status: 'healthy', issues: [], createdAt: new Date() },
+        ],
       };
 
-      const mockHistoryDiagnosis = [
-        { health_score: 85, status: 'healthy', issues: [], created_at: new Date() },
-      ];
-
       Session.findOne.mockResolvedValue(mockSession);
-      Plant.findOne.mockResolvedValue(mockPlant);
-      DiagnosisCard.findAll.mockResolvedValue(mockHistoryDiagnosis);
+      // 模拟 SessionService 返回包含历史诊断的上下文
+      SessionService.mockImplementation(() => ({
+        prepareContext: jest.fn().mockResolvedValue(mockContext),
+      }));
       aiService.analyze.mockResolvedValue({ content: '分析结果', diagnosisCard: null });
       Message.create.mockResolvedValue({ message_id: 'MSG_AI', created_at: new Date() });
 
@@ -399,6 +418,10 @@ describe('AIController', () => {
       };
 
       Session.findOne.mockResolvedValue(mockSession);
+      // 模拟 SessionService 返回空上下文（无植物ID时）
+      SessionService.mockImplementation(() => ({
+        prepareContext: jest.fn().mockResolvedValue({}),
+      }));
       aiService.analyze.mockResolvedValue({ content: '分析结果', diagnosisCard: null });
       Message.create.mockResolvedValue({ message_id: 'MSG_AI', created_at: new Date() });
 

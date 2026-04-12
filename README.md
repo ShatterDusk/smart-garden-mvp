@@ -2,6 +2,10 @@
 
 智能植物养护系统 - 微信小程序 + Node.js 后端
 
+[![CI/CD](https://github.com/ShatterDusk/smart-garden-mvp/actions/workflows/ci.yml/badge.svg)](https://github.com/ShatterDusk/smart-garden-mvp/actions)
+[![codecov](https://codecov.io/gh/ShatterDusk/smart-garden-mvp/branch/main/graph/badge.svg)](https://codecov.io/gh/ShatterDusk/smart-garden-mvp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 ## 项目简介
 
 本项目是一个面向植物爱好者的智能养护平台，结合物联网设备监测、AI 辅助诊断和微信小程序，帮助用户更好地管理家中植物。
@@ -125,10 +129,26 @@ smart-garden-mvp/
 
 ```bash
 cd backend/server
-npm test           # 运行所有测试
-npm run test:unit   # 单元测试
-npm test:integration # 集成测试
+npm test              # 运行所有测试
+npm run test:unit     # 单元测试
+npm run test:integration  # 集成测试
+npm run test:coverage # 生成覆盖率报告
 ```
+
+### 测试覆盖率
+
+| 类型 | 数量 | 状态 |
+|:---|:---|:---|
+| 测试套件 | 35+ | ✅ |
+| 测试用例 | 640+ | ✅ |
+| 代码覆盖率 | ~60% | 🟡 |
+
+**测试范围**：
+- ✅ Controllers（控制器）
+- ✅ Services（服务层）
+- ✅ Middleware（中间件）
+- ✅ Utils（工具函数）
+- ✅ Models（数据模型）
 
 ## 代码质量
 
