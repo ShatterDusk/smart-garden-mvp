@@ -102,6 +102,7 @@ jobs:
         env:
           MYSQL_ROOT_PASSWORD: root
           MYSQL_DATABASE: smart_garden_test
+          MYSQL_ROOT_HOST: '%'
         ports:
           - 3306:3306
         options: >-
@@ -125,7 +126,7 @@ jobs:
       working-directory: ${{ env.BACKEND_DIR }}
       run: npm ci
     
-    - name: 等待 MySQL 启动
+    - name: 等待 MySQL 启动并配置权限
       run: |
         sudo apt-get install -y mysql-client
         for i in {1..30}; do
@@ -136,6 +137,12 @@ jobs:
           echo "等待 MySQL 启动... ($i/30)"
           sleep 1
         done
+        
+        # 配置 root 用户允许从任何主机连接
+        mysql --host=127.0.0.1 --user=root --password=root -e "
+          ALTER USER 'root'@'%' IDENTIFIED WITH mysql_native_password BY 'root';
+          FLUSH PRIVILEGES;
+        " || echo "用户权限配置可能已存在"
     
     - name: 运行数据库迁移（如有）
       working-directory: ${{ env.BACKEND_DIR }}
