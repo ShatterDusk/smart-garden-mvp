@@ -33,6 +33,10 @@ jest.mock('../../../src/services/aiService', () => ({
   analyze: jest.fn(),
 }));
 
+jest.mock('../../../src/services/asyncAiService', () => ({
+  submitAsyncAiTask: jest.fn(),
+}));
+
 jest.mock('../../../src/utils/response', () => ({
   success: jest.fn((res, data, message) => {
     res.json({ code: 0, message: message || 'success', data });
@@ -51,6 +55,7 @@ jest.mock('../../../src/utils/logger', () => ({
 const sessionController = require('../../../src/controllers/sessionController');
 const { SessionService } = require('../../../src/services');
 const aiService = require('../../../src/services/aiService');
+const asyncAiService = require('../../../src/services/asyncAiService');
 const { success, error } = require('../../../src/utils/response');
 
 describe('SessionController', () => {
@@ -389,20 +394,20 @@ describe('SessionController', () => {
       mockSessionService.createMessage.mockResolvedValueOnce(mockUserMessage);
       mockSessionService.prepareContext.mockResolvedValue({});
       mockSessionService.getConversationHistory.mockResolvedValue([]);
-      aiService.analyze.mockResolvedValue({
-        content: '你好！有什么可以帮助你的？',
-        diagnosisCard: null,
-      });
       mockSessionService.createMessage.mockResolvedValueOnce(mockAiMessage);
 
       await sessionController.sendMessage(req, res);
 
       expect(mockSessionService.createMessage).toHaveBeenCalledTimes(2);
-      expect(aiService.analyze).toHaveBeenCalledWith({
+      // SA-7-001: 现在使用异步模式，验证 submitAsyncAiTask 被调用
+      expect(asyncAiService.submitAsyncAiTask).toHaveBeenCalledWith({
+        sessionId: 'SESSION_1',
+        userMessageId: 'MSG_USER',
         content: '你好',
         imageUrl: null,
         analysisType: 'normal',
         context: expect.any(Object),
+        userId: 'TEST_USER_123',
       });
       expect(success).toHaveBeenCalled();
     });
@@ -422,46 +427,41 @@ describe('SessionController', () => {
         contextConfig: {},
       };
 
-      mockSessionService.getSessionById.mockResolvedValue(mockSession);
-      mockSessionService.createMessage.mockResolvedValue({
-        messageId: 'MSG_USER',
+      const mockUserMessageWithImage = {
+        messageId: 'MSG_USER_IMG',
+        sessionId: 'SESSION_1',
         role: 'user',
         content: '这植物怎么了？',
         imageUrls: ['https://example.com/plant.jpg'],
         status: 'sent',
         createdAt: new Date(),
-      });
+      };
+
+      mockSessionService.getSessionById.mockResolvedValue(mockSession);
+      mockSessionService.createMessage.mockResolvedValueOnce(mockUserMessageWithImage);
       mockSessionService.prepareContext.mockResolvedValue({});
       mockSessionService.getConversationHistory.mockResolvedValue([]);
-      aiService.analyze.mockResolvedValue({
-        content: '看起来有些缺水',
-        diagnosisCard: {
-          healthScore: 70,
-          status: 'warning',
-          species: '绿萝',
-          issues: ['缺水'],
-          suggestions: ['浇水'],
-          confidence: 0.8,
-        },
-      });
-      mockSessionService.createMessage.mockResolvedValue({
+      mockSessionService.createMessage.mockResolvedValueOnce({
         messageId: 'MSG_AI',
         role: 'assistant',
-        content: '看起来有些缺水',
+        content: 'AI 正在分析中，请稍候...',
         status: 'sent',
         createdAt: new Date(),
       });
-      mockSessionService.createDiagnosisCard.mockResolvedValue({});
 
       await sessionController.sendMessage(req, res);
 
-      expect(aiService.analyze).toHaveBeenCalledWith(
+      // SA-7-001: 现在使用异步模式，验证 submitAsyncAiTask 被调用
+      expect(asyncAiService.submitAsyncAiTask).toHaveBeenCalledWith(
         expect.objectContaining({
+          sessionId: 'SESSION_1',
+          userMessageId: 'MSG_USER_IMG',
+          content: '这植物怎么了？',
           imageUrl: 'https://example.com/plant.jpg',
           analysisType: 'deep',
+          userId: 'TEST_USER_123',
         })
       );
-      expect(mockSessionService.createDiagnosisCard).toHaveBeenCalled();
     });
 
     it('会话不存在返回 404', async () => {
