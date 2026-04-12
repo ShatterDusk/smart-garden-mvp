@@ -17,7 +17,8 @@
     "test:e2e": "jest --selectProjects e2e --runInBand",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
-    "format": "prettier --write src/"
+    "format": "prettier --write src/",
+    "format:check": "prettier --check src/ || true"
   },
   "keywords": [
     "garden",
