@@ -20,6 +20,18 @@ const getUploadSign = async (req, res) => {
       return error(res, '文件名不能为空', 400);
     }
 
+    // 检查 COS 配置
+    if (!process.env.WECHAT_ENV_ID || !process.env.COS_BUCKET || 
+        !process.env.WECHAT_APPID || !process.env.WECHAT_SECRET) {
+      logger.error('[COS Controller] 环境变量缺失', {
+        WECHAT_ENV_ID: !!process.env.WECHAT_ENV_ID,
+        COS_BUCKET: !!process.env.COS_BUCKET,
+        WECHAT_APPID: !!process.env.WECHAT_APPID,
+        WECHAT_SECRET: !!process.env.WECHAT_SECRET,
+      });
+      return error(res, '服务器配置错误：COS 环境变量未设置', 500);
+    }
+
     // 生成文件路径：用户ID/日期/随机文件名
     const date = new Date().toISOString().slice(0, 10);
     const ext = filename.split('.').pop() || 'jpg';
