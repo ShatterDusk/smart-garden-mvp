@@ -34,12 +34,40 @@ function validateConfig() {
 
 // ==================== 通用工具 ====================
 
-// 创建 axios 实例
-const axiosInstance = axios.create({
-  httpsAgent: new https.Agent({
-    rejectUnauthorized: process.env.SSL_VERIFY !== 'false',
-  }),
-});
+/**
+ * 创建 axios 实例
+ * 优先使用环境变量配置，默认在开发环境禁用证书验证
+ * 
+ * 环境变量配置选项：
+ * - SSL_VERIFY=false: 禁用证书验证（开发环境）
+ * - SSL_VERIFY=true: 启用证书验证（生产环境默认值）
+ * - NODE_EXTRA_CA_CERTS: 指定额外的 CA 证书路径
+ */
+function createAxiosInstance() {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const sslVerify = process.env.SSL_VERIFY;
+  
+  // 生产环境默认启用验证，除非显式设置 SSL_VERIFY=false
+  // 开发环境默认禁用验证，除非显式设置 SSL_VERIFY=true
+  const rejectUnauthorized = sslVerify !== undefined 
+    ? sslVerify === 'true'
+    : isProduction;
+
+  if (!rejectUnauthorized) {
+    logger.warn('[COS] SSL 证书验证已禁用，仅应在开发/测试环境使用');
+  }
+
+  return axios.create({
+    httpsAgent: new https.Agent({
+      rejectUnauthorized,
+    }),
+  });
+}
+
+// 使用函数返回 axios 实例，确保每次都能获取最新的环境变量配置
+function getAxiosInstance() {
+  return createAxiosInstance();
+}
 
 // access_token 缓存
 let accessTokenCache = null;
@@ -66,7 +94,7 @@ async function getAccessToken(forceRefresh = false) {
   const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appId}&secret=${secret}`;
 
   try {
-    const response = await axiosInstance.get(url);
+    const response = await getAxiosInstance().get(url);
     const { access_token, expires_in, errcode, errmsg } = response.data;
 
     if (errcode && errcode !== 0) {
@@ -173,7 +201,7 @@ async function getUploadSign({ key, userId }) {
     const accessToken = await getAccessToken();
     const uploadUrl = `https://api.weixin.qq.com/tcb/uploadfile?access_token=${accessToken}`;
 
-    const response = await axiosInstance.post(uploadUrl, {
+    const response = await getAxiosInstance().post(uploadUrl, {
       env: cosConfig.envId,
       path: key,
     });
@@ -224,7 +252,7 @@ async function getTempFileUrl(fileId, maxAge = 3600) {
     const accessToken = await getAccessToken();
     const tempUrl = `https://api.weixin.qq.com/tcb/getTempFileURL?access_token=${accessToken}`;
 
-    const response = await axiosInstance.post(tempUrl, {
+    const response = await getAxiosInstance().post(tempUrl, {
       env: cosConfig.envId,
       file_list: [{
         fileid: fileId,
@@ -278,7 +306,7 @@ async function deleteFile(fileId) {
     const accessToken = await getAccessToken();
     const deleteUrl = `https://api.weixin.qq.com/tcb/deletefile?access_token=${accessToken}`;
 
-    const response = await axiosInstance.post(deleteUrl, {
+    const response = await getAxiosInstance().post(deleteUrl, {
       env: cosConfig.envId,
       fileid_list: [fileId],
     });
