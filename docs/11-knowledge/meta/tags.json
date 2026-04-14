@@ -1,0 +1,66 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2026-04-09",
+  "description": "知识库标签系统",
+  "tagGroups": [
+    {
+      "name": "知识类型",
+      "tags": [
+        "decision",
+        "learning",
+        "pattern",
+        "solution",
+        "insight",
+        "context",
+        "summary"
+      ]
+    },
+    {
+      "name": "领域",
+      "tags": [
+        "frontend",
+        "backend",
+        "database",
+        "api",
+        "ai",
+        "architecture",
+        "business",
+        "testing",
+        "deployment"
+      ]
+    },
+    {
+      "name": "优先级",
+      "tags": [
+        "critical",
+        "high",
+        "medium",
+        "low"
+      ]
+    },
+    {
+      "name": "状态",
+      "tags": [
+        "active",
+        "archived",
+        "draft",
+        "review"
+      ]
+    },
+    {
+      "name": "项目模块",
+      "tags": [
+        "user",
+        "plant",
+        "device",
+        "session",
+        "message",
+        "environment",
+        "diagnosis",
+        "care-record"
+      ]
+    }
+  ],
+  "customTags": [],
+  "tagRelations": {}
+}
