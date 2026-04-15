@@ -25,16 +25,16 @@ const weatherService = require('./weatherService');
 module.exports = {
   // 基类
   BaseService,
-  
-  // 数据模型服务（类，需要实例化或继承）
+
+  // 数据模型服务（直接使用实例）
   UserService,
   PlantService,
   CareRecordService,
   DeviceService,
   EnvironmentService,
   SessionService,
-  
-  // 功能服务（对象/实例，直接使用）
+
+  // 功能服务（直接使用）
   aiService,
   compensationService,
   weatherService,

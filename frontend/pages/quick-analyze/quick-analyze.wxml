@@ -83,8 +83,9 @@
   <view wx:if="{{isAnalyzing}}" class="loading-mask">
     <view class="loading-content">
       <view class="loading-spinner"></view>
-      <text class="loading-text">分析中 {{analysisProgress}}%</text>
-      <text class="loading-subtext">正在创建咨询会话...</text>
+      <text class="loading-text">{{analysisStatus || '分析中'}} {{analysisProgress}}%</text>
+      <text class="loading-subtext" wx:if="{{analysisProgress < 90}}">正在处理中，请稍候...</text>
+      <text class="loading-subtext" wx:if="{{analysisProgress >= 90}}">AI 正在分析图片，请稍候...</text>
     </view>
   </view>
 </view>

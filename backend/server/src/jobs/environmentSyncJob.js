@@ -1,13 +1,17 @@
 /**
  * 环境数据同步定时任务
- * 每2小时执行一次，生成 reading_tasks 并获取天气数据
+ * 
+ * 核心逻辑：
+ * 1. Task 富余策略：最新 RECEIVED 后保证有 N 个 PENDING Task
+ * 2. 天气数据获取：为所有 PENDING Task 获取天气数据
+ * 3. 补偿检查：定期检查超时未完成的 Task，生成补偿数据
  */
 
 const { Plant, ReadingTask, EnvironmentReading, EnvironmentReadingValue } = require('../models');
 const { v4: uuidv4 } = require('uuid');
 const { Op } = require('sequelize');
 const logger = require('../utils/logger');
-const { SYNC_INTERVAL, TOLERANCE_PERIOD, TASK_STATUS, DATA_SOURCE } = require('../config/environment');
+const { SYNC_INTERVAL, TOLERANCE_PERIOD, TASK_STATUS, DATA_SOURCE, TASK_SURPLUS_COUNT } = require('../config/environment');
 const compensationService = require('../services/compensationService');
 const weatherService = require('../services/weatherService');
 
@@ -36,12 +40,25 @@ function getNearestIntervalTime(date) {
 }
 
 /**
- * 生成所有植物的 reading_task
+ * 获取下一个2小时周期的时间
  */
-async function generateTasksForAllPlants() {
+function getNextIntervalTime(baseTime, intervals = 1) {
+  const d = new Date(baseTime);
+  d.setHours(d.getHours() + 2 * intervals);
+  return d;
+}
+
+/**
+ * 确保 Task 富余：最新 RECEIVED 后保证有 N 个 PENDING Task
+ * 
+ * 算法：
+ * 1. 找到该植物最新的 RECEIVED Task
+ * 2. 在该时间之后预生成 N 个 PENDING Task
+ * 3. 如果已存在的 PENDING 不足，补充生成
+ */
+async function ensureTaskSurplus() {
   try {
-    const now = new Date();
-    const recordedAt = getNearestIntervalTime(now);
+    logger.info('开始执行 Task 富余检查');
 
     const plants = await Plant.findAll({
       attributes: ['plant_id', 'location_code', 'location_lat', 'location_lng'],
@@ -58,37 +75,87 @@ async function generateTasksForAllPlants() {
       },
     });
 
-    logger.info(`开始生成任务，共 ${plants.length} 株植物，时间: ${recordedAt.toISOString()}`);
+    logger.info(`共 ${plants.length} 株植物需要检查 Task 富余`);
 
-    let createdCount = 0;
-    let skippedCount = 0;
+    let totalCreated = 0;
+    let totalSkipped = 0;
 
     for (const plant of plants) {
-      const existingTask = await ReadingTask.findOne({
-        where: { plant_id: plant.plant_id, recorded_at: recordedAt },
-      });
+      try {
+        // 1. 找到该植物最新的 RECEIVED Task
+        const latestReceived = await ReadingTask.findOne({
+          where: {
+            plant_id: plant.plant_id,
+            sensor_status: TASK_STATUS.SENSOR.RECEIVED,
+          },
+          order: [['recorded_at', 'DESC']],
+        });
 
-      if (existingTask) {
-        skippedCount++;
-        continue;
+        // 如果没有 RECEIVED，从当前时间开始
+        const baseTime = latestReceived 
+          ? latestReceived.recorded_at 
+          : getNearestIntervalTime(new Date());
+
+        // 2. 检查 baseTime 之后有多少 PENDING Task
+        const pendingTasks = await ReadingTask.findAll({
+          where: {
+            plant_id: plant.plant_id,
+            recorded_at: {
+              [Op.gt]: baseTime,
+            },
+            sensor_status: TASK_STATUS.SENSOR.PENDING,
+          },
+          order: [['recorded_at', 'ASC']],
+        });
+
+        // 3. 计算需要补充的数量
+        const existingCount = pendingTasks.length;
+        const needToCreate = TASK_SURPLUS_COUNT - existingCount;
+
+        if (needToCreate <= 0) {
+          logger.debug(`植物 ${plant.plant_id} Task 富余充足: ${existingCount}/${TASK_SURPLUS_COUNT}`);
+          totalSkipped += existingCount;
+          continue;
+        }
+
+        // 4. 补充生成 PENDING Task
+        for (let i = 1; i <= needToCreate; i++) {
+          const recordedAt = getNextIntervalTime(baseTime, existingCount + i);
+
+          // 检查是否已存在（避免重复）
+          const existing = await ReadingTask.findOne({
+            where: {
+              plant_id: plant.plant_id,
+              recorded_at: recordedAt,
+            },
+          });
+
+          if (existing) {
+            totalSkipped++;
+            continue;
+          }
+
+          await ReadingTask.create({
+            task_id: generateId('TASK'),
+            plant_id: plant.plant_id,
+            recorded_at: recordedAt,
+            sensor_status: TASK_STATUS.SENSOR.PENDING,
+            weather_status: TASK_STATUS.WEATHER.PENDING,
+          });
+
+          totalCreated++;
+          logger.debug(`为植物 ${plant.plant_id} 创建 PENDING Task: ${recordedAt.toISOString()}`);
+        }
+      } catch (error) {
+        logger.error(`处理植物 ${plant.plant_id} 时出错`, { error: error.message });
+        // 继续处理下一个植物
       }
-
-      await ReadingTask.create({
-        task_id: generateId('TASK'),
-        plant_id: plant.plant_id,
-        recorded_at: recordedAt,
-        sensor_status: TASK_STATUS.SENSOR.PENDING,
-        weather_status: TASK_STATUS.WEATHER.PENDING,
-      });
-
-      createdCount++;
     }
 
-    logger.info(`任务生成完成，新建: ${createdCount}，跳过: ${skippedCount}`);
-
-    return { createdCount, skippedCount, recordedAt };
+    logger.info(`Task 富余检查完成，新建: ${totalCreated}，跳过: ${totalSkipped}`);
+    return { totalCreated, totalSkipped };
   } catch (error) {
-    logger.error('生成任务失败', { error: error.message });
+    logger.error('Task 富余检查失败', { error: error.message });
     throw error;
   }
 }
@@ -267,7 +334,10 @@ async function runSync() {
   logger.info('========== 环境数据同步开始 ==========');
 
   try {
-    await generateTasksForAllPlants();
+    // 1. 执行 Task 富余检查（替代旧的 generateTasksForAllPlants）
+    await ensureTaskSurplus();
+    
+    // 2. 获取天气数据
     await fetchWeatherForAllPlants();
 
     logger.info('========== 环境数据同步完成 ==========');
@@ -314,6 +384,7 @@ function start() {
   logger.info('启动环境数据同步定时任务');
   logger.info(`同步周期: ${SYNC_INTERVAL / 1000 / 60} 分钟`);
   logger.info(`容忍期: ${TOLERANCE_PERIOD / 1000 / 60} 分钟`);
+  logger.info(`Task 富余数量: ${TASK_SURPLUS_COUNT}`);
 
   // 主同步任务：每2小时执行
   syncIntervalId = setInterval(runSync, SYNC_INTERVAL);
@@ -363,4 +434,5 @@ module.exports = {
   triggerCompensation,
   runSync,
   runCompensation,
+  ensureTaskSurplus, // 导出用于测试
 };

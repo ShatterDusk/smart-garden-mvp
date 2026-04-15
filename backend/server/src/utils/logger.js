@@ -180,7 +180,7 @@ if (LOG_STORAGE_MODE === 'database' || LOG_STORAGE_MODE === 'both') {
 
 // 创建 Logger 实例
 const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL || 'info',
+  level: process.env.LOG_LEVEL || 'debug', // 修改为 debug 以查看上下文组装日志
   levels,
   format: consoleFormat,
   transports,

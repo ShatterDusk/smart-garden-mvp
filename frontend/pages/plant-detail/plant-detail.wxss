@@ -989,6 +989,29 @@
   border: 2rpx solid #F44336;
 }
 
+/* 补偿数据样式 */
+.data-card.compensated {
+  background: #F3E5F5;
+  border: 2rpx dashed #9C27B0;
+  opacity: 0.9;
+}
+
+.data-card.compensated .card-value {
+  color: #7B1FA2;
+}
+
+.compensated-badge {
+  position: absolute;
+  top: 8rpx;
+  right: 8rpx;
+  font-size: 18rpx;
+  color: #9C27B0;
+  background: rgba(156, 39, 176, 0.1);
+  padding: 4rpx 10rpx;
+  border-radius: 8rpx;
+  border: 1rpx solid rgba(156, 39, 176, 0.3);
+}
+
 .card-icon {
   font-size: 48rpx;
 }

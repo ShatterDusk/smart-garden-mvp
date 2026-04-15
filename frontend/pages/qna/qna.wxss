@@ -609,3 +609,418 @@ page {
 .upload-error-icon {
   font-size: 40rpx;
 }
+
+/* ========== 上下文详情面板（底部滑出） ========== */
+
+.context-panel-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.context-panel {
+  background: #fff;
+  border-radius: 40rpx 40rpx 0 0;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s ease;
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.context-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 30rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.panel-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.panel-close {
+  width: 60rpx;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36rpx;
+  color: #999;
+  border-radius: 50%;
+  background: #f5f5f5;
+}
+
+.context-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20rpx 30rpx;
+}
+
+.panel-empty {
+  text-align: center;
+  padding: 100rpx 40rpx;
+  color: #999;
+  font-size: 28rpx;
+}
+
+.panel-loading {
+  text-align: center;
+  padding: 100rpx 40rpx;
+  color: #666;
+  font-size: 28rpx;
+}
+
+/* ========== 环境数据面板样式（参考植物详情页） ========== */
+
+.env-source-tag {
+  display: inline-block;
+  padding: 8rpx 20rpx;
+  border-radius: 20rpx;
+  font-size: 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.env-source-tag.device {
+  background: #E8F5E9;
+  color: #2E7D32;
+}
+
+.env-source-tag.weather {
+  background: #E3F2FD;
+  color: #1565C0;
+}
+
+/* 白色卡片网格 - 参考植物详情页 */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20rpx;
+  margin-bottom: 20rpx;
+}
+
+.data-card {
+  background: white;
+  border-radius: 24rpx;
+  padding: 30rpx 20rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+  position: relative;
+  border: 2rpx solid transparent;
+}
+
+.data-card.compensated {
+  background: #F3E5F5;
+  border: 2rpx dashed #9C27B0;
+  opacity: 0.9;
+}
+
+/* 使用SVG图标风格 */
+.data-card .card-icon {
+  width: 48rpx;
+  height: 48rpx;
+  font-size: 32rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.data-card .card-name {
+  font-size: 24rpx;
+  color: #666;
+}
+
+.data-card .card-value {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.compensated-badge {
+  position: absolute;
+  top: 8rpx;
+  right: 8rpx;
+  font-size: 18rpx;
+  color: #9C27B0;
+  background: rgba(156, 39, 176, 0.1);
+  padding: 2rpx 8rpx;
+  border-radius: 8rpx;
+}
+
+.env-update-time {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  padding: 20rpx;
+  color: #999;
+  font-size: 24rpx;
+}
+
+/* ========== 历史诊断面板样式（参考植物详情页诊断卡片） ========== */
+
+.diagnosis-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+/* 诊断卡片 - 白色圆角卡片 */
+.diagnosis-item {
+  background: white;
+  border-radius: 24rpx;
+  padding: 24rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.06);
+  position: relative;
+  border: 2rpx solid transparent;
+}
+
+.diagnosis-item.selected {
+  border-color: #4CAF50;
+  background: #F1F8E9;
+}
+
+/* 头部：健康评分 + 时间 */
+.diagnosis-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+
+.diagnosis-title {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.diagnosis-title-text {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.score-badge {
+  padding: 6rpx 16rpx;
+  border-radius: 20rpx;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: white;
+}
+
+.score-badge.healthy {
+  background: #4CAF50;
+}
+
+.score-badge.warning {
+  background: #FF9800;
+}
+
+.score-badge.critical {
+  background: #F44336;
+}
+
+.diagnosis-time {
+  font-size: 24rpx;
+  color: #999;
+}
+
+/* 问题列表 - 橙色背景 */
+.issues-section {
+  margin-bottom: 20rpx;
+}
+
+.issue-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+  padding: 20rpx;
+  background: #FFF8E1;
+  border-radius: 16rpx;
+  margin-bottom: 12rpx;
+}
+
+.issue-icon {
+  width: 36rpx;
+  height: 36rpx;
+  background: #FF9800;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.issue-content {
+  flex: 1;
+}
+
+.issue-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.issue-desc {
+  font-size: 24rpx;
+  color: #666;
+}
+
+/* 建议列表 - 绿色背景卡片 */
+.suggestions-section {
+  margin-top: 20rpx;
+}
+
+.suggestions-title {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #333;
+  display: block;
+  margin-bottom: 16rpx;
+}
+
+.suggestion-item {
+  padding: 20rpx;
+  background: #E8F5E9;
+  border-radius: 16rpx;
+  margin-bottom: 12rpx;
+}
+
+.suggestion-action {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #2E7D32;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.suggestion-details {
+  font-size: 24rpx;
+  color: #666;
+}
+
+/* 简版问题标签（用于列表展示） */
+.issue-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.issue-tag {
+  padding: 6rpx 16rpx;
+  background: #FFF3E0;
+  color: #E65100;
+  font-size: 24rpx;
+  border-radius: 12rpx;
+}
+
+/* ========== 养护记录面板样式（参考植物详情页） ========== */
+
+.care-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+/* 养护记录项 - 白色卡片 */
+.care-record-item {
+  display: flex;
+  gap: 20rpx;
+  background: white;
+  padding: 24rpx;
+  border-radius: 20rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+  position: relative;
+  border: 2rpx solid transparent;
+}
+
+.care-record-item.selected {
+  border-color: #4CAF50;
+  background: #F1F8E9;
+}
+
+/* 左侧圆形图标 - 参考截图 */
+.record-icon {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  background: #E8F5E9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  color: #4CAF50;
+  flex-shrink: 0;
+}
+
+.record-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.record-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8rpx;
+}
+
+.record-action {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.record-time {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.record-desc {
+  font-size: 26rpx;
+  color: #666;
+  line-height: 1.5;
+}
+
+.select-indicator {
+  position: absolute;
+  top: 20rpx;
+  right: 20rpx;
+  width: 40rpx;
+  height: 40rpx;
+  background: #4CAF50;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 24rpx;
+}

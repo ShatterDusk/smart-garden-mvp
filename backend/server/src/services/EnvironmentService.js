@@ -37,8 +37,10 @@ class EnvironmentService extends BaseService {
 
   async processDeviceEnvironmentData(plantId, data) {
     try {
-      const { deviceId, recordedAt, metrics, isSupplement } = data;
+      const { deviceId, recordedAt, metrics } = data;
       const recordedAtDate = new Date(recordedAt);
+
+      const isSupplement = this.calculateIsSupplement(recordedAtDate);
 
       let task = await ReadingTask.findOne({
         where: { plant_id: plantId, recorded_at: recordedAtDate },
@@ -93,7 +95,7 @@ class EnvironmentService extends BaseService {
           return {
             readingId: newReading.reading_id,
             recordedAt: recordedAtDate.toISOString(),
-            isSupplement: false,
+            isSupplement: isSupplement,
             isStale: false,
           };
       }
@@ -101,6 +103,21 @@ class EnvironmentService extends BaseService {
       logger.error('EnvironmentService.processDeviceEnvironmentData error:', err);
       throw err;
     }
+  }
+
+  calculateIsSupplement(recordedAtDate) {
+    const { TOLERANCE_PERIOD } = require('../config/environment');
+    const now = new Date();
+    const nearestIntervalStart = this.alignToInterval(now);
+    const timeDiff = nearestIntervalStart - recordedAtDate;
+    return timeDiff > TOLERANCE_PERIOD && recordedAtDate < nearestIntervalStart;
+  }
+
+  alignToInterval(date) {
+    const aligned = new Date(date);
+    aligned.setMinutes(0, 0, 0);
+    aligned.setHours(Math.floor(aligned.getHours() / 2) * 2);
+    return aligned;
   }
 
   async getCurrentData(plantId, recordedAt = null) {

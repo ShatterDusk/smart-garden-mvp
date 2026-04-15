@@ -36,8 +36,27 @@
     <view wx:if="{{metricInfo && metricInfo.code === 'precip'}}" class="metric-hint">
       <text class="hint-text">💡 过去1小时降水量（毫米）</text>
     </view>
+    <!-- 图表图例 -->
+    <view class="chart-legend">
+      <view class="legend-item">
+        <view class="legend-dot normal"></view>
+        <text class="legend-text">正常数据</text>
+      </view>
+      <view class="legend-item">
+        <view class="legend-dot compensated"></view>
+        <text class="legend-text">补偿数据</text>
+      </view>
+    </view>
     <view class="chart-container">
+      <!-- 空数据状态 -->
+      <view wx:if="{{chartData.length === 0}}" class="empty-chart-state">
+        <text class="empty-icon">📊</text>
+        <text class="empty-title">暂无数据</text>
+        <text class="empty-desc">该时间段内没有记录，请尝试切换时间范围</text>
+      </view>
+      <!-- 图表 canvas -->
       <canvas 
+        wx:if="{{chartData.length > 0}}"
         type="2d" 
         id="trendChart" 
         class="trend-chart"
@@ -45,9 +64,10 @@
         bindtouchmove="onChartMove"
       ></canvas>
       <!-- 提示信息 -->
-      <view wx:if="{{showTooltip}}" class="chart-tooltip" style="left: {{tooltipX}}px; top: {{tooltipY}}px;">
+      <view wx:if="{{showTooltip && chartData.length > 0}}" class="chart-tooltip" style="left: {{tooltipX}}px; top: {{tooltipY}}px;">
         <text class="tooltip-time">{{tooltipData.time}}</text>
         <text class="tooltip-value">{{tooltipData.value}}{{metricInfo.unit}}</text>
+        <text wx:if="{{tooltipData.isStale}}" class="tooltip-stale-tag">补偿</text>
       </view>
     </view>
   </view>
@@ -94,12 +114,15 @@
       <text class="history-count">共 {{historyData.length}} 条</text>
     </view>
     <view class="history-list">
-      <view 
-        wx:for="{{historyData}}" 
+      <view
+        wx:for="{{historyData}}"
         wx:key="time"
-        class="history-item {{item.status}}"
+        class="history-item {{item.status}} {{item.isStale ? 'compensated' : ''}}"
       >
-        <text class="history-time">{{item.displayTime}}</text>
+        <view class="history-time-section">
+          <text class="history-time">{{item.displayTime}}</text>
+          <text wx:if="{{item.isStale}}" class="compensated-tag">补偿</text>
+        </view>
         <view class="history-value-section">
           <text class="history-value">{{item.value}}{{metricInfo.unit}}</text>
           <view wx:if="{{item.status === 'warning'}}" class="status-dot warning"></view>

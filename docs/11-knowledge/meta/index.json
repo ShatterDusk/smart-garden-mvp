@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "lastUpdated": "2026-04-11",
+  "lastUpdated": "2026-04-18",
   "description": "知识库主索引文件",
   "knowledge": [
     {
@@ -30,10 +30,10 @@
       "title": "项目数据库设计概览",
       "type": "technical",
       "category": "domain-knowledge/technical",
-      "tags": ["database", "mysql", "sequelize", "schema", "architecture"],
+      "tags": ["database", "mysql", "sequelize", "schema", "architecture", "ddl", "reference", "index-document"],
       "path": "domain-knowledge/technical/database-schema-overview.md",
       "created": "2026-04-09",
-      "updated": "2026-04-09",
+      "updated": "2026-04-18",
       "status": "active"
     },
     {
@@ -122,6 +122,105 @@
       "path": "domain-knowledge/technical/care-task-system/README.md",
       "created": "2026-04-12",
       "updated": "2026-04-12",
+      "status": "active"
+    },
+    {
+      "id": "KNOW-2026-04-12-002",
+      "title": "文档治理委员会工作机制",
+      "type": "best-practice",
+      "category": "project-insights/best-practices",
+      "tags": ["documentation", "governance", "document-management", "best-practice", "organization"],
+      "path": "project-insights/best-practices/documentation-governance.md",
+      "created": "2026-04-12",
+      "updated": "2026-04-12",
+      "status": "active"
+    },
+    {
+      "id": "KNOW-2026-04-12-003",
+      "title": "文档健康度检查机制",
+      "type": "technical",
+      "category": "project-insights/best-practices",
+      "tags": ["documentation", "quality-assurance", "automation", "monitoring"],
+      "path": "project-insights/best-practices/doc-health-check-mechanism.md",
+      "created": "2026-04-12",
+      "updated": "2026-04-12",
+      "status": "active"
+    },
+    {
+      "id": "KNOW-2026-04-12-004",
+      "title": "文档代码一致性检查方法",
+      "type": "best-practice",
+      "category": "project-insights/best-practices",
+      "tags": ["documentation", "code-quality", "consistency", "best-practice"],
+      "path": "project-insights/best-practices/doc-code-consistency.md",
+      "created": "2026-04-12",
+      "updated": "2026-04-12",
+      "status": "active"
+    },
+    {
+      "id": "KNOW-2026-04-18-001",
+      "title": "项目技术全景与常识共识",
+      "type": "technical",
+      "category": "domain-knowledge/technical",
+      "tags": ["technical-landscape", "infrastructure", "database", "testing", "deployment", "architecture", "consensus"],
+      "path": "domain-knowledge/technical/project-technical-landscape.md",
+      "created": "2026-04-18",
+      "updated": "2026-04-18",
+      "status": "active"
+    },
+    {
+      "id": "KNOW-2026-04-18-002",
+      "title": "新人入职指南 - 项目常识与关键文件",
+      "type": "best-practice",
+      "category": "project-insights/best-practices",
+      "tags": ["onboarding", "newcomer", "guide", "project-structure", "consensus", "getting-started"],
+      "path": "project-insights/best-practices/newcomer-onboarding-guide.md",
+      "created": "2026-04-18",
+      "updated": "2026-04-18",
+      "status": "active"
+    },
+    {
+      "id": "KNOW-2026-04-18-003",
+      "title": "项目规范速查手册",
+      "type": "best-practice",
+      "category": "project-insights/best-practices",
+      "tags": ["conventions", "reference", "api", "gitignore", "sequelize", "standards", "quick-reference"],
+      "path": "project-insights/best-practices/project-conventions-reference.md",
+      "created": "2026-04-18",
+      "updated": "2026-04-18",
+      "status": "active"
+    },
+    {
+      "id": "KNOW-2026-04-18-004",
+      "title": "API 设计与错误处理规范",
+      "type": "best-practice",
+      "category": "project-insights/best-practices",
+      "tags": ["api", "rest", "error-handling", "http", "standards", "design"],
+      "path": "project-insights/best-practices/api-design-standards.md",
+      "created": "2026-04-18",
+      "updated": "2026-04-18",
+      "status": "active"
+    },
+    {
+      "id": "KNOW-2026-04-18-005",
+      "title": "数据库设计文档维护状态报告",
+      "type": "solution",
+      "category": "project-insights/solutions",
+      "tags": ["database", "maintenance", "documentation", "consistency", "technical-debt"],
+      "path": "project-insights/solutions/database-design-maintenance-status.md",
+      "created": "2026-04-18",
+      "updated": "2026-04-18",
+      "status": "active"
+    },
+    {
+      "id": "KNOW-2026-04-18-006",
+      "title": "知识库索引指南",
+      "type": "technical",
+      "category": "meta",
+      "tags": ["knowledge-base", "guide", "index", "documentation", "ai-reference"],
+      "path": "meta/knowledge-base-guide.md",
+      "created": "2026-04-18",
+      "updated": "2026-04-18",
       "status": "active"
     }
   ],
@@ -277,8 +376,8 @@
     "wechat-miniprogram"
   ],
   "stats": {
-    "totalKnowledge": 10,
-    "activeKnowledge": 10,
+    "totalKnowledge": 20,
+    "activeKnowledge": 20,
     "archivedKnowledge": 0
   }
 }

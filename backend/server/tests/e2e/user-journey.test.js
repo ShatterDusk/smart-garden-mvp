@@ -4,6 +4,13 @@ const { User, Plant, Session, Message, sequelize } = require('../../src/models')
 const { createAuthenticatedUser, cleanupTestData } = require('../setup/test-helpers');
 const { createTestPlant, createTestSession } = require('../setup/test-data');
 
+// Mock AI 服务，避免调用真实 API
+jest.mock('../../src/services/asyncAiService', () => ({
+  submitAsyncAiTask: jest.fn().mockResolvedValue({ success: true }),
+  getPendingTasksCount: jest.fn().mockReturnValue(0),
+  waitForAllTasks: jest.fn().mockResolvedValue(),
+}));
+
 describe('用户完整旅程 E2E 测试', () => {
   beforeAll(async () => {
     await sequelize.sync({ force: true });

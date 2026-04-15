@@ -113,11 +113,18 @@ describe('EnvironmentService', () => {
   })
 
   describe('processDeviceEnvironmentData', () => {
+    // 使用当前时间对齐到2小时间隔，避免 isSupplement 计算问题
+    const getCurrentAlignedTime = () => {
+      const now = new Date()
+      now.setMinutes(0, 0, 0)
+      now.setHours(Math.floor(now.getHours() / 2) * 2)
+      return now.toISOString()
+    }
+
     const mockData = {
       deviceId: 'device_001',
-      recordedAt: '2024-01-01T12:00:00Z',
-      metrics: { temperature: 25, humidity: 60 },
-      isSupplement: false
+      recordedAt: getCurrentAlignedTime(),
+      metrics: { temperature: 25, humidity: 60 }
     }
 
     it('应该创建新的传感器读数（当任务不存在时）', async () => {
@@ -157,7 +164,11 @@ describe('EnvironmentService', () => {
         sensor_status: TASK_STATUS.SENSOR.RECEIVED
       })
 
-      const supplementData = { ...mockData, isSupplement: true }
+      // 使用过去的时间来模拟补传场景
+      const supplementData = {
+        ...mockData,
+        recordedAt: '2024-01-01T12:00:00Z'
+      }
       const result = await service.processDeviceEnvironmentData(1, supplementData)
 
       expect(result).toHaveProperty('error', '该时刻已有真实传感器数据，拒绝补传')

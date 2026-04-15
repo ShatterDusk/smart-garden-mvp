@@ -2,7 +2,8 @@
  * SessionService 单元测试
  */
 
-const SessionService = require('../../../src/services/SessionService');
+const SessionServiceModule = require('../../../src/services/SessionService');
+const SessionService = SessionServiceModule.SessionServiceClass || SessionServiceModule;
 const logger = require('../../../src/utils/logger');
 
 jest.mock('../../../src/utils/logger', () => ({

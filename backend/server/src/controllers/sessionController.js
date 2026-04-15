@@ -1,14 +1,14 @@
 /**
  * 会话模块控制器
  * 处理会话相关的请求响应
+ * SA-7-001: 已添加异步 AI 处理支持
  */
 
-const { SessionService } = require('../services');
+const sessionService = require('../services/SessionService');
 const aiService = require('../services/aiService');
+const asyncAiService = require('../services/asyncAiService');
 const { success, error } = require('../utils/response');
 const logger = require('../utils/logger');
-
-const sessionService = new SessionService();
 
 /**
  * 获取会话列表
@@ -261,8 +261,9 @@ const getMessages = async (req, res) => {
 };
 
 /**
- * 发送消息
+ * 发送消息（异步模式）
  * POST /api/sessions/:sessionId/messages
+ * SA-7-001: 改为异步处理，立即返回，AI分析在后台执行
  */
 const sendMessage = async (req, res) => {
   const startTime = Date.now();
@@ -273,12 +274,13 @@ const sendMessage = async (req, res) => {
     const { content, contentType = 'text', imageUrls, contextConfig } = req.body;
     const userId = req.user.userId;
 
+    // 获取会话信息
     const session = await sessionService.getSessionById(sessionId, userId);
-
     if (!session) {
       return error(res, '会话不存在', 404, 404);
     }
 
+    // 创建用户消息
     const userMessage = await sessionService.createMessage(sessionId, {
       role: 'user',
       content,
@@ -286,124 +288,45 @@ const sendMessage = async (req, res) => {
       imageUrls,
     });
 
+    // 准备上下文数据
     const analysisType = session.type === 'plant' ? 'deep' : 'normal';
-
     const effectiveContextConfig = contextConfig || session.contextConfig || {};
     const context = await sessionService.prepareContext(session, effectiveContextConfig);
-
     const conversationHistory = await sessionService.getConversationHistory(sessionId, 6);
     context.conversationHistory = conversationHistory;
 
-    let aiMessage;
-    let diagnosisCardData = null;
     const imageUrl = imageUrls && imageUrls.length > 0 ? imageUrls[0] : null;
 
-    try {
-      const AI_TIMEOUT = 30000;
-      const aiPromise = aiService.analyze({
-        content,
-        imageUrl,
-        analysisType,
-        context,
-      });
+    // 提交异步 AI 分析任务
+    asyncAiService.submitAsyncAiTask({
+      sessionId,
+      userMessageId: userMessage.messageId,
+      content,
+      imageUrl,
+      analysisType,
+      context,
+      userId,
+    });
 
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('AI 分析超时')), AI_TIMEOUT);
-      });
-
-      const aiResult = await Promise.race([aiPromise, timeoutPromise]);
-
-      aiMessage = await sessionService.createMessage(sessionId, {
-        role: 'assistant',
-        contentType: 'text',
-        content: aiResult.content,
-      });
-
-      if (aiResult.diagnosisCard) {
-        await sessionService.createDiagnosisCard({
-          messageId: aiMessage.messageId,
-          plantId: session.plantId,
-          species: aiResult.diagnosisCard.species || '未知植物',
-          analysisType,
-          healthScore: aiResult.diagnosisCard.healthScore,
-          status: aiResult.diagnosisCard.status,
-          issues: aiResult.diagnosisCard.issues,
-          suggestions: aiResult.diagnosisCard.suggestions,
-          confidence: aiResult.diagnosisCard.confidence,
-          contextUsed: context,
-        });
-
-        diagnosisCardData = {
-          healthScore: aiResult.diagnosisCard.healthScore,
-          status: aiResult.diagnosisCard.status,
-          species: aiResult.diagnosisCard.species || '未知植物',
-          issues: aiResult.diagnosisCard.issues,
-          suggestions: aiResult.diagnosisCard.suggestions,
-          confidence: aiResult.diagnosisCard.confidence,
-        };
-
-        logger.info('AI 分析完成', {
-          sessionId,
-          analysisType,
-          healthScore: aiResult.diagnosisCard.healthScore,
-          status: aiResult.diagnosisCard.status,
-        });
-      } else {
-        logger.info('AI 分析完成（纯对话）', { sessionId });
-      }
-    } catch (aiError) {
-      logger.error('AI 服务调用失败', {
-        error: aiError.message,
-        sessionId,
-        analysisType,
-        hasImage: !!imageUrl,
-      });
-
-      const isTimeout = aiError.message.includes('超时');
-      const errorContent = isTimeout
-        ? '抱歉，分析耗时较长，请稍后刷新页面查看结果。'
-        : '抱歉，AI 服务暂时不可用，请稍后重试。';
-
-      aiMessage = await sessionService.createMessage(sessionId, {
-        role: 'assistant',
-        contentType: 'text',
-        content: errorContent,
-      });
-
-      return success(res, {
-        userMessage: {
-          messageId: userMessage.messageId,
-          sessionId: userMessage.sessionId,
-          role: userMessage.role,
-          contentType: userMessage.contentType,
-          content: userMessage.content,
-          imageUrls: userMessage.imageUrls,
-          status: userMessage.status,
-          createdAt: userMessage.createdAt,
-        },
-        aiResponse: {
-          messageId: aiMessage.messageId,
-          sessionId: aiMessage.sessionId,
-          role: aiMessage.role,
-          contentType: aiMessage.contentType,
-          content: aiMessage.content,
-          diagnosisCard: null,
-          status: aiMessage.status,
-          createdAt: aiMessage.createdAt,
-          isError: true,
-        },
-      });
-    }
+    // 创建"AI正在分析"的占位消息
+    const placeholderMessage = await sessionService.createMessage(sessionId, {
+      role: 'assistant',
+      contentType: 'text',
+      content: 'AI 正在分析中，请稍候...',
+      replyToMessageId: userMessage.messageId,
+    });
 
     const totalTime = Date.now() - startTime;
-    logger.info('sendMessage completed', {
+    logger.info('【异步模式】sendMessage 已提交 AI 任务', {
       requestId,
       sessionId,
       totalTimeMs: totalTime,
+      userMessageId: userMessage.messageId,
+      placeholderMessageId: placeholderMessage.messageId,
       hasImage: !!imageUrl,
-      hasDiagnosisCard: !!diagnosisCardData,
     });
 
+    // 立即返回响应（不等待 AI 完成）
     return success(res, {
       userMessage: {
         messageId: userMessage.messageId,
@@ -416,21 +339,24 @@ const sendMessage = async (req, res) => {
         createdAt: userMessage.createdAt,
       },
       aiResponse: {
-        messageId: aiMessage.messageId,
-        sessionId: aiMessage.sessionId,
-        role: aiMessage.role,
-        contentType: aiMessage.contentType,
-        content: aiMessage.content,
-        diagnosisCard: diagnosisCardData,
-        status: aiMessage.status,
-        createdAt: aiMessage.createdAt,
+        messageId: placeholderMessage.messageId,
+        sessionId: placeholderMessage.sessionId,
+        role: placeholderMessage.role,
+        contentType: placeholderMessage.contentType,
+        content: placeholderMessage.content,
+        diagnosisCard: null,
+        status: 'analyzing', // 标记为分析中状态
+        createdAt: placeholderMessage.createdAt,
+        isPlaceholder: true, // 标记为占位消息
       },
+      isAsync: true, // 标记为异步模式
+      message: 'AI 分析已提交，请稍后刷新查看结果',
     });
   } catch (err) {
     const totalTime = Date.now() - startTime;
-    logger.error('sendMessage failed', {
+    logger.error('【异步模式】sendMessage 失败', {
       requestId,
-      sessionId,
+      sessionId: req.params.sessionId,
       totalTimeMs: totalTime,
       error: err.message,
     });

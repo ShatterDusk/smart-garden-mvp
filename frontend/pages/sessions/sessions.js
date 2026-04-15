@@ -179,10 +179,14 @@ Page({
     const id = e.currentTarget.dataset.id;
     const type = e.currentTarget.dataset.type;
     const title = e.currentTarget.dataset.title;
+    const plantId = e.currentTarget.dataset.plantid;
     
-    wx.navigateTo({
-      url: '/pages/qna/qna?sessionType=' + type + '&sessionId=' + id + '&title=' + encodeURIComponent(title)
-    });
+    var url = '/pages/qna/qna?sessionType=' + type + '&sessionId=' + id + '&title=' + encodeURIComponent(title);
+    if (plantId) {
+      url += '&plantId=' + plantId;
+    }
+    
+    wx.navigateTo({ url: url });
   },
 
   deleteSession(e) {

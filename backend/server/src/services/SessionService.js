@@ -21,6 +21,25 @@ class SessionService extends BaseService {
     return `DIAG_${uuidv4().replace(/-/g, '').substring(0, 16)}`;
   }
 
+  /**
+   * 计算养护时长（人类友好的描述）
+   * @param {Date|string} createdAt - 植物创建时间
+   * @returns {string} 养护时长描述
+   */
+  calculateCareDuration(createdAt) {
+    const created = new Date(createdAt);
+    const now = new Date();
+    const days = Math.floor((now - created) / (1000 * 60 * 60 * 24));
+
+    if (days < 0) return '未知';
+    if (days === 0) return '今天添加';
+    if (days < 7) return '不到1周';
+    if (days < 30) return `${days}天`;
+    if (days < 90) return `${Math.floor(days / 30)}个月`;
+    if (days < 365) return `${Math.floor(days / 30)}个月`;
+    return `${Math.floor(days / 365)}年${Math.floor((days % 365) / 30)}个月`;
+  }
+
   async createSession(userId, sessionData) {
     try {
       const sessionId = this.generateSessionId();
@@ -325,9 +344,9 @@ class SessionService extends BaseService {
         plantCategory: plant.plantCategory,
         locationName: plant.locationName,
         locationCode: plant.locationCode,
-        // 注意：growthStage 和 healthScore 字段在 plants 表中不存在
-        // 如需这些字段，需要在数据库中添加
         location: plant.locationName, // 兼容 buildPrompt 中使用的 location 字段
+        // 新增：养护时长（人类友好的描述）
+        careDuration: this.calculateCareDuration(plant.createdAt),
       };
     }
 
@@ -391,6 +410,22 @@ class SessionService extends BaseService {
         createdAt: diag.createdAt,
       }));
     }
+
+    // 调试日志：记录组装后的完整上下文
+    logger.debug('上下文组装完成', {
+      sessionId: session.sessionId,
+      plantId: session.plantId,
+      contextKeys: Object.keys(context),
+      plantInfo: context.plantInfo ? {
+        hasNickname: !!context.plantInfo.nickname,
+        hasSpecies: !!context.plantInfo.species,
+        hasCareDuration: !!context.plantInfo.careDuration,
+        careDuration: context.plantInfo.careDuration,
+      } : null,
+      environmentDataCount: context.environmentData?.length || 0,
+      careRecordsCount: context.careRecords?.length || 0,
+      historyDiagnosisCount: context.historyDiagnosis?.length || 0,
+    });
 
     return context;
   }
@@ -469,4 +504,10 @@ class SessionService extends BaseService {
   }
 }
 
-module.exports = SessionService;
+const sessionServiceInstance = new SessionService();
+
+// 导出实例供生产代码使用
+module.exports = sessionServiceInstance;
+
+// 将类挂载到实例上，供测试使用
+module.exports.SessionServiceClass = SessionService;

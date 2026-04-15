@@ -230,12 +230,12 @@ describe('AIService', () => {
   });
 
   describe('convertImageToBase64', () => {
-    it('已经是 base64 格式直接返回', async () => {
+    it('base64 格式不再支持，应抛出错误', async () => {
       const base64Url = 'data:image/jpeg;base64,/9j/4AAQ...';
 
-      const result = await aiService.convertImageToBase64(base64Url);
-
-      expect(result).toBe(base64Url);
+      await expect(
+        aiService.convertImageToBase64(base64Url)
+      ).rejects.toThrow('不支持的图片格式');
     });
 
     it('不支持的格式抛出错误', async () => {

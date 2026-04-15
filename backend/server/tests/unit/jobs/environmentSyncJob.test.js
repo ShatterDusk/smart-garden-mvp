@@ -58,14 +58,19 @@ describe('environmentSyncJob', () => {
       ]
 
       Plant.findAll.mockResolvedValue(mockPlants)
+      // 模拟没有 RECEIVED 任务，从当前时间开始
+      ReadingTask.findOne.mockResolvedValue(null)
+      // 模拟没有已存在的 PENDING 任务
+      ReadingTask.findAll.mockResolvedValue([])
+      // 模拟没有重复任务
       ReadingTask.findOne.mockResolvedValue(null)
       ReadingTask.create.mockResolvedValue({ task_id: 'TASK_001' })
-      ReadingTask.findAll.mockResolvedValue([])
 
       await environmentSyncJob.runSync()
 
       expect(Plant.findAll).toHaveBeenCalled()
-      expect(ReadingTask.create).toHaveBeenCalledTimes(2)
+      // 每个植物创建 TASK_SURPLUS_COUNT(3) 个任务，共 2 个植物 = 6 个
+      expect(ReadingTask.create).toHaveBeenCalledTimes(6)
     })
 
     it('应该跳过已存在的任务', async () => {
@@ -75,14 +80,22 @@ describe('environmentSyncJob', () => {
       ]
 
       Plant.findAll.mockResolvedValue(mockPlants)
-      ReadingTask.findOne.mockResolvedValueOnce({ task_id: 'EXISTING_001' })
-      ReadingTask.findOne.mockResolvedValueOnce(null)
+      // 第一个植物：没有 RECEIVED，但有 2 个已存在的 PENDING
+      // 第二个植物：没有 RECEIVED，没有已存在的 PENDING
+      ReadingTask.findOne
+        .mockResolvedValueOnce(null) // 第一个植物的 RECEIVED 检查
+        .mockResolvedValueOnce(null) // 第二个植物的 RECEIVED 检查
+      ReadingTask.findAll
+        .mockResolvedValueOnce([{ task_id: 'PENDING_1' }, { task_id: 'PENDING_2' }]) // 第一个植物有 2 个 PENDING
+        .mockResolvedValueOnce([]) // 第二个植物没有 PENDING
+      // 检查重复时都没有已存在
+      ReadingTask.findOne.mockResolvedValue(null)
       ReadingTask.create.mockResolvedValue({ task_id: 'TASK_001' })
-      ReadingTask.findAll.mockResolvedValue([])
 
       await environmentSyncJob.runSync()
 
-      expect(ReadingTask.create).toHaveBeenCalledTimes(1)
+      // 第一个植物已有 2 个，需要创建 1 个；第二个植物需要创建 3 个；共 4 个
+      expect(ReadingTask.create).toHaveBeenCalledTimes(4)
     })
 
     it('应该处理没有植物的情况', async () => {

@@ -155,7 +155,8 @@ Page({
         
         const canvas = res[0].node;
         const ctx = canvas.getContext('2d');
-        const dpr = wx.getSystemInfoSync().pixelRatio;
+        const windowInfo = wx.getWindowInfo();
+        const dpr = windowInfo.pixelRatio;
         
         canvas.width = 80 * dpr;
         canvas.height = 80 * dpr;

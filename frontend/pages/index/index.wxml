@@ -57,7 +57,7 @@
         <text class="section-action" bindtap="goToPlants">查看全部 ></text>
       </view>
       
-      <scroll-view class="plants-scroll" scroll-x="true" show-scrollbar="false">
+      <scroll-view class="plants-scroll" scroll-x="true" show-scrollbar="false" enable-flex>
         <!-- 植物卡片 -->
         <view 
           class="plant-card" 

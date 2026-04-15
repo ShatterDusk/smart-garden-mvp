@@ -275,18 +275,124 @@ jobs:
           echo "✅ 所有测试通过！"
         fi
 
-  # ========== Stage 7: 部署（可选，需要配置） ==========
-  # deploy:
-  #   runs-on: ubuntu-latest
-  #   name: Deploy
-  #   needs: [test-summary]
-  #   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-  #   
-  #   steps:
-  #   - name: 检出代码
-  #     uses: actions/checkout@v4
-  #   
-  #   - name: 部署到服务器
-  #     run: |
-  #       echo "部署脚本在这里"
-  #       # 可以配置 SSH 部署、Docker 部署等
+  # ========== Stage 7: 构建 Docker 镜像 ==========
+  build-docker:
+    runs-on: ubuntu-latest
+    name: Build Docker Image
+    needs: [test-summary]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 设置 Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: 登录到镜像仓库
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ secrets.DOCKER_REGISTRY || 'docker.io' }}
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: 构建并推送镜像
+      uses: docker/build-push-action@v5
+      with:
+        context: ./backend/server
+        push: true
+        tags: |
+          ${{ secrets.DOCKER_REGISTRY || 'docker.io' }}/${{ secrets.DOCKER_IMAGE_NAME || 'proj-alpha-backend' }}:latest
+          ${{ secrets.DOCKER_REGISTRY || 'docker.io' }}/${{ secrets.DOCKER_IMAGE_NAME || 'proj-alpha-backend' }}:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # ========== Stage 8: 自动部署到生产环境 ==========
+  deploy-production:
+    runs-on: ubuntu-latest
+    name: Deploy to Production
+    needs: [build-docker]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 设置 SSH 密钥
+      uses: webfactory/ssh-agent@v0.8.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: 部署到服务器
+      id: deploy
+      env:
+        DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/opt/proj-alpha' }}
+        DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY || 'docker.io' }}
+        DOCKER_IMAGE_NAME: ${{ secrets.DOCKER_IMAGE_NAME || 'proj-alpha-backend' }}
+        GITHUB_SHA: ${{ github.sha }}
+      run: |
+        echo "🚀 开始部署到生产环境..."
+        echo "部署主机: $DEPLOY_HOST"
+        echo "部署路径: $DEPLOY_PATH"
+
+        # 添加服务器到 known_hosts
+        mkdir -p ~/.ssh
+        ssh-keyscan -H $DEPLOY_HOST >> ~/.ssh/known_hosts 2>/dev/null || true
+
+        # 在服务器上执行部署
+        ssh $DEPLOY_USER@$DEPLOY_HOST << EOF
+          set -e
+          echo "📦 拉取最新镜像..."
+          cd $DEPLOY_PATH
+
+          # 拉取新镜像
+          docker pull $DOCKER_REGISTRY/$DOCKER_IMAGE_NAME:$GITHUB_SHA
+          docker tag $DOCKER_REGISTRY/$DOCKER_IMAGE_NAME:$GITHUB_SHA $DOCKER_REGISTRY/$DOCKER_IMAGE_NAME:latest
+
+          echo "🔄 重启服务..."
+          # 使用 docker-compose 或 docker stack 部署
+          if [ -f "docker-compose.yml" ]; then
+            docker-compose down
+            docker-compose up -d
+          elif [ -f "docker-compose.prod.yml" ]; then
+            docker-compose -f docker-compose.prod.yml down
+            docker-compose -f docker-compose.prod.yml up -d
+          else
+            # 直接运行容器
+            docker stop proj-alpha-backend || true
+            docker rm proj-alpha-backend || true
+            docker run -d \
+              --name proj-alpha-backend \
+              --restart unless-stopped \
+              -p 3000:3000 \
+              --env-file .env \
+              -v /opt/proj-alpha/uploads:/tmp/uploads \
+              $DOCKER_REGISTRY/$DOCKER_IMAGE_NAME:latest
+          fi
+
+          echo "🧹 清理旧镜像..."
+          docker image prune -f
+
+          echo "✅ 部署完成！"
+          docker ps | grep proj-alpha-backend || true
+        EOF
+
+        echo "url=http://$DEPLOY_HOST:3000" >> $GITHUB_OUTPUT
+        echo "✅ 部署成功！"
+
+    - name: 部署通知
+      if: always()
+      run: |
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "🎉 后端自动部署成功！"
+          echo "提交: ${{ github.sha }}"
+          echo "作者: ${{ github.actor }}"
+          echo "消息: ${{ github.event.head_commit.message }}"
+        else
+          echo "❌ 部署失败，请检查日志"
+        fi

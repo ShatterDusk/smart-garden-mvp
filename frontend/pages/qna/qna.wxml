@@ -18,6 +18,7 @@
         data-id="{{item.sessionId}}"
         data-type="{{item.type}}"
         data-title="{{item.title}}"
+        data-plantid="{{item.plantId}}"
       >
         <view class="sidebar-item-icon">
           <text wx:if="{{item.type === 'consultation'}}">💬</text>
@@ -121,10 +122,101 @@
   <view wx:if="{{sessionType === 'plant'}}" class="context-bar">
     <view wx:for="{{contextOptions}}" wx:key="id" 
           class="context-btn {{item.checked ? 'active' : ''}}" 
-          bindtap="toggleContextOption" 
+          bindtap="toggleContextOption"
+          bindlongpress="showContextDetail"
           data-id="{{item.id}}">
       <text class="context-icon">{{item.icon}}</text>
       <text class="context-label">{{item.label}}</text>
+    </view>
+  </view>
+
+  <!-- 上下文详情面板（底部滑出） -->
+  <view wx:if="{{showContextPanel}}" class="context-panel-overlay" bindtap="closeContextPanel">
+    <view class="context-panel" catchtap="preventBubble">
+      <view class="context-panel-header">
+        <view class="panel-title">{{contextPanelTitle}}</view>
+        <view class="panel-close" bindtap="closeContextPanel">✕</view>
+      </view>
+      <view class="context-panel-body">
+        <!-- 环境数据内容 -->
+        <view wx:if="{{contextPanelType === 'env'}}" class="panel-content-env">
+          <view wx:if="{{envData.loading}}" class="panel-loading">加载中...</view>
+          <view wx:elif="{{!envData.hasData}}" class="panel-empty">暂无环境数据</view>
+          <block wx:else>
+            <!-- 数据来源标签 -->
+            <view class="env-source-tag {{envData.source}}">{{envData.sourceText}}</view>
+            <!-- 指标卡片网格 -->
+            <view class="metrics-grid">
+              <view wx:for="{{envData.metrics}}" wx:key="metricCode" class="data-card {{item.isStale ? 'compensated' : ''}}">
+                <text class="card-icon">{{item.icon}}</text>
+                <text class="card-name">{{item.name}}</text>
+                <text class="card-value">{{item.value}}{{item.unit}}</text>
+                <text wx:if="{{item.isStale}}" class="compensated-badge">补偿</text>
+              </view>
+            </view>
+            <!-- 更新时间 -->
+            <view class="env-update-time" wx:if="{{envData.updateTime}}">
+              <text class="update-icon">🔄</text>
+              <text class="update-text">更新于 {{envData.updateTime}}</text>
+            </view>
+          </block>
+        </view>
+        <!-- 历史诊断内容 -->
+        <view wx:if="{{contextPanelType === 'history'}}" class="panel-content-history">
+          <view wx:if="{{diagnosisData.loading}}" class="panel-loading">加载中...</view>
+          <view wx:elif="{{!diagnosisData.hasData}}" class="panel-empty">暂无诊断记录</view>
+          <block wx:else>
+            <view class="diagnosis-list">
+              <view wx:for="{{diagnosisData.list}}" wx:key="diagnosisCardId" class="diagnosis-item {{item.selected ? 'selected' : ''}}" bindtap="toggleDiagnosisSelect" data-id="{{item.diagnosisCardId}}">
+                <!-- 头部：健康评分 + 时间 -->
+                <view class="diagnosis-header">
+                  <view class="diagnosis-title">
+                    <text class="diagnosis-title-text">健康评分</text>
+                    <view class="score-badge {{item.status}}">{{item.healthScore}}分</view>
+                  </view>
+                  <text class="diagnosis-time">{{item.displayTime}}</text>
+                </view>
+                
+                <!-- 问题列表 - 橙色背景 -->
+                <view wx:if="{{item.issues.length > 0}}" class="issues-section">
+                  <view wx:for="{{item.issues}}" wx:for-item="issue" wx:key="index" class="issue-item">
+                    <text class="issue-icon">!</text>
+                    <view class="issue-content">
+                      <text class="issue-name">{{issue.name}}</text>
+                      <text wx:if="{{issue.description}}" class="issue-desc">{{issue.description}}</text>
+                    </view>
+                  </view>
+                </view>
+                
+                <!-- 简版问题标签（用于快速浏览） -->
+                <view wx:elif="{{item.issues.length === 0}}" class="diagnosis-status">{{item.statusText}}</view>
+                
+                <view class="select-indicator">{{item.selected ? '✓' : ''}}</view>
+              </view>
+            </view>
+          </block>
+        </view>
+        <!-- 养护记录内容 -->
+        <view wx:if="{{contextPanelType === 'care'}}" class="panel-content-care">
+          <view wx:if="{{careData.loading}}" class="panel-loading">加载中...</view>
+          <view wx:elif="{{!careData.hasData}}" class="panel-empty">暂无养护记录</view>
+          <block wx:else>
+            <view class="care-list">
+              <view wx:for="{{careData.list}}" wx:key="recordId" class="care-record-item {{item.selected ? 'selected' : ''}}" bindtap="toggleCareSelect" data-id="{{item.recordId}}">
+                <view class="record-icon">{{item.icon}}</view>
+                <view class="record-content">
+                  <view class="record-header">
+                    <text class="record-action">{{item.actionName}}</text>
+                    <text class="record-time">{{item.displayTime}}</text>
+                  </view>
+                  <text wx:if="{{item.description}}" class="record-desc">{{item.description}}</text>
+                </view>
+                <view class="select-indicator">{{item.selected ? '✓' : ''}}</view>
+              </view>
+            </view>
+          </block>
+        </view>
+      </view>
     </view>
   </view>
 

@@ -1,0 +1,71 @@
+# proj-alpha 后端生产环境部署配置
+# 用于服务器上的 docker-compose 部署
+
+version: '3.8'
+
+services:
+  backend:
+    image: ${DOCKER_REGISTRY:-docker.io}/${DOCKER_IMAGE_NAME:-proj-alpha-backend}:latest
+    container_name: proj-alpha-backend
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      # 数据库配置（从 .env 文件读取）
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      # JWT 配置
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
+      # 微信小程序配置
+      - WECHAT_APPID=${WECHAT_APPID}
+      - WECHAT_SECRET=${WECHAT_SECRET}
+      - WECHAT_ENV_ID=${WECHAT_ENV_ID}
+      # 腾讯云 COS 配置
+      - COS_SECRET_ID=${COS_SECRET_ID}
+      - COS_SECRET_KEY=${COS_SECRET_KEY}
+      - COS_BUCKET=${COS_BUCKET}
+      - COS_REGION=${COS_REGION}
+      # 和风天气配置
+      - QWEATHER_KEY=${QWEATHER_KEY}
+      # 百度植物识别配置
+      - BAIDU_API_KEY=${BAIDU_API_KEY}
+      - BAIDU_SECRET_KEY=${BAIDU_SECRET_KEY}
+      # 硅基流动AI配置
+      - SILICONFLOW_API_KEY=${SILICONFLOW_API_KEY}
+      - SILICONFLOW_BASE_URL=${SILICONFLOW_BASE_URL:-https://api.siliconflow.cn/v1}
+      # 任务富余配置
+      - TASK_SURPLUS_COUNT=${TASK_SURPLUS_COUNT:-3}
+    volumes:
+      - /opt/proj-alpha/uploads:/tmp/uploads
+      - /opt/proj-alpha/logs:/usr/src/app/logs
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+  # 可选：Redis 缓存（如需要）
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: proj-alpha-redis
+  #   restart: unless-stopped
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis-data:/data
+  #   command: redis-server --appendonly yes
+
+# volumes:
+#   redis-data:

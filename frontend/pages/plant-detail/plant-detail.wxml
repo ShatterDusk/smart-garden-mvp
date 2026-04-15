@@ -168,10 +168,10 @@
             <!-- 动态数据卡网格 - 两行三列，支持上下滑动 -->
             <scroll-view class="metrics-scroll-vertical" scroll-y="true" enhanced="true" show-scrollbar="false">
               <view class="metrics-grid">
-                <view 
-                  wx:for="{{deviceMetrics}}" 
+                <view
+                  wx:for="{{deviceMetrics}}"
                   wx:key="metricCode"
-                  class="data-card {{item.status}}"
+                  class="data-card {{item.status}} {{item.isStale ? 'compensated' : ''}}"
                   bindtap="viewMetricDetail"
                   data-metric="{{item.metricCode}}"
                 >
@@ -179,6 +179,7 @@
                   <text class="card-name">{{item.name}}</text>
                   <text class="card-value">{{item.value}}{{item.unit}}</text>
                   <text wx:if="{{item.status === 'warning'}}" class="card-alert">⚠️</text>
+                  <text wx:if="{{item.isStale}}" class="compensated-badge">补偿</text>
                 </view>
               </view>
             </scroll-view>
@@ -244,10 +245,10 @@
             <!-- 动态数据卡网格 - 两行三列，支持上下滑动 -->
             <scroll-view class="metrics-scroll-vertical" scroll-y="true" enhanced="true" show-scrollbar="false">
               <view class="metrics-grid">
-                <view 
-                  wx:for="{{weatherMetrics}}" 
+                <view
+                  wx:for="{{weatherMetrics}}"
                   wx:key="metricCode"
-                  class="data-card {{item.metricCode === 'weatherCondition' || item.metricCode === 'windDirection360' ? 'no-click' : ''}}"
+                  class="data-card {{item.metricCode === 'weatherCondition' || item.metricCode === 'windDirection360' ? 'no-click' : ''}} {{item.isStale ? 'compensated' : ''}}"
                   bindtap="{{item.metricCode === 'weatherCondition' || item.metricCode === 'windDirection360' ? '' : 'viewWeatherDetail'}}"
                   data-metric="{{item.metricCode}}"
                 >
@@ -259,6 +260,7 @@
                   <text wx:elif="{{item.metricCode === 'windDirection360'}}" class="card-value">{{item.valueText}}</text>
                   <!-- 其他指标正常显示：值+单位 -->
                   <text wx:else class="card-value">{{item.value}}{{item.unit}}</text>
+                  <text wx:if="{{item.isStale}}" class="compensated-badge">补偿</text>
                 </view>
               </view>
             </scroll-view>

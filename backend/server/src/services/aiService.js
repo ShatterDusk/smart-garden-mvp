@@ -34,6 +34,20 @@ try {
   logger.warn('sharp 未安装，图片将不会压缩');
 }
 
+// 图片 URL 缓存（内存缓存，1小时过期）
+const imageCache = new Map();
+const CACHE_TTL = 60 * 60 * 1000; // 1小时
+
+// 清理过期缓存
+setInterval(() => {
+  const now = Date.now();
+  for (const [url, data] of imageCache.entries()) {
+    if (now - data.timestamp > CACHE_TTL) {
+      imageCache.delete(url);
+    }
+  }
+}, 10 * 60 * 1000); // 每10分钟清理一次
+
 // 创建图片下载客户端
 // SSL 证书验证配置：
 // - 默认启用验证（安全）
@@ -246,25 +260,9 @@ class AIService {
   async convertImageToBase64(imageUrl) {
     if (!imageUrl) return null;
 
-    // 已经是 base64 格式
-    if (imageUrl.startsWith('data:')) {
-      // 检查 base64 图片大小
-      const base64Data = imageUrl.split(',')[1];
-      if (base64Data) {
-        const sizeInBytes = Buffer.from(base64Data, 'base64').length;
-        if (sizeInBytes > IMAGE_CONSTANTS.MAX_IMAGE_SIZE) {
-          logger.warn('Base64 图片超过最大限制', {
-            size: `${(sizeInBytes / 1024 / 1024).toFixed(2)}MB`,
-            maxSize: `${(IMAGE_CONSTANTS.MAX_IMAGE_SIZE / 1024 / 1024).toFixed(2)}MB`,
-          });
-          throw new Error('图片过大，请上传小于 10MB 的图片');
-        }
-      }
-      return imageUrl;
-    }
-
-    // 本地开发环境图片
-    if (imageUrl.startsWith('http://localhost') || imageUrl.startsWith('http://127.0.0.1')) {
+    // 本地开发环境图片（仅开发环境）
+    if (process.env.NODE_ENV === 'development' && 
+        (imageUrl.startsWith('http://localhost') || imageUrl.startsWith('http://127.0.0.1'))) {
       try {
         const urlObj = new URL(imageUrl);
         const filePath = path.join(process.cwd(), urlObj.pathname);
@@ -288,87 +286,116 @@ class AIService {
 
     // 远程 URL（COS 等）- 下载并转换为 base64
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      // 检查缓存
+      const cached = imageCache.get(imageUrl);
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        logger.info('使用缓存的图片', { imageUrl: imageUrl.substring(0, 100) + '...' });
+        return cached.base64;
+      }
+
       const downloadStart = Date.now();
-      try {
-        // 直接下载图片转 base64
-        // tcb.qcloud.la 的 URL 自带签名，可以直接访问
-        // TODO[LOW]: 考虑添加图片 URL 缓存，避免重复下载相同图片
-        // 可以使用图片 URL + ETag 作为缓存键
-        logger.info('开始下载远程图片', {
-          imageUrl: imageUrl.substring(0, 100) + '...',
-          urlDomain: new URL(imageUrl).hostname,
-        });
-        
-        const response = await imageDownloadClient.get(imageUrl, {
-          responseType: 'arraybuffer',
-        });
-        const downloadTime = Date.now() - downloadStart;
-
-        // 检查下载的图片大小
-        const contentLength = response.data?.length;
-        if (contentLength > IMAGE_CONSTANTS.MAX_IMAGE_SIZE) {
-          logger.warn('下载的图片超过最大限制', {
-            size: `${(contentLength / 1024 / 1024).toFixed(2)}MB`,
-            maxSize: `${(IMAGE_CONSTANTS.MAX_IMAGE_SIZE / 1024 / 1024).toFixed(2)}MB`,
+      let lastError = null;
+      
+      // 重试机制（最多3次）
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          logger.info('开始下载远程图片', {
+            imageUrl: imageUrl.substring(0, 100) + '...',
+            urlDomain: new URL(imageUrl).hostname,
+            attempt,
           });
-          throw new Error('图片过大，请上传小于 10MB 的图片');
-        }
+          
+          const response = await imageDownloadClient.get(imageUrl, {
+            responseType: 'arraybuffer',
+          });
+          const downloadTime = Date.now() - downloadStart;
 
-        logger.info('图片下载完成', {
-          downloadTime: `${downloadTime}ms`,
-          contentLength,
-          contentType: response.headers['content-type'],
-        });
+          // 检查下载的图片大小
+          const contentLength = response.data?.length;
+          if (contentLength > IMAGE_CONSTANTS.MAX_IMAGE_SIZE) {
+            logger.warn('下载的图片超过最大限制', {
+              size: `${(contentLength / 1024 / 1024).toFixed(2)}MB`,
+              maxSize: `${(IMAGE_CONSTANTS.MAX_IMAGE_SIZE / 1024 / 1024).toFixed(2)}MB`,
+            });
+            throw new Error('图片过大，请上传小于 10MB 的图片');
+          }
 
-        let buffer = Buffer.from(response.data, 'binary');
-        const contentType = response.headers['content-type'] || 'image/jpeg';
+          logger.info('图片下载完成', {
+            downloadTime: `${downloadTime}ms`,
+            contentLength,
+            contentType: response.headers['content-type'],
+            attempt,
+          });
 
-        // 压缩图片
-        const compressStart = Date.now();
-        buffer = await this.compressImage(buffer, contentType);
-        const compressTime = Date.now() - compressStart;
+          let buffer = Buffer.from(response.data, 'binary');
+          const contentType = response.headers['content-type'] || 'image/jpeg';
 
-        const base64 = `data:${contentType};base64,${buffer.toString('base64')}`;
+          // 压缩图片
+          const compressStart = Date.now();
+          buffer = await this.compressImage(buffer, contentType);
+          const compressTime = Date.now() - compressStart;
 
-        logger.info('远程图片处理完成', {
-          totalTime: `${Date.now() - downloadStart}ms`,
-          downloadTime: `${downloadTime}ms`,
-          compressTime: `${compressTime}ms`,
-          originalSize: response.data.length,
-          compressedSize: buffer.length,
-          compressionRatio: `${((1 - buffer.length / response.data.length) * 100).toFixed(1)}%`,
-          contentType,
-        });
+          const base64 = `data:${contentType};base64,${buffer.toString('base64')}`;
+
+          // 存入缓存
+          imageCache.set(imageUrl, {
+            base64,
+            timestamp: Date.now(),
+          });
+
+          logger.info('远程图片处理完成', {
+            totalTime: `${Date.now() - downloadStart}ms`,
+            downloadTime: `${downloadTime}ms`,
+            compressTime: `${compressTime}ms`,
+            originalSize: response.data.length,
+            compressedSize: buffer.length,
+            compressionRatio: `${((1 - buffer.length / response.data.length) * 100).toFixed(1)}%`,
+            contentType,
+            attempt,
+          });
 
         return base64;
-      } catch (err) {
-        const errorTime = Date.now() - downloadStart;
-        const errorInfo = {
-          imageUrl: imageUrl.substring(0, 100) + '...',
-          errorTime: `${errorTime}ms`,
-          error: err.message,
-          errorCode: err.code,
-          errorType: err.name,
-        };
+        } catch (err) {
+          lastError = err;
+          const errorTime = Date.now() - downloadStart;
+          const errorInfo = {
+            imageUrl: imageUrl.substring(0, 100) + '...',
+            errorTime: `${errorTime}ms`,
+            error: err.message,
+            errorCode: err.code,
+            errorType: err.name,
+            attempt,
+            maxAttempts: 3,
+          };
 
-        // 细化错误类型
-        if (err.code === 'ECONNABORTED') {
-          errorInfo.errorStage = 'downloadTimeout';
-          errorInfo.errorDetail = `图片下载超时（超过60秒）`;
-        } else if (err.response) {
-          errorInfo.errorStage = 'downloadHttpError';
-          errorInfo.errorDetail = `HTTP ${err.response.status}: ${err.response.statusText}`;
-          errorInfo.httpStatus = err.response.status;
-        } else if (err.request) {
-          errorInfo.errorStage = 'downloadNetworkError';
-          errorInfo.errorDetail = '网络请求失败，无响应';
-        } else {
-          errorInfo.errorStage = 'downloadUnknownError';
-          errorInfo.errorDetail = '请求配置错误';
+          // 细化错误类型
+          if (err.code === 'ECONNABORTED') {
+            errorInfo.errorStage = 'downloadTimeout';
+            errorInfo.errorDetail = `图片下载超时（超过60秒）`;
+          } else if (err.response) {
+            errorInfo.errorStage = 'downloadHttpError';
+            errorInfo.errorDetail = `HTTP ${err.response.status}: ${err.response.statusText}`;
+            errorInfo.httpStatus = err.response.status;
+          } else if (err.request) {
+            errorInfo.errorStage = 'downloadNetworkError';
+            errorInfo.errorDetail = '网络请求失败，无响应';
+          } else {
+            errorInfo.errorStage = 'downloadUnknownError';
+            errorInfo.errorDetail = '请求配置错误';
+          }
+
+          // 如果不是最后一次尝试，记录警告并继续重试
+          if (attempt < 3) {
+            logger.warn(`图片下载失败，准备重试 (${attempt}/3)`, errorInfo);
+            // 等待 1 秒后重试
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            continue;
+          }
+
+          // 最后一次尝试失败，记录错误并抛出
+          logger.error('远程图片下载失败（已重试3次）', errorInfo);
+          throw err;
         }
-
-        logger.error('远程图片下载失败', errorInfo);
-        throw err;
       }
     }
 
@@ -574,10 +601,8 @@ class AIService {
       if (plantInfo.plantId) prompt += `- 植物ID: ${plantInfo.plantId}\n`;
       if (plantInfo.nickname) prompt += `- 昵称: ${plantInfo.nickname}\n`;
       if (plantInfo.species) prompt += `- 品种: ${plantInfo.species}\n`;
-      if (plantInfo.growthStage) prompt += `- 生长阶段: ${plantInfo.growthStage}\n`;
-      if (plantInfo.healthScore !== undefined) prompt += `- 当前健康评分: ${plantInfo.healthScore}\n`;
+      if (plantInfo.careDuration) prompt += `- 养护时长: ${plantInfo.careDuration}\n`;
       if (plantInfo.location) prompt += `- 位置: ${plantInfo.location}\n`;
-      if (plantInfo.remark) prompt += `- 备注: ${plantInfo.remark}\n`;
       prompt += `\n`;
     }
 
@@ -622,6 +647,21 @@ class AIService {
     }
     prompt += `- 请返回符合 JSON Schema 的完整 JSON 对象\n`;
     prompt += `- 不要在 JSON 外添加任何文字说明`;
+
+    // 调试日志：记录生成的 Prompt 统计信息
+    logger.debug('Prompt 生成完成', {
+      contentLength: content.length,
+      hasImage: !!imageUrl,
+      analysisType,
+      promptLength: prompt.length,
+      promptSections: {
+        hasPlantInfo: !!plantInfo,
+        hasEnvironmentData: !!(environmentData && environmentData.length > 0),
+        hasCareRecords: !!(careRecords && careRecords.length > 0),
+        hasHistoryDiagnosis: !!(historyDiagnosis && historyDiagnosis.length > 0),
+        hasConversationHistory: !!(conversationHistory && conversationHistory.length > 0),
+      },
+    });
 
     return prompt;
   }

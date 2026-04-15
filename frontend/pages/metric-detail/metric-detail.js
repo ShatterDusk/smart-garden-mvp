@@ -88,9 +88,8 @@ Page({
   },
 
   onReady() {
-    setTimeout(() => {
-      this.initChart();
-    }, 100);
+    // canvas 在 chartData 加载完成后才会渲染
+    // initChart 将在 loadChartData 成功后调用
   },
 
   loadMetricInfo() {
@@ -230,6 +229,9 @@ Page({
 
         that.setData({
           chartData: formattedData
+        }, () => {
+          // 数据设置完成后再初始化图表
+          that.initChart();
         });
 
         that.calculateStatistics(formattedData);
@@ -340,70 +342,79 @@ Page({
       });
   },
 
-  drawChart(ctx, width, height) {
-    const { chartData, metricInfo } = this.data;
+  // 计算自适应网格线数量
+  _calculateGridLines(valueRange) {
+    if (valueRange < 5) return 10;
+    if (valueRange < 10) return 8;
+    if (valueRange < 20) return 6;
+    if (valueRange < 50) return 5;
+    return 4;
+  },
 
-    log('drawChart', '开始绘制图表:', { dataLength: chartData.length, width, height });
+  // 绘制X轴时间标签（按固定时间间隔均匀分布）
+  _drawTimeAxisLabels(ctx, timeData, minTime, maxTime, timeRange, padding, chartWidth, height) {
+    const { currentRange } = this.data;
 
-    if (chartData.length === 0) {
-      warn('drawChart', '没有数据，跳过绘制');
-      return;
-    }
+    ctx.fillStyle = '#999';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'center';
 
-    try {
-      ctx.clearRect(0, 0, width, height);
+    // 根据时间范围确定标签间隔和格式
+    const timeSpan = maxTime - minTime;
+    const oneHour = 60 * 60 * 1000;
+    const oneDay = 24 * oneHour;
 
-    const padding = { top: 30, right: 20, bottom: 40, left: 50 };
-    const chartWidth = width - padding.left - padding.right;
-    const chartHeight = height - padding.top - padding.bottom;
+    let interval; // 标签间隔（毫秒）
+    let format;   // 时间格式函数
 
-    const values = chartData.map(function(d) { return d.value; });
-    const minValue = Math.min(...values);
-    const maxValue = Math.max(...values);
-    const valueRange = maxValue - minValue || 1;
-    const yMin = minValue - valueRange * 0.1;
-    const yMax = maxValue + valueRange * 0.1;
-
-    // 计算时间范围（用于X轴按时间距离定位）
-    // 预先解析时间，避免重复解析，同时过滤无效时间
-    const timeData = chartData.map(function(d) {
-      const time = new Date(d.time).getTime();
-      return {
-        time: isNaN(time) ? 0 : time,
-        displayTime: d.displayTime,
-        value: d.value
+    if (currentRange === '24h' || timeSpan <= oneDay) {
+      // 24小时：每6小时一个标签
+      interval = 6 * oneHour;
+      format = (date) => {
+        const h = date.getHours();
+        return `${h.toString().padStart(2, '0')}:00`;
       };
-    }).filter(function(d) { return d.time > 0; });
-
-    if (timeData.length === 0) return;
-
-    const timeValues = timeData.map(function(d) { return d.time; });
-    const minTime = Math.min(...timeValues);
-    const maxTime = Math.max(...timeValues);
-    const timeRange = maxTime - minTime || 1;
-
-    ctx.strokeStyle = '#e0e0e0';
-    ctx.lineWidth = 1;
-
-    for (let i = 0; i <= 5; i++) {
-      const y = padding.top + (chartHeight / 5) * i;
-      ctx.beginPath();
-      ctx.moveTo(padding.left, y);
-      ctx.lineTo(width - padding.right, y);
-      ctx.stroke();
-
-      const value = yMax - (yMax - yMin) / 5 * i;
-      ctx.fillStyle = '#999';
-      ctx.font = '10px sans-serif';
-      ctx.textAlign = 'right';
-      ctx.fillText(value.toFixed(1), padding.left - 5, y + 3);
+    } else if (currentRange === '7d' || timeSpan <= 7 * oneDay) {
+      // 7天：每天一个标签
+      interval = oneDay;
+      format = (date) => {
+        const days = ['日', '一', '二', '三', '四', '五', '六'];
+        return `周${days[date.getDay()]}`;
+      };
+    } else {
+      // 30天：每5天一个标签
+      interval = 5 * oneDay;
+      format = (date) => {
+        return `${date.getMonth() + 1}/${date.getDate()}`;
+      };
     }
 
+    // 计算第一个标签的时间（对齐到间隔边界）
+    const firstLabelTime = Math.ceil(minTime / interval) * interval;
+
+    // 绘制标签
+    for (let t = firstLabelTime; t <= maxTime; t += interval) {
+      // 检查该时间点附近是否有数据（避免在无数据区域显示标签）
+      const hasNearbyData = timeData.some(point => {
+        return Math.abs(point.time - t) < interval / 2;
+      });
+
+      if (!hasNearbyData) continue;
+
+      const x = padding.left + ((t - minTime) / timeRange) * chartWidth;
+      const date = new Date(t);
+      const label = format(date);
+
+      ctx.fillText(label, x, height - 10);
+    }
+  },
+
+  // 绘制折线（无动画）
+  _drawLine(ctx, timeData, padding, chartWidth, chartHeight, minTime, timeRange, yMin, yMax) {
     ctx.strokeStyle = '#4CAF50';
     ctx.lineWidth = 2;
     ctx.beginPath();
 
-    // 按时间距离计算X坐标
     timeData.forEach(function(point, index) {
       const x = padding.left + ((point.time - minTime) / timeRange) * chartWidth;
       const y = padding.top + chartHeight - ((point.value - yMin) / (yMax - yMin)) * chartHeight;
@@ -416,51 +427,233 @@ Page({
     });
 
     ctx.stroke();
+  },
 
-    // 绘制数据点
-    timeData.forEach(function(point, index) {
-      if (timeData.length > 20 && index % Math.ceil(timeData.length / 20) !== 0) return;
+  // 绘制折线（带动画）
+  _drawLineWithAnimation(ctx, timeData, padding, chartWidth, chartHeight, minTime, timeRange, yMin, yMax) {
+    const totalPoints = timeData.length;
+    const animationDuration = 500; // 动画持续时间（毫秒）
+    const frameCount = 30; // 总帧数
+    let currentFrame = 0;
 
-      const x = padding.left + ((point.time - minTime) / timeRange) * chartWidth;
-      const y = padding.top + chartHeight - ((point.value - yMin) / (yMax - yMin)) * chartHeight;
+    const animate = () => {
+      currentFrame++;
+      const progress = Math.min(currentFrame / frameCount, 1);
 
-      ctx.fillStyle = '#4CAF50';
+      // 计算当前应该显示到第几个点
+      const currentIndex = Math.floor(progress * (totalPoints - 1));
+
+      ctx.strokeStyle = '#4CAF50';
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(x, y, 3, 0, Math.PI * 2);
-      ctx.fill();
-    });
 
-    // 绘制X轴时间标签（按时间距离均匀分布）
-    ctx.fillStyle = '#999';
-    ctx.font = '10px sans-serif';
-    ctx.textAlign = 'center';
+      // 绘制已动画的部分
+      for (let i = 0; i <= currentIndex && i < totalPoints; i++) {
+        const point = timeData[i];
+        const x = padding.left + ((point.time - minTime) / timeRange) * chartWidth;
+        const y = padding.top + chartHeight - ((point.value - yMin) / (yMax - yMin)) * chartHeight;
 
-    const labelCount = Math.min(5, timeData.length);
-    if (labelCount === 1) {
-      // 只有一个数据点，直接显示在中间
-      const x = padding.left + chartWidth / 2;
-      const time = timeData[0].displayTime;
-      ctx.fillText(time, x, height - 10);
-    } else {
-      for (let i = 0; i < labelCount; i++) {
-        // 在时间范围内均匀选择时间点
-        const targetTime = minTime + (timeRange * i / (labelCount - 1));
-        // 找到最接近该时间的数据点
-        let closestIndex = 0;
-        let minDiff = Infinity;
-        timeData.forEach(function(point, idx) {
-          const diff = Math.abs(point.time - targetTime);
-          if (diff < minDiff) {
-            minDiff = diff;
-            closestIndex = idx;
-          }
-        });
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
 
-        const x = padding.left + ((timeData[closestIndex].time - minTime) / timeRange) * chartWidth;
-        const time = timeData[closestIndex].displayTime;
-        ctx.fillText(time, x, height - 10);
+      ctx.stroke();
+
+      if (progress < 1) {
+        this._chartAnimationId = setTimeout(animate, animationDuration / frameCount);
+      }
+    };
+
+    animate();
+  },
+
+  // 智能采样：保留关键数据点（极值点 + 均匀采样）
+  sampleDataPoints(timeData, values, minValue, maxValue) {
+    const totalPoints = timeData.length;
+    const maxDisplayPoints = 20;
+
+    // 如果数据点少，全部显示
+    if (totalPoints <= maxDisplayPoints) {
+      return new Set(Array.from({ length: totalPoints }, (_, i) => i));
+    }
+
+    const sampledIndices = new Set();
+
+    // 1. 始终显示第一个和最后一个点
+    sampledIndices.add(0);
+    sampledIndices.add(totalPoints - 1);
+
+    // 2. 显示最大值和最小值点
+    const maxIndex = values.indexOf(maxValue);
+    const minIndex = values.indexOf(minValue);
+    sampledIndices.add(maxIndex);
+    sampledIndices.add(minIndex);
+
+    // 3. 均匀采样其他点
+    const remainingSlots = maxDisplayPoints - sampledIndices.size;
+    if (remainingSlots > 0) {
+      const step = (totalPoints - 1) / (remainingSlots + 1);
+      for (let i = 1; i <= remainingSlots; i++) {
+        const index = Math.round(i * step);
+        if (!sampledIndices.has(index)) {
+          sampledIndices.add(index);
+        }
       }
     }
+
+    return sampledIndices;
+  },
+
+  // 计算图表数据（供绘制和 Tooltip 复用）
+  computeChartData(chartData) {
+    if (!chartData || chartData.length === 0) return null;
+
+    const values = chartData.map(function(d) { return d.value; });
+    const minValue = Math.min(...values);
+    const maxValue = Math.max(...values);
+    const valueRange = maxValue - minValue || 1;
+    const yMin = minValue - valueRange * 0.1;
+    const yMax = maxValue + valueRange * 0.1;
+
+    // 计算时间范围（用于X轴按时间距离定位）
+    const timeData = chartData.map(function(d) {
+      const time = new Date(d.time).getTime();
+      return {
+        time: isNaN(time) ? 0 : time,
+        displayTime: d.displayTime,
+        value: d.value,
+        isStale: d.isStale || false
+      };
+    }).filter(function(d) { return d.time > 0; });
+
+    if (timeData.length === 0) return null;
+
+    const timeValues = timeData.map(function(d) { return d.time; });
+    const minTime = Math.min(...timeValues);
+    const maxTime = Math.max(...timeValues);
+    const timeRange = maxTime - minTime || 1;
+
+    return {
+      values, minValue, maxValue, valueRange, yMin, yMax,
+      timeData, timeValues, minTime, maxTime, timeRange
+    };
+  },
+
+  drawChart(ctx, width, height, animate = true) {
+    const { chartData, metricInfo } = this.data;
+
+    log('drawChart', '开始绘制图表:', { dataLength: chartData.length, width, height, animate });
+
+    if (chartData.length === 0) {
+      warn('drawChart', '没有数据，跳过绘制');
+      return;
+    }
+
+    // 如果有动画正在进行，先取消
+    if (this._chartAnimationId) {
+      clearTimeout(this._chartAnimationId);
+      this._chartAnimationId = null;
+    }
+
+    try {
+      ctx.clearRect(0, 0, width, height);
+
+    const padding = { top: 30, right: 20, bottom: 40, left: 50 };
+    const chartWidth = width - padding.left - padding.right;
+    const chartHeight = height - padding.top - padding.bottom;
+
+    // 计算图表数据
+    const chartComputed = this.computeChartData(chartData);
+    if (!chartComputed) return;
+
+    const { values, minValue, maxValue, valueRange, yMin, yMax,
+            timeData, minTime, maxTime, timeRange } = chartComputed;
+
+    // 自适应 Y 轴刻度数量
+    const gridLines = this._calculateGridLines(valueRange);
+
+    // 保存计算结果供 Tooltip 使用
+    this.chartComputed = {
+      padding, chartWidth, chartHeight,
+      minTime, maxTime, timeRange, timeData
+    };
+
+    ctx.strokeStyle = '#e0e0e0';
+    ctx.lineWidth = 1;
+
+    // 使用自适应的网格线数量
+    for (let i = 0; i <= gridLines; i++) {
+      const y = padding.top + (chartHeight / gridLines) * i;
+      ctx.beginPath();
+      ctx.moveTo(padding.left, y);
+      ctx.lineTo(width - padding.right, y);
+      ctx.stroke();
+
+      const value = yMax - (yMax - yMin) / gridLines * i;
+      ctx.fillStyle = '#999';
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'right';
+      // 根据数值范围动态调整小数位数
+      const decimals = valueRange < 1 ? 2 : valueRange < 10 ? 1 : 0;
+      ctx.fillText(value.toFixed(decimals), padding.left - 5, y + 3);
+    }
+
+    // 智能采样：保留关键数据点
+    const sampledIndices = this.sampleDataPoints(timeData, values, minValue, maxValue);
+
+    // 绘制折线（带动画）
+    if (animate) {
+      this._drawLineWithAnimation(ctx, timeData, padding, chartWidth, chartHeight, minTime, timeRange, yMin, yMax);
+    } else {
+      this._drawLine(ctx, timeData, padding, chartWidth, chartHeight, minTime, timeRange, yMin, yMax);
+    }
+
+    // 绘制数据点（在动画完成后显示）
+    const drawPoints = () => {
+      timeData.forEach(function(point, index) {
+        // 只显示采样点
+        if (!sampledIndices.has(index)) return;
+
+        const x = padding.left + ((point.time - minTime) / timeRange) * chartWidth;
+        const y = padding.top + chartHeight - ((point.value - yMin) / (yMax - yMin)) * chartHeight;
+
+        // 补偿数据使用紫色虚线边框样式（与卡片样式一致）
+        if (point.isStale) {
+          // 外圈：紫色虚线边框
+          ctx.strokeStyle = '#9C27B0';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([3, 2]);
+          ctx.beginPath();
+          ctx.arc(x, y, 5, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          // 内圈：紫色填充
+          ctx.fillStyle = '#9C27B0';
+          ctx.beginPath();
+          ctx.arc(x, y, 3, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          // 正常数据：实心绿色圆点
+          ctx.fillStyle = '#4CAF50';
+          ctx.beginPath();
+          ctx.arc(x, y, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+    };
+
+    if (animate) {
+      // 延迟绘制数据点，等线条动画完成后
+      setTimeout(drawPoints, 600);
+    } else {
+      drawPoints();
+    }
+
+    // 绘制X轴时间标签（按固定时间间隔均匀分布）
+    this._drawTimeAxisLabels(ctx, timeData, minTime, maxTime, timeRange, padding, chartWidth, height);
 
     // 绘制正常范围色块（如果 metricInfo 已加载）
     if (metricInfo && typeof metricInfo.min !== 'undefined' && typeof metricInfo.max !== 'undefined') {
@@ -518,40 +711,46 @@ Page({
   showTooltipAt(x, y) {
     const { chartData } = this.data;
     if (chartData.length === 0) return;
-    
-    const query = wx.createSelectorQuery();
-    const that = this;
-    
-    query.select('#trendChart')
-      .fields({ size: true })
-      .exec(function(res) {
-        if (!res[0]) return;
-        
-        const width = res[0].width;
-        const padding = { left: 50, right: 20 };
-        const chartWidth = width - padding.left - padding.right;
-        
-        const relativeX = x - padding.left;
-        const index = Math.round((relativeX / chartWidth) * (chartData.length - 1));
-        const clampedIndex = Math.max(0, Math.min(chartData.length - 1, index));
-        
-        const dataPoint = chartData[clampedIndex];
-        
-        that.setData({
-          showTooltip: true,
-          tooltipX: x,
-          tooltipY: y - 60,
-          tooltipData: {
-            time: dataPoint.displayTime,
-            value: dataPoint.value
-          }
-        });
-        
-        clearTimeout(that.tooltipTimer);
-        that.tooltipTimer = setTimeout(function() {
-          that.setData({ showTooltip: false });
-        }, 3000);
-      });
+
+    // 使用预计算的图表数据
+    if (!this.chartComputed) return;
+
+    const { padding, chartWidth, minTime, maxTime, timeRange, timeData } = this.chartComputed;
+
+    // 计算相对位置
+    const relativeX = x - padding.left;
+
+    // 按时间距离查找最近的数据点（与绘制逻辑一致）
+    const targetTimeRatio = Math.max(0, Math.min(1, relativeX / chartWidth));
+    const targetTime = minTime + targetTimeRatio * timeRange;
+
+    let closestIndex = 0;
+    let minTimeDiff = Infinity;
+    timeData.forEach(function(point, idx) {
+      const diff = Math.abs(point.time - targetTime);
+      if (diff < minTimeDiff) {
+        minTimeDiff = diff;
+        closestIndex = idx;
+      }
+    });
+
+    const dataPoint = timeData[closestIndex];
+
+    this.setData({
+      showTooltip: true,
+      tooltipX: x,
+      tooltipY: y - 60,
+      tooltipData: {
+        time: dataPoint.displayTime,
+        value: dataPoint.value,
+        isStale: dataPoint.isStale
+      }
+    });
+
+    clearTimeout(this.tooltipTimer);
+    this.tooltipTimer = setTimeout(() => {
+      this.setData({ showTooltip: false });
+    }, 3000);
   },
 
   loadMoreHistory() {

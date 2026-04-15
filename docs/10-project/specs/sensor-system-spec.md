@@ -1,13 +1,14 @@
----
+***
+
 id: "SPEC-SENSOR-001"
 type: "specification"
 category: "project/specs"
-tags: ["sensor", "data-transmission", "configuration", "implementation-plan"]
+tags: \["sensor", "data-transmission", "configuration", "implementation-plan"]
 created: "2026-04-12"
 updated: "2026-04-13"
 author: "AI Assistant"
 status: "draft"
----
+---------------
 
 # 传感器系统规格说明书
 
@@ -27,6 +28,7 @@ status: "draft"
 ```
 
 **设计原则**：
+
 - 传感器主动批量上报（队列概念），不等待后端指令
 - 后端被动接收，根据时间判断数据类型
 - 失败数据保留在传感器本地队列，下次重试
@@ -47,60 +49,69 @@ flowchart TD
 ```
 
 **关键理解**：
+
 - **RECEIVED** 是唯一的终态
 - **COMPENSATED** 是服务器"等不及了"自己造的假数据
-- **补传数据按 recorded_at 覆盖补偿数据**
+- **补传数据按 recorded\_at 覆盖补偿数据**
 - 传感器端主导：后端只在收到数据时创建/更新 Task
 
 ### 1.3 补传判断逻辑（已敲定）
 
 **判断公式**：
+
 ```
 isSupplement = (最近整点周期起始时间 - recordedAt) > TOLERANCE_PERIOD
              && recordedAt < 最近整点周期起始时间
 ```
 
 **判断逻辑说明**：
+
 1. **差值 > 容忍期**：数据到达时间比当前周期晚了超过容忍期
 2. **recordedAt < 最近整点**：确保数据是过去的（不是当前或未来的周期）
 
 **容忍期基准**：基于传感器上报的 `recordedAt`，而非后端收到时间
 
-**判断示例**（TOLERANCE_PERIOD = 5分钟）：
-| recordedAt | 最近整点 | 差值 | recordedAt < 最近整点? | 结果 | 说明 |
-|-----------|---------|------|------------------------|------|------|
-| 08:00 | 08:00 | 0分钟 | 否（相等） | 正常 | 当前周期数据 |
-| 08:03 | 08:00 | 3分钟 | 否 | 正常 | 当前周期数据，在容忍期内 |
-| 08:06 | 08:00 | 6分钟 | 否 | 正常 | 当前周期数据，但超过容忍期（可能是时钟漂移） |
-| 07:55 | 08:00 | 5分钟 | 是 | 正常 | 上一周期数据，差值 = 容忍期，不算补传 |
-| 07:54 | 08:00 | 6分钟 | 是 | **补传** | 上一周期数据，差值 > 容忍期 |
-| 06:00 | 08:00 | 120分钟 | 是 | **补传** | 很久以前的数据 |
+**判断示例**（TOLERANCE\_PERIOD = 5分钟）：
+
+| recordedAt | 最近整点  | 差值    | recordedAt < 最近整点? | 结果     | 说明                     |
+| ---------- | ----- | ----- | ------------------ | ------ | ---------------------- |
+| 08:00      | 08:00 | 0分钟   | 否（相等）              | 正常     | 当前周期数据                 |
+| 08:03      | 08:00 | 3分钟   | 否                  | 正常     | 当前周期数据，在容忍期内           |
+| 08:06      | 08:00 | 6分钟   | 否                  | 正常     | 当前周期数据，但超过容忍期（可能是时钟漂移） |
+| 07:55      | 08:00 | 5分钟   | 是                  | 正常     | 上一周期数据，差值 = 容忍期，不算补传   |
+| 07:54      | 08:00 | 6分钟   | 是                  | **补传** | 上一周期数据，差值 > 容忍期        |
+| 06:00      | 08:00 | 120分钟 | 是                  | **补传** | 很久以前的数据                |
 
 > **⚠️ 边界情况说明**：
+>
 > - **差值 = 容忍期**：不算补传（严格大于才算）
 > - **recordedAt = 最近整点**：当前周期数据，不算补传
 > - **recordedAt > 最近整点**：理论上不会发生（传感器时间不会超前），如果发生按异常处理
 
 ### 1.4 传感器时间与 recordedAt（已敲定）
 
-**规则**：传感器上报的 `recordedAt` = 对齐到最近整点周期
+**规则**：传感器上报的 `recordedAt` = 直接使用模拟时间 SIMULATED\_TIME
 
 ```
 传感器内部模拟时间（SIMULATED_TIME） vs 上报的 recordedAt：
 
 1. 传感器维护内部模拟时间 SIMULATED_TIME（支持时间加速）
 2. 每次采集时：SIMULATED_TIME += SENSOR_INTERVAL × TIME_ACCELERATION
-3. 如果 SIMULATED_TIME >= 真实时间 → 恢复正常流速（SIMULATED_TIME = 真实时间）
-4. 上报的 recordedAt = 对齐到最近整点周期（SIMULATED_TIME 对齐到 2h）
+3. 如果 SIMULATED_TIME > 真实时间 → 追赶（SIMULATED_TIME = 真实时间, k=1）
+4. 上报的 recordedAt = SIMULATED_TIME（直接使用，不对齐）
 ```
 
-**结果**：传感器永远不会上报"未来时间"的数据，后端不会收到时间戳异常
+**结果**：
 
-**注意**：SIMULATED_TIME 是传感器**内部变量**，不是环境变量。环境变量只有：
+- 正常情况：时间戳为 08:00, 10:00, 12:00...（整点）
+- 追赶后：时间戳可能为 15:02, 17:02, 19:02...（非整点但间隔正确）
+
+**注意**：SIMULATED\_TIME 是传感器**内部变量**，不是环境变量。环境变量只有：
+
 - `TIME_ACCELERATION` - 时间加速倍数
-- `SENSOR_INTERVAL` - 采集间隔
+- `SENSOR_INTERVAL` - 采集间隔（固定 2 小时 = 7200000ms）
 
----
+***
 
 ## 2. 环境变量配置
 
@@ -115,50 +126,57 @@ isSupplement = (最近整点周期起始时间 - recordedAt) > TOLERANCE_PERIOD
 
 #### 后端专用配置
 
-| 变量名 | 类型 | 默认值 | 说明 |
-|--------|------|--------|------|
-| `TOLERANCE_PERIOD` | number | `300000` | 容忍期（毫秒），默认5分钟 |
-| `COMPENSATION_ENABLED` | boolean | `true` | 是否启用数据补偿机制 |
-| `MAX_COMPENSATION_AGE` | number | `86400000` | 最大补偿时间范围（毫秒），默认24小时 |
+| 变量名                    | 类型      | 默认值        | 说明                  |
+| ---------------------- | ------- | ---------- | ------------------- |
+| `TOLERANCE_PERIOD`     | number  | `300000`   | 容忍期（毫秒），默认5分钟       |
+| `COMPENSATION_ENABLED` | boolean | `true`     | 是否启用数据补偿机制          |
+| `MAX_COMPENSATION_AGE` | number  | `86400000` | 最大补偿时间范围（毫秒），默认24小时 |
 
 #### 设备级配置（传感器/模拟器）
 
-| 变量名 | 类型 | 默认值 | 说明 |
-|--------|------|--------|------|
-| `DEVICE_ID` | string | ✅ | 设备唯一标识 |
-| `PLANT_ID` | string | ✅ | 绑定植物ID |
-| `HTTP_API_URL` | string | ✅ | 后端数据上报接口 |
-| `HTTP_API_TOKEN` | string | - | 认证 Token（可选） |
-| `SENSOR_INTERVAL` | number | `7200000` | 模拟时间采集间隔（毫秒），默认2小时 |
-| `DATA_SYNC_INTERVAL` | number | `7200000` | 数据同步周期（毫秒），默认2小时 |
-| `LOCAL_QUEUE_SIZE` | number | `50` | 本地队列容量 |
-| `QUEUE_PERSIST_PATH` | string | `./data/queue.json` | 队列持久化路径 |
+| 变量名                  | 类型     | 默认值                 | 说明           |
+| -------------------- | ------ | ------------------- | ------------ |
+| `DEVICE_ID`          | string | ✅                   | 设备唯一标识       |
+| `PLANT_ID`           | string | ✅                   | 绑定植物ID       |
+| `HTTP_API_URL`       | string | ✅                   | 后端数据上报接口     |
+| `HTTP_API_TOKEN`     | string | -                   | 认证 Token（可选） |
+| `LOCAL_QUEUE_SIZE`   | number | `50`                | 本地队列容量       |
+| `QUEUE_PERSIST_PATH` | string | `./data/queue.json` | 队列持久化路径      |
+
+**固定常量**（代码中硬编码，不可配置）：
+
+| 常量名                  | 值         | 说明                   |
+| :------------------- | :-------- | :------------------- |
+| `SENSOR_INTERVAL_MS` | `7200000` | 采集间隔：2小时 = 7200000毫秒 |
+| `UPLOAD_INTERVAL_MS` | `60000`   | 上报间隔：1分钟 = 60000毫秒   |
 
 #### 测试专用配置（仅开发/测试环境）
 
-| 变量名 | 类型 | 默认值 | 可选值 | 约束条件 |
-|--------|------|--------|--------|----------|
-| `TIME_ACCELERATION` | number | `1` | 1-3600，时间流速倍数 | 仅用于**启动加速**，追赶后自动重置为1 |
-| `SIMULATION_MODE` | string | `normal` | `normal`/`stress`/`random` | - |
-| `NETWORK_CONDITION` | string | `good` | `good`/`poor`/`offline` | - |
+| 变量名                 | 类型     | 默认值      | 可选值                        | 约束条件                  |
+| ------------------- | ------ | -------- | -------------------------- | --------------------- |
+| `TIME_ACCELERATION` | number | `1`      | 1-3600，时间流速倍数              | 仅用于**启动加速**，追赶后自动重置为1 |
+| `SIMULATION_MODE`   | string | `normal` | `normal`/`stress`/`random` | -                     |
+| `NETWORK_CONDITION` | string | `good`   | `good`/`poor`/`offline`    | -                     |
 
 > **⚠️ 重要说明**：`TIME_ACCELERATION` 是**启动加速**参数，不是持续加速。
+>
 > - 模拟器启动时，模拟时间会用加速倍数快速追上真实时间
 > - 一旦追上（`SIMULATED_TIME >= 真实时间`），立即重置为1，恢复正常速度
 > - 因此**不存在** `TIME_ACCELERATION × SENSOR_INTERVAL < DATA_SYNC_INTERVAL` 的约束
 
 **场景映射表**：
 
-| SIMULATION_MODE | NETWORK_CONDITION | 效果描述 |
-|-----------------|-------------------|----------|
-| `normal` | `good` | 正常生产环境 |
-| `normal` | `poor` | 网络不稳定，30%丢包 |
-| `stress` | `poor` | 高负载+网络差 |
-| `random` | `offline` | 完全离线 |
+| SIMULATION\_MODE | NETWORK\_CONDITION | 效果描述        |
+| ---------------- | ------------------ | ----------- |
+| `normal`         | `good`             | 正常生产环境      |
+| `normal`         | `poor`             | 网络不稳定，30%丢包 |
+| `stress`         | `poor`             | 高负载+网络差     |
+| `random`         | `offline`          | 完全离线        |
 
 ### 2.3 配置文件示例
 
 **模拟器配置**（`_dev/tools/virtual_device/.env`）
+
 ```bash
 # ============================================
 # 设备级配置
@@ -189,6 +207,7 @@ NETWORK_CONDITION=good
 ```
 
 **后端配置**（`.env`）
+
 ```bash
 # ============================================
 # 后端级
@@ -198,29 +217,45 @@ COMPENSATION_ENABLED=true
 MAX_COMPENSATION_AGE=86400000
 ```
 
----
+***
 
 ## 3. 关键设计决策
 
-### 3.1 时间对齐策略（已敲定）
+### 3.1 时间戳策略（简化版）
 
-**原则**：始终对齐到2小时整点，与真实时间或时间流速无关
+**原则**：分钟级时间戳 + 整点起始对齐
 
 ```
-传感器内部模拟时间（SIMULATED_TIME）模式：
-- 模拟时间 09:23 → 对齐到 08:00
-- 模拟时间 10:01 → 对齐到 10:00
+设计前提：
+- SIMULATED_TIME_INITIAL 设为整点（如 2026-04-13T08:00:00）
+- SENSOR_INTERVAL 设为2小时倍数（7200000ms）
+- 模拟时间自然推进，无需额外对齐
 
-上报的 recordedAt = 对齐到最近整点周期
+结果：
+08:00:00 → 10:00:00 → 12:00:00 → 14:00:00 ...
+  ↑           ↑           ↑           ↑
+整点！       整点！       整点！       整点！
+
+上报的 recordedAt = 模拟时间（分钟级，但恰好是整点）
 ```
 
 **实现**：
+
 ```python
-def align_time(timestamp):
-    """对齐到2小时整点"""
-    hour = timestamp.hour
-    aligned_hour = (hour // 2) * 2  # 0, 2, 4, 6, 8...
-    return timestamp.replace(hour=aligned_hour, minute=0, second=0, microsecond=0)
+# 直接使用模拟时间，无需对齐
+data = simulator.generate_data(timestamp=self.sim_time)
+```
+
+**配置建议**：
+
+```bash
+# 正确的配置
+SIMULATED_TIME_INITIAL=2026-04-13T08:00:00  # 整点起始
+SENSOR_INTERVAL=7200000                      # 2小时间隔
+
+# 错误的配置（会触发警告）
+SIMULATED_TIME_INITIAL=2026-04-13T08:30:00  # 非整点起始
+# 结果：08:30, 10:30, 12:30... 与后端周期不匹配
 ```
 
 ### 3.2 队列存储策略（已敲定）
@@ -251,23 +286,26 @@ def add(self, recorded_at, metrics):
 ```
 
 > **⚠️ 队列溢出风险说明**
-> 
+>
 > **场景**：传感器离线很长时间，队列满了，新数据不断覆盖老数据
-> 
+>
 > **后果**：
+>
 > - 最老的数据还没成功上报就被覆盖
 > - 数据永久丢失
-> 
+>
 > **缓解措施**：
+>
 > 1. **监控告警**：当发生覆盖时记录警告日志
 > 2. **队列大小**：根据传感器离线容忍时间设置合理的队列大小
->    - 假设 SENSOR_INTERVAL = 2小时，离线容忍 7天
+>    - 假设 SENSOR\_INTERVAL = 2小时，离线容忍 7天
 >    - 队列大小 = 7天 / 2小时 = 84条
 >    - 建议设置 100-200条，留有余量
 > 3. **持久化频率**：每次变更后立即持久化，减少丢失风险
 > 4. **上报优先级**：队列中的数据按时间顺序上报，老数据优先
-> 
+>
 > **未来优化**（可选）：
+>
 > - 双队列策略：一个"待发送"队列，一个"已发送待确认"队列
 > - 磁盘队列：当内存队列满时，溢出到磁盘文件
 
@@ -275,7 +313,7 @@ def add(self, recorded_at, metrics):
 
 **方式**：定时触发 + 逐条确认
 
-- 整点后触发上报（DATA_SYNC_INTERVAL 周期）
+- 整点后触发上报（DATA\_SYNC\_INTERVAL 周期）
 - 从队列中逐条发送数据
 - 服务器返回成功响应后，才从队列移除该数据条
 - 失败的数据条保留在队列中，下次继续尝试
@@ -285,15 +323,16 @@ def add(self, recorded_at, metrics):
 **策略**：下次定时触发时重试
 
 - 失败后数据保留在队列中
-- 等待下一次整点触发（DATA_SYNC_INTERVAL 周期）
+- 等待下一次整点触发（DATA\_SYNC\_INTERVAL 周期）
 - 避免频繁重试造成网络压力
 - 重试次数记录在队列数据中
 
 ### 3.5 补传数据处理（已敲定）
 
-**策略**：后端通过 recordedAt 时间判断，补偿数据按 recorded_at 覆盖
+**策略**：后端通过 recordedAt 时间判断，补偿数据按 recorded\_at 覆盖
 
 **判断逻辑**：
+
 ```
 isSupplement = (最近整点周期起始时间 - recordedAt) > TOLERANCE_PERIOD
 
@@ -303,6 +342,7 @@ isSupplement = (最近整点周期起始时间 - recordedAt) > TOLERANCE_PERIOD
 ```
 
 **补偿数据覆盖**：
+
 - 补传数据到达时，查询是否有同一周期的补偿数据
 - 如果有，按 `recorded_at` 覆盖（UPSERT）
 - 保留 `is_stale` 标记用于前端区分
@@ -313,32 +353,37 @@ isSupplement = (最近整点周期起始时间 - recordedAt) > TOLERANCE_PERIOD
 
 **核心变量**：
 
-| 变量 | 中文 | English | 数学符号 | 类型 | 说明 |
-|:---|:---|:---|:---|:---|:---|
-| 真实时间 | 真实时间 | Real Time | `R` | 外部变量 | 外部可感知的时间，独立流逝 |
-| 模拟时间 | 模拟时间 | Simulated Time | `S` | 内部变量 | 传感器内部认为的时间 |
-| 模拟时间采集间隔 | SENSOR_INTERVAL | Sensor Interval | `Δs` | 配置 | 模拟时间采集间隔（毫秒），默认 2 小时 |
-| 时间加速倍数 | TIME_ACCELERATION | Time Acceleration | `k` | 配置 | 时间加速倍数，默认 1，**追赶后重置为1** |
-| 定时器间隔 | - | Timer Interval | `Δt` | 计算值 | 定时器触发间隔（秒），动态计算 |
-| 追赶阈值 | 追赶阈值 | Catch-up Threshold | `0` | 固定值 | 触发条件：S > R |
-| 容忍期 | TOLERANCE_PERIOD | Tolerance Period | `T` | 配置 | 补传判断阈值（毫秒），默认 5 分钟 |
+| 变量       | 中文                 | English            | 数学符号 | 类型   | 说明                      |
+| :------- | :----------------- | :----------------- | :--- | :--- | :---------------------- |
+| 真实时间     | 真实时间               | Real Time          | `R`  | 外部变量 | 外部可感知的时间，独立流逝           |
+| 模拟时间     | 模拟时间               | Simulated Time     | `S`  | 内部变量 | 传感器内部认为的时间              |
+| 模拟时间采集间隔 | SENSOR\_INTERVAL   | Sensor Interval    | `Δs` | 配置   | 模拟时间采集间隔（毫秒），默认 2 小时    |
+| 时间加速倍数   | TIME\_ACCELERATION | Time Acceleration  | `k`  | 配置   | 时间加速倍数，默认 1，**追赶后重置为1** |
+| 定时器间隔    | -                  | Timer Interval     | `Δt` | 计算值  | 定时器触发间隔（秒），动态计算         |
+| 追赶阈值     | 追赶阈值               | Catch-up Threshold | `0`  | 固定值  | 触发条件：S > R              |
+| 容忍期      | TOLERANCE\_PERIOD  | Tolerance Period   | `T`  | 配置   | 补传判断阈值（毫秒），默认 5 分钟      |
 
 **约束条件**：`S ≤ R`（模拟时间永远不超过真实时间）
 
 **定时器间隔计算**（在每次触发时计算下一次间隔）：
+
 ```
 Δt = Δs / (k × 1000)  // 秒，k > 1 时间隔变小（加速）
 Δt = Δs / 1000        // 秒，k = 1 时为正常间隔（稳态）
 ```
 
 > **🔑 关键理解**：
+>
 > - 定时器间隔 `Δt` 是**动态计算**的，不是固定的
 > - 追赶阶段（k > 1）：`Δt = Δs / k`，因为模拟时间加速增长，定时器需要更快触发才能追上真实时间
 > - 稳态阶段（k = 1）：`Δt = Δs`，模拟时间与真实时间同步增长，定时器按正常间隔触发
 
 **追赶逻辑数学前提**：
+
 - 每次定时器触发时，传感器记录当前真实时间 `R_new`
-- 模拟时间推进：`S = S + Δs × k`
+- 真实时间流逝：`dR = Δt = Δs / k`
+- 模拟时间流逝：`dS = k × dR = k × (Δs / k) = Δs`
+- 模拟时间推进：`S = S + Δs`（固定推进传感器间隔）
 - 如果 `S > R_new`，触发追赶：`S = R_new`, `k = 1`
 - 下一次定时器间隔：`Δt = Δs / 1000`（恢复正常间隔）
 
@@ -355,18 +400,21 @@ k = int(os.getenv('TIME_ACCELERATION', 1))  # 时间加速倍数
 
 # 每次定时器触发时执行：
 def on_trigger():
-    # 1. 模拟时间推进
-    S += Δs * k
+    # 1. 更新真实时间
+    R = now()
+    
+    # 2. 模拟时间推进（dS = k × dR = k × (Δs/k) = Δs）
+    S += Δs
 
-    # 2. 追赶逻辑：如果 S > R，则 S = R, k = 1
+    # 3. 追赶逻辑：如果 S > R，则 S = R, k = 1
     if S > R:
         S = R
         k = 1
 
-    # 3. 计算 recordedAt
-    recordedAt = align_to_interval(S)
+    # 4. 计算 recordedAt（直接使用模拟时间，不对齐）
+    recordedAt = S
 
-    # 4. 上报
+    # 5. 上报
     send({ recordedAt, metrics })
 ```
 
@@ -402,8 +450,8 @@ def on_trigger():
         S = R
         k = 1
 
-    # 3. 计算 recordedAt
-    recordedAt = align_to_interval(S)
+    # 3. 计算 recordedAt（直接使用模拟时间，不对齐）
+    recordedAt = S
 
     # 4. 上报
     send({ recordedAt, metrics })
@@ -429,24 +477,28 @@ def on_trigger():
 追赶逻辑的实现要求定时器触发的真实间隔 `Δt = Δs / k`。如果 Sensor 的 interval 不等于 Δt，则追赶逻辑无法按数学模型运行。
 
 **适用场景**：
+
 - 虚拟设备/模拟器：可以精确控制定时器间隔
 - 真实传感器：通常是固定间隔，无法动态调整
 
-#### 3.5.6 align_to_interval 算法
+#### 3.5.6 时间戳策略（已简化）
+
+**原则**：直接使用模拟时间 S 作为 recordedAt，不对齐
 
 ```
-align_to_interval(timestamp):
-    1. 获取 timestamp 的小时
-    2. 如果小时是奇数，向下去一（01-11 → 00, 03 → 02, ..., 23 → 22）
-    3. 如果小时是偶数，保持不变（00, 02, 04, ..., 22）
-    4. 分钟秒微秒设为0
-    5. 返回
+时间戳计算：
+recordedAt = S  // 直接使用模拟时间
 
 示例：
-- 09:23 → 08:00  （奇数小时，向下去一）
-- 10:01 → 10:00  （偶数小时，保持）
-- 23:59 → 22:00  （奇数小时，向下去一）
+- 正常情况：S=10:00 → recordedAt=10:00
+- 追赶后：S=15:02 → recordedAt=15:02（非整点但间隔正确）
 ```
+
+**说明**：
+
+- 起始时间 S₀ 建议设为整点（如 08:00），此时时间戳为 08:00, 10:00, 12:00...
+- 追赶后 S 被重置为当前真实时间（如 15:02），之后时间戳为 15:02, 17:02, 19:02...
+- 后端接收任意时间戳，按实际 recordedAt 存储
 
 #### 3.5.7 完整时间线示例
 
@@ -480,11 +532,11 @@ sequenceDiagram
 
 **时间线说明**：
 
-| 触发 | 真实时间 R | S 增长后 | S > R? | 追赶后 S | recordedAt | k |
-|:---|:---|:---|:---|:---|:---|:---|
-| 1 | 10:00 | 10:00+2h×60=14:00 | Yes | 10:00 | 10:00 | 1 |
-| 2 | 12:00 | 10:00+2h×1=12:00 | No | - | 12:00 | 1 |
-| 3 | 14:00 | 12:00+2h×1=14:00 | No | - | 14:00 | 1 |
+| 触发 | 真实时间 R | S 增长后             | S > R? | 追赶后 S | recordedAt | k  |
+| :- | :----- | :---------------- | :----- | :---- | :--------- | :- |
+| 1  | 10:00  | 10:00+2h×60=14:00 | Yes    | 10:00 | 10:00      | 1  |
+| 2  | 12:00  | 10:00+2h×1=12:00  | No     | -     | 12:00      | 1  |
+| 3  | 14:00  | 12:00+2h×1=14:00  | No     | -     | 14:00      | 1  |
 
 #### 3.5.8 服务端处理
 
@@ -514,6 +566,7 @@ await ReadingTask.upsert({
 **追赶后**：k = 1，S = R（追赶时刻）
 
 **稳态条件**：
+
 ```
 Δt = 真实时间间隔 = SENSOR_INTERVAL / 1 (因为 k=1)
 
@@ -544,23 +597,25 @@ flowchart TD
 ```
 
 **关键点**：
-- SENSOR_INTERVAL 是**模拟时间**采集间隔，不是真实时间间隔
-- TIME_ACCELERATION 只在启动时生效一次
+
+- SENSOR\_INTERVAL 是**模拟时间**采集间隔，不是真实时间间隔
+- TIME\_ACCELERATION 只在启动时生效一次
 - 追赶阈值固定为 0（S > R 时触发）
 - S ≤ R 永远成立
 
 #### 3.5.11 环境变量术语对照
 
-| 中文 | English | 数学符号 | 说明 |
-|:---|:---|:---|:---|
-| SENSOR_INTERVAL | SENSOR_INTERVAL | `Δs` | 模拟时间采集间隔（毫秒），默认2小时 |
-| TIME_ACCELERATION | TIME_ACCELERATION | `k` | 时间加速倍数，默认1 |
-| 追赶阈值 | Catch-up Threshold | `0` | 固定值，触发条件：S > R |
-| TOLERANCE_PERIOD | TOLERANCE_PERIOD | `T` | 容忍期（毫秒），默认5分钟 |
+| 中文                 | English            | 数学符号 | 说明                 |
+| :----------------- | :----------------- | :--- | :----------------- |
+| SENSOR\_INTERVAL   | SENSOR\_INTERVAL   | `Δs` | 模拟时间采集间隔（毫秒），默认2小时 |
+| TIME\_ACCELERATION | TIME\_ACCELERATION | `k`  | 时间加速倍数，默认1         |
+| 追赶阈值               | Catch-up Threshold | `0`  | 固定值，触发条件：S > R     |
+| TOLERANCE\_PERIOD  | TOLERANCE\_PERIOD  | `T`  | 容忍期（毫秒），默认5分钟      |
 
 **策略**：跳过关机期间任务，从恢复时刻开始
 
 **时间加速恢复逻辑**：
+
 ```
 1. 传感器维护内部模拟时间 SIMULATED_TIME（支持 TIME_ACCELERATION）
 2. 每次采集：SIMULATED_TIME += SENSOR_INTERVAL × TIME_ACCELERATION
@@ -575,29 +630,32 @@ flowchart TD
 **策略**：传感器端主导 + Task 富余保底
 
 **核心原则**：
-- 传感器上报时 **UPSERT** Task（sensor_status=RECEIVED）
-- 后端定时预生成 Task 富余（sensor_status=PENDING）
+
+- 传感器上报时 **UPSERT** Task（sensor\_status=RECEIVED）
+- 后端定时预生成 Task 富余（sensor\_status=PENDING）
 - 最新 RECEIVED 数据后保证有 N 个 PENDING Task
 
 > **🔑 关键理解：UPSERT 机制**
-> 
+>
 > `UPSERT` = `UPDATE`（如果存在）或 `INSERT`（如果不存在）
-> 
+>
 > 这意味着：
+>
 > 1. **传感器先上报**：创建 `sensor_status=RECEIVED` 的 Task
 > 2. **后端预生成**：在同一周期创建 `sensor_status=PENDING` 的 Task
 > 3. **UPSERT 时**：发现 Task 已存在（由后端预生成），更新状态为 `RECEIVED`
-> 
+>
 > **不存在冲突**，因为数据库有 `UNIQUE(plant_id, recorded_at)` 约束，保证每个周期只有一条记录。
 
 **职责分离**：
 
-| 数据类型 | Task 生成方式 | 说明 |
-|:---|:---|:---|
+| 数据类型  | Task 生成方式                     | 说明              |
+| :---- | :---------------------------- | :-------------- |
 | 传感器数据 | 传感器上报时 UPSERT + 后端预生成 PENDING | 传感器主导，Task 富余保底 |
-| 天气数据 | 后端定时任务管理 | 后端主导 |
+| 天气数据  | 后端定时任务管理                      | 后端主导            |
 
 **Task 状态流转**：
+
 ```
 阶段1：后端预生成（定时任务）
   - 扫描每个植物最新的 sensor_status=RECEIVED 的 Task
@@ -615,6 +673,7 @@ flowchart TD
 ```
 
 **Task 队列示意**：
+
 ```
 初始状态（后端预生成）：
 [T1: 08:00, sensor=PENDING] → [T2: 10:00, sensor=PENDING] → [T3: 12:00, sensor=PENDING] → [T4: 14:00, sensor=PENDING]
@@ -636,6 +695,7 @@ flowchart TD
 ```
 
 **数据库设计**：
+
 ```sql
 reading_tasks
 - task_id         -- UUID
@@ -650,37 +710,38 @@ UNIQUE(plant_id, recorded_at)
 ```
 
 **关键点**：
+
 - 传感器上报不依赖预生成 Task（UPSERT 保证）
 - 预生成 Task 提供富余，确保系统鲁棒
 - Task 数量与时间流速无关
-- weather_status 和 sensor_status 独立管理
+- weather\_status 和 sensor\_status 独立管理
 
 ### 3.8 时间流速用途与风险（已敲定）
 
 **用途**：
 
-| 用途 | 说明 |
-|------|------|
+| 用途   | 说明                       |
+| ---- | ------------------------ |
 | 测试加速 | 快速验证周期性功能（2小时周期不用真的等2小时） |
-| 开发调试 | 提高调试效率，不用长时间等待 |
-| 压力测试 | 模拟长期运行，暴露潜在问题 |
+| 开发调试 | 提高调试效率，不用长时间等待           |
+| 压力测试 | 模拟长期运行，暴露潜在问题            |
 
 **已消除的风险**：
 
-| 风险 | 解决方案 |
-|------|----------|
-| 设备队列溢出 | 覆盖最老数据策略（3.2）✓ |
-| 数据丢失 | 逐条确认机制（3.3）✓ |
+| 风险     | 解决方案                            |
+| ------ | ------------------------------- |
+| 设备队列溢出 | 覆盖最老数据策略（3.2）✓                  |
+| 数据丢失   | 逐条确认机制（3.3）✓                    |
 | 收到未来数据 | recordedAt 用整点对齐，永不超越真实时间（1.4）✓ |
 
 **需关注的风险**：
 
-| 风险 | 说明 |
-|------|------|
+| 风险   | 说明                      |
+| ---- | ----------------------- |
 | 日志过快 | 日志写入频率过高，需考虑异步写入或日志级别控制 |
-| 前端显示 | 页面刷新过快，需节流处理 |
+| 前端显示 | 页面刷新过快，需节流处理            |
 
----
+***
 
 ## 4. 实施计划
 
@@ -691,6 +752,7 @@ UNIQUE(plant_id, recorded_at)
 **文件**：`app/core/local_task_queue.py`
 
 **存储结构**：
+
 ```python
 {
     "queue": [
@@ -706,6 +768,7 @@ UNIQUE(plant_id, recorded_at)
 ```
 
 **核心方法**：
+
 ```python
 class LocalTaskQueue:
     def add(self, recorded_at, metrics)           # 添加数据（溢出覆盖最老）
@@ -724,11 +787,13 @@ class LocalTaskQueue:
 **核心思路**：在 Sensor 类内部维护 S/R/k，动态调整定时器间隔，实现追赶逻辑
 
 **修改点**：
+
 1. Sensor 内部维护 S（模拟时间）、R（真实时间）、k（加速倍数）
 2. 每次触发后，根据 Δt = Δs / k 计算下一次间隔
 3. 追赶逻辑在 Sensor 内部执行
 
 **伪代码**（已修复执行顺序和对齐问题）：
+
 ```python
 import os
 from datetime import datetime, timedelta
@@ -827,29 +892,31 @@ class Sensor(SensorModel):
 ```
 
 > **🔑 关键修复说明**：
+>
 > 1. **执行顺序修正**：`S += Δs × k` 在前，追赶判断在后（与规格 3.5.2 一致）
-> 2. **align_to_interval**：使用 `align_to_interval(S)` 对齐到整点（符合规格 1.4）
+> 2. **align\_to\_interval**：使用 `align_to_interval(S)` 对齐到整点（符合规格 1.4）
 > 3. **并发控制**：使用 `signal.alarm` 实现超时机制
 > 4. **加速上限**：`k` 限制为 `MAX_TIME_ACCELERATION`（3600）
 > 5. **最小间隔**：Δt 最小 100ms，防止 Timer 过于频繁
-> 4. **并发控制**：添加 `is_processing` 锁防止重入
-> 5. **错误处理**：回调失败不影响定时器继续运行
+> 6. **并发控制**：添加 `is_processing` 锁防止重入
+> 7. **错误处理**：回调失败不影响定时器继续运行
 
 **关键实现要点**：
 
-| 要点 | 说明 |
-|:---|:---|
-| 定时器间隔动态调整 | 每次触发后计算 Δt = Δs / k |
-| 追赶条件 | S > R 时触发追赶 |
-| 追赶后 | k = 1, has_caught_up = True |
-| 数据 timestamp | 使用 `align_to_interval(S)` 对齐到整点 |
-| 加速上限 | `k ≤ MAX_TIME_ACCELERATION`（3600） |
-| 最小间隔 | `Δt ≥ 100ms`，防止 Timer 过于频繁 |
-| 并发控制 | 超时机制（`CALLBACK_TIMEOUT = 30s`） |
+| 要点           | 说明                                |
+| :----------- | :-------------------------------- |
+| 定时器间隔动态调整    | 每次触发后计算 Δt = Δs / k               |
+| 追赶条件         | S > R 时触发追赶                       |
+| 追赶后          | k = 1, has\_caught\_up = True     |
+| 数据 timestamp | 使用 `align_to_interval(S)` 对齐到整点   |
+| 加速上限         | `k ≤ MAX_TIME_ACCELERATION`（3600） |
+| 最小间隔         | `Δt ≥ 100ms`，防止 Timer 过于频繁        |
+| 并发控制         | 超时机制（`CALLBACK_TIMEOUT = 30s`）    |
 
 **与 Device 的交互**：
 
 Sensor 通过 callback 将数据传递给 Device。Device 的职责简化为：
+
 - 接收 Sensor 的数据
 - 调用 HTTPHelper 上报
 
@@ -865,12 +932,14 @@ def send_simulator_data(self, sensor, data):
 **文件**：`app/utils/http_helper.py`
 
 **架构**：HTTPHelper 集成 LocalTaskQueue，负责：
+
 1. 接收 Sensor 已处理的数据（timestamp 已对齐）
 2. 加入本地队列（持久化）
 3. 从队列取数据逐条上报
 4. 成功后移除，失败保留
 
 **伪代码**：
+
 ```python
 class HTTPHelper:
     def __init__(self, api_url):
@@ -934,6 +1003,7 @@ class HTTPHelper:
 ```
 
 > **🔑 架构说明**：
+>
 > - **LocalTaskQueue 在 HTTPHelper 层**：负责存储、持久化、重试
 > - **Sensor 只管生成+追赶**：不关心队列
 > - **Device 是中间层**：接收 Sensor 数据，调用 HTTPHelper
@@ -946,11 +1016,13 @@ class HTTPHelper:
 **文件**：`backend/server/src/services/EnvironmentService.js`
 
 **核心逻辑**：
+
 1. 收到传感器数据后，按 `(plant_id, recorded_at)` 执行 UPSERT
 2. 补传数据到达时，覆盖同周期的补偿数据
 3. 触发 Task 富余补充
 
 **伪代码**（已修复补传判断逻辑）：
+
 ```javascript
 async processDeviceEnvironmentData(plantId, data) {
     const { deviceId, recordedAt, metrics } = data;
@@ -1064,11 +1136,13 @@ async ensureTaskSurplus(plantId, afterRecordedAt) {
 **文件**：`backend/server/src/jobs/environmentSyncJob.js`
 
 **保留职责**：
+
 - `generateTasksForAllPlants()` → 预生成 Task 富余 + 天气数据
 - `fetchWeatherForAllPlants()` → 获取天气数据
 - `ensureTaskSurplus(plantId)` → 确保某植物有足够的 PENDING Task
 
 **伪代码**：
+
 ```javascript
 // generateTasksForAllPlants() 改造
 async function generateTasksForAllPlants() {
@@ -1137,46 +1211,46 @@ NETWORK_CONDITION=good
 
 #### 4.3.2 测试场景
 
-| 场景 | 操作 | 预期结果 |
-|------|------|----------|
-| 正常上报 | 模拟器定时生成数据并上报 | 数据正常接收，状态=RECEIVED |
-| 网络抖动 | 模拟器上报失败 | 数据保留在队列，下次继续上报 |
-| 批量补传 | 模拟器离线后恢复，队列有多条数据 | 逐条上报，成功后从队列移除 |
-| 覆盖补偿 | 补偿数据已存在，真实数据补传 | 覆盖补偿数据，写入真实，标记补传 |
-| 程序重启 | 关闭并重新启动模拟器 | 队列数据从JSON恢复，继续上报 |
-| 时间加速追上 | TIME_ACCELERATION=60 长时间运行 | 模拟时间追上真实时间后恢复正常流速 |
+| 场景     | 操作                          | 预期结果               |
+| ------ | --------------------------- | ------------------ |
+| 正常上报   | 模拟器定时生成数据并上报                | 数据正常接收，状态=RECEIVED |
+| 网络抖动   | 模拟器上报失败                     | 数据保留在队列，下次继续上报     |
+| 批量补传   | 模拟器离线后恢复，队列有多条数据            | 逐条上报，成功后从队列移除      |
+| 覆盖补偿   | 补偿数据已存在，真实数据补传              | 覆盖补偿数据，写入真实，标记补传   |
+| 程序重启   | 关闭并重新启动模拟器                  | 队列数据从JSON恢复，继续上报   |
+| 时间加速追上 | TIME\_ACCELERATION=60 长时间运行 | 模拟时间追上真实时间后恢复正常流速  |
 
----
+***
 
 ## 5. 文件变更清单
 
 ### 新增文件
 
-| 路径 | 说明 |
-|------|------|
+| 路径                             | 说明                          |
+| ------------------------------ | --------------------------- |
 | `app/core/local_task_queue.py` | 本地任务队列管理（内存+JSON持久化，溢出覆盖最老） |
-| `app/core/__init__.py` | 核心模块初始化 |
-| `app/data/queue.json` | 队列数据持久化文件（gitignore） |
+| `app/core/__init__.py`         | 核心模块初始化                     |
+| `app/data/queue.json`          | 队列数据持久化文件（gitignore）        |
 
 ### 修改文件
 
-| 路径 | 修改内容 |
-|------|----------|
-| `app/model/sensor.py` | 实现追赶逻辑：维护 S/R/k，动态调整定时器间隔 Δt = Δs/k |
-| `app/model/device.py` | 简化：接收 Sensor 数据，调用 HTTPHelper 上报 |
-| `app/utils/http_helper.py` | 简化：timestamp 已对齐，无需再处理 |
-| `backend/server/src/services/EnvironmentService.js` | UPSERT + 补传覆盖逻辑 |
-| `backend/server/src/services/compensationService.js` | 扫描+补偿逻辑 |
-| `backend/server/src/jobs/environmentSyncJob.js` | Task 富余策略 |
+| 路径                                                   | 修改内容                                |
+| ---------------------------------------------------- | ----------------------------------- |
+| `app/model/sensor.py`                                | 实现追赶逻辑：维护 S/R/k，动态调整定时器间隔 Δt = Δs/k |
+| `app/model/device.py`                                | 简化：接收 Sensor 数据，调用 HTTPHelper 上报    |
+| `app/utils/http_helper.py`                           | 简化：timestamp 已对齐，无需再处理              |
+| `backend/server/src/services/EnvironmentService.js`  | UPSERT + 补传覆盖逻辑                     |
+| `backend/server/src/services/compensationService.js` | 扫描+补偿逻辑                             |
+| `backend/server/src/jobs/environmentSyncJob.js`      | Task 富余策略                           |
 
----
+***
 
 ## 6. 验收标准
 
 ### 6.1 功能验收
 
 - [ ] 模拟器能定时生成数据并对齐到2小时整点
-- [ ] 模拟器支持时间加速（TIME_ACCELERATION）
+- [ ] 模拟器支持时间加速（TIME\_ACCELERATION）
 - [ ] 模拟器时间追上真实时间后恢复正常流速
 - [ ] 模拟器能将数据存储到本地队列并持久化到JSON
 - [ ] 模拟器队列满时覆盖最老数据
@@ -1185,7 +1259,7 @@ NETWORK_CONDITION=good
 - [ ] 网络失败时，数据保留在队列中，下次继续尝试
 - [ ] 程序重启后，队列数据能从JSON文件恢复
 - [ ] 补传数据能正确覆盖补偿数据
-- [ ] 后端按 recorded_at UPSERT，不重复创建
+- [ ] 后端按 recorded\_at UPSERT，不重复创建
 
 ### 6.2 性能验收
 
@@ -1199,7 +1273,7 @@ NETWORK_CONDITION=good
 - [ ] 补偿数据标记 `is_stale=true`
 - [ ] 补传数据到达后覆盖补偿数据
 
----
+***
 
 ## 7. 形象比喻
 
@@ -1213,6 +1287,7 @@ NETWORK_CONDITION=good
 ```
 
 **工作流程**：
+
 1. **正常情况**：快递员每2小时采集一个包裹，背包里装满了就出发，送到快递站，签收成功
 2. **背包满了**：快递员把最老的包裹扔掉，腾出空间装新包裹（溢出覆盖最老）
 3. **网络不好**：快递员把包裹放在背包里，不放弃，下次一起送
@@ -1220,41 +1295,43 @@ NETWORK_CONDITION=good
 5. **真包裹到了**：快递员把假包裹扔掉，用真包裹替换（覆盖补偿数据）
 
 **关键理解**：
+
 - **RECEIVED** = 快递员送来的真包裹
-- **COMPENSATED** = 快递站等不及了自己造的假包裹（标记 is_stale）
+- **COMPENSATED** = 快递站等不及了自己造的假包裹（标记 is\_stale）
 - **补传** = 快递员后来把真包裹送来了，替换掉假包裹
 
----
+***
 
 ## 8. 变更记录
 
-| 版本 | 日期 | 变更内容 | 作者 |
-|------|------|----------|------|
-| 1.0 | 2026-04-12 | 初始版本，合并传感器数据流设计、环境变量配置、实施计划 | AI |
-| 1.1 | 2026-04-12 | 完成关键设计决策：时间对齐、队列存储、上报触发、失败重试、补传标记 | AI |
-| 1.2 | 2026-04-12 | 新增3.6设备恢复策略：跳过关机期间任务，与真实传感器行为一致 | AI |
-| 1.3 | 2026-04-12 | 新增3.7 Task富余策略：提前预生成未来周期Task，不依赖定时任务 | AI |
-| 1.4 | 2026-04-12 | 新增3.8时间流速用途与风险，明确两个队列的区分 | AI |
-| 2.0 | 2026-04-12 | 重大修订：<br/>1. 批量上报改为队列概念+逐条POST<br/>2. 补传判断改为"最近整点周期起始时间 - recordedAt > 容忍期"<br/>3. 补偿数据按 recorded_at 覆盖而非删除<br/>4. 删除 Task 富余策略，改为传感器端主导后端逻辑<br/>5. 新增时间加速追上恢复机制<br/>6. 队列溢出策略改为覆盖最老数据<br/>7. 更新环境变量配置<br/>8. 更新实施计划章节 | AI |
-| 2.1 | 2026-04-13 | 修复歧义：<br/>1. 边界情况描述：明确"等于"不算补传<br/>2. 最近一个周期语义：改为"最近一个已结束的周期"<br/>3. 时间加速追赶逻辑：明确追赶后的推进行为<br/>4. 补偿Job执行时机：每10分钟执行+启动时执行<br/>5. 补传判断vs补偿扫描：增加时间基准区分表格 | AI |
-| 2.2 | 2026-04-13 | 恢复 Task 富余策略（混合模式）：<br/>1. 传感器上报时 UPSERT Task（sensor_status=RECEIVED）<br/>2. 后端定时预生成 Task 富余（sensor_status=PENDING）<br/>3. 最新 RECEIVED 数据后保证有 N 个 PENDING Task<br/>4. weather_status 和 sensor_status 独立管理 | AI |
-| 2.3 | 2026-04-13 | 新增 SENSOR_INTERVAL 全局配置<br/>新增时间加速约束条件：TIME_ACCELERATION × SENSOR_INTERVAL < DATA_SYNC_INTERVAL<br/>更新时间加速追赶逻辑示例 | AI |
-| 2.4 | 2026-04-13 | 新增 3.5 时间机制完整解析：<br/>1. 明确 R（真实时间）和 M（模拟时间）的区分<br/>2. 定时器触发机制：基于真实时间 R，按 SENSOR_INTERVAL 触发<br/>3. M 推进规则：M += SENSOR_INTERVAL × TIME_ACCELERATION<br/>4. 追赶逻辑：M >= R 时，M=R, TIME_ACCELERATION=1<br/>5. recordedAt 计算：align_to_interval(M)<br/>6. 服务端只关心 recordedAt，不需要知道 M 或 TIME_ACCELERATION | AI |
-| 2.5 | 2026-04-13 | 1. M 改名为 SIMULATED_TIME<br/>2. 修正 align_to_interval 描述：奇数小时向下去一<br/>3. 修正补传判断逻辑：增加 `recordedAtDate < nowPeriodStart` 条件<br/>4. 增加约束：SIMULATED_TIME 必须在过去（SIMULATED_TIME <= R） | AI |
-| 2.6 | 2026-04-13 | 1. 修正 SENSOR_INTERVAL 描述：明确定时器由 R 驱动<br/>2. 新增 3.5.4 服务器视角的真实上报速率分析<br/>3. 明确 TIME_ACCELERATION 不影响触发频率，只影响 recordedAt 跳跃程度<br/>4. 修正示例：SENSOR_INTERVAL 应为 2小时（7200000ms）<br/>5. 删除多余的"约束条件"，明确时间加速是"启动加速"机制 | AI |
-| 2.7 | 2026-04-13 | **重大修订**：<br/>1. 重写 3.5 节（时间机制完整解析）<br/>2. 明确 SENSOR_INTERVAL 是**模拟时间**采集间隔，不是真实时间间隔<br/>3. 增加数学模型（dS/dR = k）<br/>4. 追赶阈值固定为 0（S > R 时触发）<br/>5. 增加 Mermaid 时序图和流程图<br/>6. 增加稳态分析（S 和 R 同步增长）<br/>7. 增加环境变量术语对照表 | AI |
-| 2.8 | 2026-04-13 | **审查修复**：<br/>1. 统一 align_to_interval 算法描述（奇数小时向下去一）<br/>2. http_helper.py 实现 align_to_interval 函数并调用<br/>3. 移除 isSupplement 前端传递，改为服务端计算<br/>4. EnvironmentService.js 新增 calculateIsSupplement 和 alignToInterval 方法<br/>5. 统一 Python 和 JavaScript 的 align_to_interval 实现 | AI |
-| 2.9 | 2026-04-13 | **规格修正**：<br/>1. 修复时间线表格中的计算表达式（10:00+120h → 10:00+2h×60）<br/>2. 统一追赶后 k=1 的计算表达式格式 | AI |
-| 2.10 | 2026-04-13 | **追赶逻辑数学基础完善**：<br/>1. 明确 Δt = 真实触发间隔（定时器间隔必须等于 Δt）<br/>2. 追赶逻辑成立的数学前提：Δt = Δs / k<br/>3. 说明追赶后 k=1 的原因：时间已对齐，加速无意义<br/>4. 区分适用场景：虚拟设备 vs 真实传感器 | AI |
-| 2.11 | 2026-04-13 | **追赶逻辑实现方案写入规格**：<br/>1. 新增 4.1.2 节：Sensor 类追赶逻辑实现方案<br/>2. 在 Sensor 内部维护 S/R/k，动态调整定时器间隔<br/>3. 追赶逻辑：S > R 时 S = R, k = 1<br/>4. Sensor 的 timestamp 使用模拟时间 S<br/>5. Device 简化为接收+上报<br/>6. HTTPHelper 简化：timestamp 已对齐，无需处理 | AI |
-| 2.12 | 2026-04-13 | **规格审查修复 + 需求确认**：<br/>1. **Bug修复**：追赶逻辑执行顺序（S += Δs × k 在前，判断在后）<br/>2. **Bug修复**：align_to_interval 缺失（使用 align_to_interval(S) 对齐到整点）<br/>3. **需求确认**：LocalTaskQueue 在 HTTPHelper 层集成<br/>4. **需求确认**：并发控制使用超时机制（CALLBACK_TIMEOUT=30s）<br/>5. **需求确认**：TIME_ACCELERATION 上限限制为 3600<br/>6. **需求确认**：has_caught_up 为一次性标志位<br/>7. 更新 HTTPHelper 伪代码：集成 LocalTaskQueue<br/>8. 更新关键实现要点表格 | AI |
-| 2.13 | 2026-04-13 | **代码实施完成**：<br/>1. **Phase 1**: 创建 `app/core/local_task_queue.py`（队列核心类，支持溢出覆盖、持久化、线程安全）<br/>2. **Phase 2**: 改造 `app/model/sensor.py`（追赶逻辑：S/R/k 状态、动态间隔 Δt、先推进后判断、Windows 兼容超时）<br/>3. **Phase 3**: Device 无需改动（已是接收+上报模式）<br/>4. **Phase 4**: 改造 `app/utils/http_helper.py`（集成队列：入队→定时循环→逐条上报→成功移除/失败保留）<br/>5. 新增常量：MAX_TIME_ACCELERATION=3600, CALLBACK_TIMEOUT=30<br/>6. Windows 兼容：使用 concurrent.futures 替代 signal.alarm | AI |
-| 2.14 | 2026-04-13 | **后端富余逻辑实现**：<br/>1. 移除 `generateTasksForAllPlants()`（旧设计，只生成当前周期）<br/>2. 实现 `ensureTaskSurplus()`（真正的富余逻辑：最新 RECEIVED 后保证 N 个 PENDING Task）<br/>3. 新增配置 `TASK_SURPLUS_COUNT = 3`<br/>4. `runSync()` 调用 `ensureTaskSurplus()` 替代旧函数<br/>5. 导出 `ensureTaskSurplus` 用于测试 | AI |
-| 2.15 | 2026-04-13 | **修复模拟时间初始化缺陷**：<br/>1. 新增环境变量 `SIMULATED_TIME_INITIAL`（ISO 8601 格式）<br/>2. 支持从历史时间开始追赶（例如：2026-04-12T08:00:00）<br/>3. 不设置时默认使用当前时间（向后兼容）<br/>4. 更新 `sensor.py` 初始化逻辑<br/>5. 更新 `.env` 和 `.env.example` 配置示例 | AI |
+| 版本   | 日期         | 变更内容                                                                                                                                                                                                                                                                                                                                                                                                | 作者 |
+| ---- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -- |
+| 1.0  | 2026-04-12 | 初始版本，合并传感器数据流设计、环境变量配置、实施计划                                                                                                                                                                                                                                                                                                                                                                         | AI |
+| 1.1  | 2026-04-12 | 完成关键设计决策：时间对齐、队列存储、上报触发、失败重试、补传标记                                                                                                                                                                                                                                                                                                                                                                   | AI |
+| 1.2  | 2026-04-12 | 新增3.6设备恢复策略：跳过关机期间任务，与真实传感器行为一致                                                                                                                                                                                                                                                                                                                                                                     | AI |
+| 1.3  | 2026-04-12 | 新增3.7 Task富余策略：提前预生成未来周期Task，不依赖定时任务                                                                                                                                                                                                                                                                                                                                                                | AI |
+| 1.4  | 2026-04-12 | 新增3.8时间流速用途与风险，明确两个队列的区分                                                                                                                                                                                                                                                                                                                                                                            | AI |
+| 2.0  | 2026-04-12 | 重大修订：1. 批量上报改为队列概念+逐条POST2. 补传判断改为"最近整点周期起始时间 - recordedAt > 容忍期"3. 补偿数据按 recorded\_at 覆盖而非删除4. 删除 Task 富余策略，改为传感器端主导后端逻辑5. 新增时间加速追上恢复机制6. 队列溢出策略改为覆盖最老数据7. 更新环境变量配置8. 更新实施计划章节                                                                                                                                                                                                                     | AI |
+| 2.1  | 2026-04-13 | 修复歧义：1. 边界情况描述：明确"等于"不算补传2. 最近一个周期语义：改为"最近一个已结束的周期"3. 时间加速追赶逻辑：明确追赶后的推进行为4. 补偿Job执行时机：每10分钟执行+启动时执行5. 补传判断vs补偿扫描：增加时间基准区分表格                                                                                                                                                                                                                                                                         | AI |
+| 2.2  | 2026-04-13 | 恢复 Task 富余策略（混合模式）：1. 传感器上报时 UPSERT Task（sensor\_status=RECEIVED）2. 后端定时预生成 Task 富余（sensor\_status=PENDING）3. 最新 RECEIVED 数据后保证有 N 个 PENDING Task4. weather\_status 和 sensor\_status 独立管理                                                                                                                                                                                                           | AI |
+| 2.3  | 2026-04-13 | 新增 SENSOR\_INTERVAL 全局配置新增时间加速约束条件：TIME\_ACCELERATION × SENSOR\_INTERVAL < DATA\_SYNC\_INTERVAL更新时间加速追赶逻辑示例                                                                                                                                                                                                                                                                                         | AI |
+| 2.4  | 2026-04-13 | 新增 3.5 时间机制完整解析：1. 明确 R（真实时间）和 M（模拟时间）的区分2. 定时器触发机制：基于真实时间 R，按 SENSOR\_INTERVAL 触发3. M 推进规则：M += SENSOR\_INTERVAL × TIME\_ACCELERATION4. 追赶逻辑：M >= R 时，M=R, TIME\_ACCELERATION=15. recordedAt 计算：align\_to\_interval(M)6. 服务端只关心 recordedAt，不需要知道 M 或 TIME\_ACCELERATION                                                                                                                            | AI |
+| 2.5  | 2026-04-13 | 1. M 改名为 SIMULATED\_TIME2. 修正 align\_to\_interval 描述：奇数小时向下去一3. 修正补传判断逻辑：增加 `recordedAtDate < nowPeriodStart` 条件4. 增加约束：SIMULATED\_TIME 必须在过去（SIMULATED\_TIME <= R）                                                                                                                                                                                                                                 | AI |
+| 2.6  | 2026-04-13 | 1. 修正 SENSOR\_INTERVAL 描述：明确定时器由 R 驱动2. 新增 3.5.4 服务器视角的真实上报速率分析3. 明确 TIME\_ACCELERATION 不影响触发频率，只影响 recordedAt 跳跃程度4. 修正示例：SENSOR\_INTERVAL 应为 2小时（7200000ms）5. 删除多余的"约束条件"，明确时间加速是"启动加速"机制                                                                                                                                                                                                         | AI |
+| 2.7  | 2026-04-13 | **重大修订**：1. 重写 3.5 节（时间机制完整解析）2. 明确 SENSOR\_INTERVAL 是**模拟时间**采集间隔，不是真实时间间隔3. 增加数学模型（dS/dR = k）4. 追赶阈值固定为 0（S > R 时触发）5. 增加 Mermaid 时序图和流程图6. 增加稳态分析（S 和 R 同步增长）7. 增加环境变量术语对照表                                                                                                                                                                                                                      | AI |
+| 2.8  | 2026-04-13 | **审查修复**：1. 统一 align\_to\_interval 算法描述（奇数小时向下去一）2. http\_helper.py 实现 align\_to\_interval 函数并调用3. 移除 isSupplement 前端传递，改为服务端计算4. EnvironmentService.js 新增 calculateIsSupplement 和 alignToInterval 方法5. 统一 Python 和 JavaScript 的 align\_to\_interval 实现                                                                                                                                             | AI |
+| 2.9  | 2026-04-13 | **规格修正**：1. 修复时间线表格中的计算表达式（10:00+120h → 10:00+2h×60）2. 统一追赶后 k=1 的计算表达式格式                                                                                                                                                                                                                                                                                                                           | AI |
+| 2.10 | 2026-04-13 | **追赶逻辑数学基础完善**：1. 明确 Δt = 真实触发间隔（定时器间隔必须等于 Δt）2. 追赶逻辑成立的数学前提：Δt = Δs / k3. 说明追赶后 k=1 的原因：时间已对齐，加速无意义4. 区分适用场景：虚拟设备 vs 真实传感器                                                                                                                                                                                                                                                                         | AI |
+| 2.11 | 2026-04-13 | **追赶逻辑实现方案写入规格**：1. 新增 4.1.2 节：Sensor 类追赶逻辑实现方案2. 在 Sensor 内部维护 S/R/k，动态调整定时器间隔3. 追赶逻辑：S > R 时 S = R, k = 14. Sensor 的 timestamp 使用模拟时间 S5. Device 简化为接收+上报6. HTTPHelper 简化：timestamp 已对齐，无需处理                                                                                                                                                                                                      | AI |
+| 2.12 | 2026-04-13 | **规格审查修复 + 需求确认**：1. **Bug修复**：追赶逻辑执行顺序（S += Δs × k 在前，判断在后）2. **Bug修复**：align\_to\_interval 缺失（使用 align\_to\_interval(S) 对齐到整点）3. **需求确认**：LocalTaskQueue 在 HTTPHelper 层集成4. **需求确认**：并发控制使用超时机制（CALLBACK\_TIMEOUT=30s）5. **需求确认**：TIME\_ACCELERATION 上限限制为 36006. **需求确认**：has\_caught\_up 为一次性标志位7. 更新 HTTPHelper 伪代码：集成 LocalTaskQueue8. 更新关键实现要点表格                                             | AI |
+| 2.13 | 2026-04-13 | **代码实施完成**：1. **Phase 1**: 创建 `app/core/local_task_queue.py`（队列核心类，支持溢出覆盖、持久化、线程安全）2. **Phase 2**: 改造 `app/model/sensor.py`（追赶逻辑：S/R/k 状态、动态间隔 Δt、先推进后判断、Windows 兼容超时）3. **Phase 3**: Device 无需改动（已是接收+上报模式）4. **Phase 4**: 改造 `app/utils/http_helper.py`（集成队列：入队→定时循环→逐条上报→成功移除/失败保留）5. 新增常量：MAX\_TIME\_ACCELERATION=3600, CALLBACK\_TIMEOUT=306. Windows 兼容：使用 concurrent.futures 替代 signal.alarm | AI |
+| 2.14 | 2026-04-13 | **后端富余逻辑实现**：1. 移除 `generateTasksForAllPlants()`（旧设计，只生成当前周期）2. 实现 `ensureTaskSurplus()`（真正的富余逻辑：最新 RECEIVED 后保证 N 个 PENDING Task）3. 新增配置 `TASK_SURPLUS_COUNT = 3`4. `runSync()` 调用 `ensureTaskSurplus()` 替代旧函数5. 导出 `ensureTaskSurplus` 用于测试                                                                                                                                                       | AI |
+| 2.15 | 2026-04-13 | **修复模拟时间初始化缺陷**：1. 新增环境变量 `SIMULATED_TIME_INITIAL`（ISO 8601 格式）2. 支持从历史时间开始追赶（例如：2026-04-12T08:00:00）3. 不设置时默认使用当前时间（向后兼容）4. 更新 `sensor.py` 初始化逻辑5. 更新 `.env` 和 `.env.example` 配置示例                                                                                                                                                                                                                 | AI |
 
----
+***
 
 ## 9. 相关文档
 
 - [传感器数据流设计](../../11-knowledge/domain-knowledge/technical/sensor-data-flow-design.md)
 - [后端服务架构](../../04-backend/服务架构.md)
+

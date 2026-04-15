@@ -1,5 +1,6 @@
 /**
  * AIController 单元测试
+ * 注意：控制器现在使用异步模式，只负责提交任务，不等待 AI 完成
  */
 
 // Mock 依赖
@@ -31,16 +32,9 @@ jest.mock('../../../src/models', () => ({
   },
 }));
 
-jest.mock('../../../src/services/aiService', () => ({
-  analyze: jest.fn(),
+jest.mock('../../../src/services/asyncAiService', () => ({
+  submitAsyncAiTask: jest.fn(),
 }));
-
-// Mock SessionService
-jest.mock('../../../src/services/SessionService', () => {
-  return jest.fn().mockImplementation(() => ({
-    prepareContext: jest.fn().mockResolvedValue({}),
-  }));
-});
 
 jest.mock('../../../src/utils/response', () => ({
   success: jest.fn((res, data) => res.json({ code: 0, data })),
@@ -56,9 +50,8 @@ jest.mock('../../../src/utils/logger', () => ({
 }));
 
 const aiController = require('../../../src/controllers/aiController');
-const { Session, Message, DiagnosisCard, Plant, CareRecord, EnvironmentReading, EnvironmentReadingValue, EnvironmentMetric } = require('../../../src/models');
-const aiService = require('../../../src/services/aiService');
-const SessionService = require('../../../src/services/SessionService');
+const { Session, Message } = require('../../../src/models');
+const asyncAiService = require('../../../src/services/asyncAiService');
 
 describe('AIController', () => {
   let req;
@@ -77,7 +70,7 @@ describe('AIController', () => {
   });
 
   describe('analyze', () => {
-    it('AI 分析成功（带诊断卡）', async () => {
+    it('AI 分析任务提交成功（plant 类型会话）', async () => {
       req.body = {
         sessionId: 'SESSION_1',
         userMessage: '这植物怎么了？',
@@ -92,63 +85,36 @@ describe('AIController', () => {
         context_config: { environmentData: true, careRecords: true },
       };
 
-      const mockPlant = {
-        plant_id: 'PLANT_1',
-        nickname: '小绿',
-        species: '绿萝',
-        plant_category: 'foliage',
-        location_name: '客厅',
-        location_code: '110101',
-      };
-
-      const mockAiResult = {
-        content: '看起来有些缺水',
-        diagnosisCard: {
-          species: '绿萝',
-          healthScore: 70,
-          status: 'warning',
-          issues: ['缺水'],
-          suggestions: ['浇水'],
-          confidence: 0.8,
-        },
-      };
-
-      const mockContext = {
-        plantInfo: {
-          plantId: 'PLANT_1',
-          nickname: '小绿',
-          species: '绿萝',
-        },
-      };
-
       Session.findOne.mockResolvedValue(mockSession);
-      Plant.findOne.mockResolvedValue(mockPlant);
-      // 模拟 SessionService 返回包含植物信息的上下文
-      SessionService.mockImplementation(() => ({
-        prepareContext: jest.fn().mockResolvedValue(mockContext),
-      }));
-      aiService.analyze.mockResolvedValue(mockAiResult);
       Message.create.mockResolvedValue({ message_id: 'MSG_AI', created_at: new Date() });
-      DiagnosisCard.create.mockResolvedValue({});
 
       await aiController.analyze(req, res);
 
       expect(Session.findOne).toHaveBeenCalledWith({
         where: { session_id: 'SESSION_1', user_id: 'TEST_USER_123' },
       });
-      expect(aiService.analyze).toHaveBeenCalledWith({
-        content: '这植物怎么了？',
-        imageUrl: 'https://example.com/plant.jpg',
-        analysisType: 'deep',
-        context: expect.objectContaining({
-          plantInfo: expect.any(Object),
+      // 验证异步任务被提交
+      expect(asyncAiService.submitAsyncAiTask).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionId: 'SESSION_1',
+          userId: 'TEST_USER_123',
+          content: '这植物怎么了？',
+          imageUrl: 'https://example.com/plant.jpg',
+          analysisType: 'deep',
+          contextConfig: { environmentData: true, careRecords: true },
+        })
+      );
+      // 验证立即返回成功响应
+      expect(res.json).toHaveBeenCalledWith({
+        code: 0,
+        data: expect.objectContaining({
+          isAsync: true,
+          message: 'AI 分析已提交，请稍后查看结果',
         }),
       });
-      expect(Message.create).toHaveBeenCalledTimes(2);
-      expect(DiagnosisCard.create).toHaveBeenCalled();
     });
 
-    it('AI 分析成功（纯对话，无诊断卡）', async () => {
+    it('AI 分析任务提交成功（consultation 类型会话）', async () => {
       req.body = {
         sessionId: 'SESSION_1',
         userMessage: '你好',
@@ -162,28 +128,19 @@ describe('AIController', () => {
         context_config: {},
       };
 
-      const mockAiResult = {
-        content: '你好！有什么可以帮助你的？',
-        diagnosisCard: null,
-      };
-
       Session.findOne.mockResolvedValue(mockSession);
-      // 模拟 SessionService 返回空上下文（无植物ID时）
-      SessionService.mockImplementation(() => ({
-        prepareContext: jest.fn().mockResolvedValue({}),
-      }));
-      aiService.analyze.mockResolvedValue(mockAiResult);
       Message.create.mockResolvedValue({ message_id: 'MSG_AI', created_at: new Date() });
 
       await aiController.analyze(req, res);
 
-      expect(aiService.analyze).toHaveBeenCalledWith({
-        content: '你好',
-        imageUrl: undefined,
-        analysisType: 'normal',
-        context: {},
-      });
-      expect(DiagnosisCard.create).not.toHaveBeenCalled();
+      expect(asyncAiService.submitAsyncAiTask).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionId: 'SESSION_1',
+          content: '你好',
+          imageUrl: undefined,
+          analysisType: 'normal',
+        })
+      );
     });
 
     it('会话不存在返回 404', async () => {
@@ -203,33 +160,7 @@ describe('AIController', () => {
       });
     });
 
-    it('AI 服务失败返回 500', async () => {
-      req.body = {
-        sessionId: 'SESSION_1',
-        userMessage: '测试',
-      };
-
-      const mockSession = {
-        session_id: 'SESSION_1',
-        user_id: 'TEST_USER_123',
-        type: 'consultation',
-        plant_id: null,
-        context_config: {},
-      };
-
-      Session.findOne.mockResolvedValue(mockSession);
-      aiService.analyze.mockRejectedValue(new Error('AI 服务超时'));
-
-      await aiController.analyze(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith({
-        code: 500,
-        message: expect.stringContaining('AI 分析失败'),
-      });
-    });
-
-    it('兼容 imageUrl 参数', async () => {
+    it('兼容 imageUrl 参数（旧格式）', async () => {
       req.body = {
         sessionId: 'SESSION_1',
         content: '看看这植物',
@@ -244,30 +175,23 @@ describe('AIController', () => {
         context_config: {},
       };
 
-      const mockPlant = {
-        plant_id: 'PLANT_1',
-        nickname: '小绿',
-        species: '绿萝',
-      };
-
       Session.findOne.mockResolvedValue(mockSession);
-      Plant.findOne.mockResolvedValue(mockPlant);
-      aiService.analyze.mockResolvedValue({ content: '分析结果', diagnosisCard: null });
       Message.create.mockResolvedValue({ message_id: 'MSG_AI', created_at: new Date() });
 
       await aiController.analyze(req, res);
 
-      expect(aiService.analyze).toHaveBeenCalledWith(
+      expect(asyncAiService.submitAsyncAiTask).toHaveBeenCalledWith(
         expect.objectContaining({
           imageUrl: 'https://example.com/old-format.jpg',
         })
       );
     });
 
-    it('准备上下文包含环境数据', async () => {
+    it('保存用户消息到数据库', async () => {
       req.body = {
         sessionId: 'SESSION_1',
-        userMessage: '测试',
+        userMessage: '这植物怎么了？',
+        imageUrls: ['https://example.com/plant.jpg'],
       };
 
       const mockSession = {
@@ -275,138 +199,29 @@ describe('AIController', () => {
         user_id: 'TEST_USER_123',
         type: 'plant',
         plant_id: 'PLANT_1',
-        context_config: { environmentData: true },
-      };
-
-      const mockContext = {
-        plantInfo: {
-          plantId: 'PLANT_1',
-          nickname: '小绿',
-          species: '绿萝',
-        },
-        environmentData: [
-          { metricName: '温度', value: 25, unit: '°C' },
-          { metricName: '湿度', value: 60, unit: '%' },
-        ],
+        context_config: {},
       };
 
       Session.findOne.mockResolvedValue(mockSession);
-      // 模拟 SessionService 返回包含环境数据的上下文
-      SessionService.mockImplementation(() => ({
-        prepareContext: jest.fn().mockResolvedValue(mockContext),
-      }));
-      aiService.analyze.mockResolvedValue({ content: '分析结果', diagnosisCard: null });
-      Message.create.mockResolvedValue({ message_id: 'MSG_AI', created_at: new Date() });
+      Message.create.mockResolvedValue({ message_id: 'MSG_USER_123', created_at: new Date() });
 
       await aiController.analyze(req, res);
 
-      expect(aiService.analyze).toHaveBeenCalledWith(
+      expect(Message.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          context: expect.objectContaining({
-            environmentData: expect.arrayContaining([
-              expect.objectContaining({ metricName: '温度', value: 25 }),
-              expect.objectContaining({ metricName: '湿度', value: 60 }),
-            ]),
-          }),
+          session_id: 'SESSION_1',
+          role: 'user',
+          content: '这植物怎么了？',
+          content_type: 'mixed',
+          image_urls: ['https://example.com/plant.jpg'],
         })
       );
     });
 
-    it('准备上下文包含养护记录', async () => {
+    it('纯文本消息保存', async () => {
       req.body = {
         sessionId: 'SESSION_1',
-        userMessage: '测试',
-      };
-
-      const mockSession = {
-        session_id: 'SESSION_1',
-        user_id: 'TEST_USER_123',
-        type: 'plant',
-        plant_id: 'PLANT_1',
-        context_config: { careRecords: true },
-      };
-
-      const mockContext = {
-        plantInfo: {
-          plantId: 'PLANT_1',
-          nickname: '小绿',
-          species: '绿萝',
-        },
-        careRecords: [
-          { actionType: 'water', description: '浇水', performedAt: new Date() },
-          { actionType: 'fertilize', description: '施肥', performedAt: new Date() },
-        ],
-      };
-
-      Session.findOne.mockResolvedValue(mockSession);
-      // 模拟 SessionService 返回包含养护记录的上下文
-      SessionService.mockImplementation(() => ({
-        prepareContext: jest.fn().mockResolvedValue(mockContext),
-      }));
-      aiService.analyze.mockResolvedValue({ content: '分析结果', diagnosisCard: null });
-      Message.create.mockResolvedValue({ message_id: 'MSG_AI', created_at: new Date() });
-
-      await aiController.analyze(req, res);
-
-      expect(aiService.analyze).toHaveBeenCalledWith(
-        expect.objectContaining({
-          context: expect.objectContaining({
-            careRecords: expect.arrayContaining([
-              expect.objectContaining({ actionType: 'water' }),
-            ]),
-          }),
-        })
-      );
-    });
-
-    it('准备上下文包含历史诊断', async () => {
-      req.body = {
-        sessionId: 'SESSION_1',
-        userMessage: '测试',
-      };
-
-      const mockSession = {
-        session_id: 'SESSION_1',
-        user_id: 'TEST_USER_123',
-        type: 'plant',
-        plant_id: 'PLANT_1',
-        context_config: { historyDiagnosis: true },
-      };
-
-      const mockContext = {
-        plantInfo: {
-          plantId: 'PLANT_1',
-          nickname: '小绿',
-          species: '绿萝',
-        },
-        historyDiagnosis: [
-          { healthScore: 85, status: 'healthy', issues: [], createdAt: new Date() },
-        ],
-      };
-
-      Session.findOne.mockResolvedValue(mockSession);
-      // 模拟 SessionService 返回包含历史诊断的上下文
-      SessionService.mockImplementation(() => ({
-        prepareContext: jest.fn().mockResolvedValue(mockContext),
-      }));
-      aiService.analyze.mockResolvedValue({ content: '分析结果', diagnosisCard: null });
-      Message.create.mockResolvedValue({ message_id: 'MSG_AI', created_at: new Date() });
-
-      await aiController.analyze(req, res);
-
-      expect(aiService.analyze).toHaveBeenCalledWith(
-        expect.objectContaining({
-          context: expect.objectContaining({
-            historyDiagnosis: expect.any(Array),
-          }),
-        })
-      );
-    });
-
-    it('无植物ID时上下文为空', async () => {
-      req.body = {
-        sessionId: 'SESSION_1',
-        userMessage: '测试',
+        userMessage: '你好',
       };
 
       const mockSession = {
@@ -414,24 +229,37 @@ describe('AIController', () => {
         user_id: 'TEST_USER_123',
         type: 'consultation',
         plant_id: null,
-        context_config: { environmentData: true, careRecords: true },
+        context_config: {},
       };
 
       Session.findOne.mockResolvedValue(mockSession);
-      // 模拟 SessionService 返回空上下文（无植物ID时）
-      SessionService.mockImplementation(() => ({
-        prepareContext: jest.fn().mockResolvedValue({}),
-      }));
-      aiService.analyze.mockResolvedValue({ content: '分析结果', diagnosisCard: null });
-      Message.create.mockResolvedValue({ message_id: 'MSG_AI', created_at: new Date() });
+      Message.create.mockResolvedValue({ message_id: 'MSG_USER_123', created_at: new Date() });
 
       await aiController.analyze(req, res);
 
-      expect(aiService.analyze).toHaveBeenCalledWith(
+      expect(Message.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          context: {},
+          content_type: 'text',
+          image_urls: null,
         })
       );
+    });
+
+    it('处理异常返回 500', async () => {
+      req.body = {
+        sessionId: 'SESSION_1',
+        userMessage: '测试',
+      };
+
+      Session.findOne.mockRejectedValue(new Error('数据库错误'));
+
+      await aiController.analyze(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        code: 500,
+        message: expect.stringContaining('AI 分析提交失败'),
+      });
     });
   });
 });

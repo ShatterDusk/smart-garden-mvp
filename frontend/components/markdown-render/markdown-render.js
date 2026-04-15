@@ -55,17 +55,7 @@ Component({
       html = html.replace(/`([^`]+)`/g, 
         '<span style="font-family:Consolas, Monaco, monospace;background:#f0f0f0;padding:4rpx 8rpx;border-radius:6rpx;font-size:24rpx;color:#e83e8c;">$1</span>');
       
-      // 7. 解析粗体 (**text** 或 __text__)
-      html = html.replace(/\*\*(.+?)\*\*/g, 
-        '<strong style="font-weight:bold;color:#1a1a1a;">$1</strong>');
-      html = html.replace(/__(.+?)__/g, 
-        '<strong style="font-weight:bold;color:#1a1a1a;">$1</strong>');
-      
-      // 8. 解析斜体 (*text* 或 _text_)
-      html = html.replace(/\*(.+?)\*/g, 
-        '<em style="font-style:italic;color:#4a4a4a;">$1</em>');
-      html = html.replace(/_(.+?)_/g, 
-        '<em style="font-style:italic;color:#4a4a4a;">$1</em>');
+      // 注意：列表解析必须在斜体/粗体之前，否则 * 和 - 会被先解析为样式
       
       // 9. 解析标题 (# ## ### #### ##### ######)
       html = html.replace(/^###### (.+)$/gm, 
@@ -99,20 +89,33 @@ Component({
       
       // 13. 解析无序列表 (- item 或 * item)
       html = html.replace(/^- (.+)$/gm, 
-        '<p style="margin:8rpx 0;padding-left:32rpx;position:relative;"><span style="position:absolute;left:8rpx;top:6rpx;color:#81C784;font-weight:bold;font-size:28rpx;">•</span>$1</p>');
+        '<div style="margin:12rpx 0;display:flex;align-items:flex-start;line-height:1.6;"><span style="color:#4CAF50;font-size:24rpx;margin-right:12rpx;flex-shrink:0;">•</span><span style="flex:1;">$1</span></div>\n');
       html = html.replace(/^\* (.+)$/gm, 
-        '<p style="margin:8rpx 0;padding-left:32rpx;position:relative;"><span style="position:absolute;left:8rpx;top:6rpx;color:#81C784;font-weight:bold;font-size:28rpx;">•</span>$1</p>');
+        '<div style="margin:12rpx 0;display:flex;align-items:flex-start;line-height:1.6;"><span style="color:#4CAF50;font-size:24rpx;margin-right:12rpx;flex-shrink:0;">•</span><span style="flex:1;">$1</span></div>\n');
       
       // 14. 解析有序列表 (1. item)
-      html = html.replace(/^(\d+)\. (.+)$/gm, 
-        '<p style="margin:8rpx 0;padding-left:32rpx;position:relative;"><span style="position:absolute;left:0;top:0;color:#81C784;font-weight:bold;font-size:24rpx;">$1.</span>$2</p>');
+      // 使用更宽松的正则，支持中文冒号后的内容
+      html = html.replace(/^(\d+)[\.、]\s*(.+)$/gm, 
+        '<div style="margin:12rpx 0;display:flex;align-items:flex-start;line-height:1.6;"><span style="color:#4CAF50;font-size:24rpx;font-weight:bold;margin-right:12rpx;flex-shrink:0;min-width:32rpx;">$1.</span><span style="flex:1;">$2</span></div>\n');
       
       // 15. 解析分割线 (--- 或 *** 或 ___)
       html = html.replace(/^[-*_]{3,}$/gm, 
         '<hr style="border:none;border-top:2rpx solid #e0e0e0;margin:24rpx 0;" />');
       
-      // 16. 处理换行和段落
-      html = this.processParagraphs(html);
+      // 16. 解析粗体 (**text** 或 __text__) - 放在列表之后
+      html = html.replace(/\*\*(.+?)\*\*/g, 
+        '<strong style="font-weight:bold;color:#1a1a1a;">$1</strong>');
+      html = html.replace(/__(.+?)__/g, 
+        '<strong style="font-weight:bold;color:#1a1a1a;">$1</strong>');
+      
+      // 17. 解析斜体 (*text* 或 _text_) - 放在列表之后
+      html = html.replace(/\*(.+?)\*/g, 
+        '<em style="font-style:italic;color:#4a4a4a;">$1</em>');
+      html = html.replace(/_(.+?)_/g, 
+        '<em style="font-style:italic;color:#4a4a4a;">$1</em>');
+      
+      // 18. 处理换行和段落
+        html = this.processParagraphs(html);
       
       return html;
     },
@@ -226,13 +229,16 @@ Component({
           continue;
         }
         
-        if (line.startsWith('<h') || line.startsWith('<pre') || line.startsWith('<blockquote') || 
-            line.startsWith('<table') || line.startsWith('<hr') || line.startsWith('<img')) {
+        // 如果行已经以 HTML 标签开头（但不是纯文本），直接保留
+        if (line.startsWith('<') && !line.startsWith('<p style="margin:8rpx')) {
           nodes.push(line);
           continue;
         }
         
-        nodes.push(`<p style="margin:8rpx 0;line-height:1.8;font-size:28rpx;color:#333;">${line}</p>`);
+        // 普通文本包裹成段落
+        if (line.trim()) {
+          nodes.push(`<p style="margin:8rpx 0;line-height:1.8;font-size:28rpx;color:#333;">${line}</p>`);
+        }
       }
       
       return nodes.join('');

@@ -44,7 +44,7 @@ const getClientLog = () => {
 /**
  * 构建数据库查询条件
  * @param {Object} filters - 过滤条件
- * @returns {Object} Sequelize where条件
+ * @returns {Object} 包含 where 和 error 的对象
  */
 const buildWhereClause = (filters) => {
   const where = {};
@@ -58,15 +58,17 @@ const buildWhereClause = (filters) => {
     where.created_at = {};
     if (startTime) {
       const startDate = new Date(startTime);
-      if (!isNaN(startDate.getTime())) {
-        where.created_at[Op.gte] = startDate;
+      if (isNaN(startDate.getTime())) {
+        return { error: { message: `无效的开始时间格式: ${startTime}，请使用ISO 8601格式（如：2024-01-01T00:00:00Z）`, status: 400 } };
       }
+      where.created_at[Op.gte] = startDate;
     }
     if (endTime) {
       const endDate = new Date(endTime);
-      if (!isNaN(endDate.getTime())) {
-        where.created_at[Op.lte] = endDate;
+      if (isNaN(endDate.getTime())) {
+        return { error: { message: `无效的结束时间格式: ${endTime}，请使用ISO 8601格式（如：2024-01-01T00:00:00Z）`, status: 400 } };
       }
+      where.created_at[Op.lte] = endDate;
     }
   }
 
@@ -95,7 +97,7 @@ const buildWhereClause = (filters) => {
     }
   }
 
-  return where;
+  return { where };
 };
 
 /**
@@ -172,10 +174,13 @@ const getLogs = async (req, res) => {
       return error(res, '数据库模型未加载', 500);
     }
 
-    const where = buildWhereClause({ level, source, startTime, endTime, userId, requestId, keyword });
+    const whereResult = buildWhereClause({ level, source, startTime, endTime, userId, requestId, keyword });
+    if (whereResult.error) {
+      return error(res, whereResult.error.message, whereResult.error.status);
+    }
 
     const { count, rows } = await Model.findAndCountAll({
-      where,
+      where: whereResult.where,
       order: [['created_at', 'DESC']],
       limit,
       offset
@@ -210,11 +215,14 @@ const getLogStats = async (req, res) => {
       return error(res, '数据库模型未加载', 500);
     }
 
-    const where = buildWhereClause({ source, startTime, endTime });
+    const whereResult = buildWhereClause({ source, startTime, endTime });
+    if (whereResult.error) {
+      return error(res, whereResult.error.message, whereResult.error.status);
+    }
 
     // 按级别统计
     const stats = await Model.findAll({
-      where,
+      where: whereResult.where,
       attributes: ['level', [Model.sequelize.fn('COUNT', '*'), 'count']],
       group: ['level'],
       raw: true
@@ -266,10 +274,13 @@ const searchLogs = async (req, res) => {
       return error(res, '数据库模型未加载', 500);
     }
 
-    const where = buildWhereClause({ level, source, startTime, endTime, keyword });
+    const whereResult = buildWhereClause({ level, source, startTime, endTime, keyword });
+    if (whereResult.error) {
+      return error(res, whereResult.error.message, whereResult.error.status);
+    }
 
     const { count, rows } = await Model.findAndCountAll({
-      where,
+      where: whereResult.where,
       order: [['created_at', 'DESC']],
       limit,
       offset
@@ -300,10 +311,8 @@ const deleteLogs = async (req, res) => {
   try {
     const { ids, level, before, source = LOG_SOURCES.BACKEND } = req.query;
 
-    // 检查权限
-    if (req.user?.role !== 'admin') {
-      return error(res, '权限不足，需要管理员角色', 403);
-    }
+    // 权限检查由路由中间件 verifyLogAccess 统一处理
+    // 如需更细粒度的权限控制，可在此添加
 
     const Model = source === LOG_SOURCES.FRONTEND ? getClientLog() : getSystemLog();
     if (!Model) {
@@ -315,8 +324,11 @@ const deleteLogs = async (req, res) => {
 
     if (ids) {
       // 按ID删除
-      const idList = ids.split(',').map(id => parseInt(id)).filter(Boolean);
-      where = { id: { [Op.in]: idList } };
+      const idList = ids.split(',').map(id => parseInt(id)).filter(id => !isNaN(id) && id > 0);
+      if (idList.length === 0) {
+        return error(res, '无效的ID列表', 400);
+      }
+      where = { id: { [Op.in]: idList} };
     } else if (level && isValidLogLevel(level)) {
       // 按级别删除
       where = { level: level.toLowerCase() };
@@ -379,15 +391,22 @@ const generateCsvContent = (logs) => {
     return '\uFEFF'; // 只有BOM的空文件
   }
   
-  // 获取所有可能的字段（取第一条日志的所有key）
-  const fields = Object.keys(logs[0]);
+  // 固定字段顺序（与formatLogEntry返回的字段顺序一致）
+  const fields = [
+    'id', 'timestamp', 'level', 'message', 'source',
+    'userId', 'sessionId', 'pagePath', 'action', 'deviceInfo', 'networkType', 'metadata',
+    'requestId', 'ipAddress', 'userAgent', 'url', 'method', 'errorStack'
+  ];
+  
+  // 过滤掉logs[0]中不存在的字段（根据source不同，字段不同）
+  const availableFields = fields.filter(field => field in logs[0]);
   
   // 生成表头
-  const headers = fields.map(escapeCsvField).join(',');
+  const headers = availableFields.map(escapeCsvField).join(',');
   
   // 生成数据行
   const csvRows = logs.map(log => {
-    return fields.map(field => escapeCsvField(log[field])).join(',');
+    return availableFields.map(field => escapeCsvField(log[field])).join(',');
   });
   
   // 组合内容并添加UTF-8 BOM（解决Excel中文乱码）
@@ -418,10 +437,13 @@ const exportLogs = async (req, res) => {
       return error(res, '数据库模型未加载', 500);
     }
 
-    const where = buildWhereClause({ level, source, startTime, endTime });
+    const whereResult = buildWhereClause({ level, source, startTime, endTime });
+    if (whereResult.error) {
+      return error(res, whereResult.error.message, whereResult.error.status);
+    }
 
     const rows = await Model.findAll({
-      where,
+      where: whereResult.where,
       order: [['created_at', 'DESC']],
       limit: parseInt(maxRows)
     });
@@ -552,30 +574,42 @@ const receiveClientLogs = async (req, res) => {
 };
 
 /**
- * 获取日志文件列表（已废弃，仅返回数据库模式提示）
+ * 获取日志文件列表（已废弃，过渡方案）
  * GET /api/logs/files
  * @deprecated
  */
 const getLogFiles = async (req, res) => {
-  const today = new Date().toISOString().split('T')[0];
+  // 过渡方案：返回警告信息，引导迁移到新接口
   return success(res, {
-    files: [{
-      name: `logs-${today}.db`,
-      size: 0,
-      modifiedAt: new Date()
-    }],
-    note: '当前使用数据库存储模式，此接口已废弃'
+    warning: '此接口已废弃，即将返回410错误，请尽快迁移到 GET /api/logs',
+    alternative: '/api/logs',
+    migration_guide: '使用 GET /api/logs 替代，支持分页、过滤、搜索等功能',
+    deprecated_at: '2024-01-01',
+    will_remove_at: '2024-06-01'
   });
 };
 
 /**
- * 获取日志文件内容（已废弃，重定向到新接口）
+ * 获取日志文件内容（已废弃，过渡方案）
  * GET /api/logs/content
  * @deprecated
  */
 const getLogContent = async (req, res) => {
-  // 重定向到新的统一查询接口
-  return await getLogs(req, res);
+  // 过渡方案：重定向到新接口，同时返回警告
+  logger.warn('[getLogContent] 废弃接口被调用，请迁移到 GET /api/logs', {
+    query: req.query,
+    ip: req.ip
+  });
+  
+  // 返回警告信息，并引导使用新接口
+  return success(res, {
+    warning: '此接口已废弃，即将返回410错误，请尽快迁移到 GET /api/logs',
+    alternative: '/api/logs',
+    migration_guide: '使用 GET /api/logs 替代，支持分页、过滤、搜索等功能',
+    deprecated_at: '2024-01-01',
+    will_remove_at: '2024-06-01',
+    note: '当前请求已转发到 GET /api/logs，但建议直接调用新接口'
+  });
 };
 
 module.exports = {

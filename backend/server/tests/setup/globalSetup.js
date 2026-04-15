@@ -46,12 +46,22 @@ module.exports = async () => {
   }
 
   const { sequelize } = require('../../src/models');
-  
+
   try {
     await sequelize.authenticate();
     console.log('测试数据库连接成功');
-    
-    await sequelize.sync({ force: true });
+
+    // 先删除所有表（包括索引），然后重新创建
+    await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
+    const [tables] = await sequelize.query('SHOW TABLES');
+    const tableNames = tables.map(t => Object.values(t)[0]);
+    for (const tableName of tableNames) {
+      await sequelize.query(`DROP TABLE IF EXISTS \`${tableName}\``);
+    }
+    await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
+    console.log('测试数据库表已清空');
+
+    await sequelize.sync({ force: false, alter: false });
     console.log('测试数据库同步完成');
   } catch (error) {
     console.error('测试数据库初始化失败:', error.message);

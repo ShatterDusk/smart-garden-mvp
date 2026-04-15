@@ -11,7 +11,7 @@ class DeviceService extends BaseService {
   }
 
   generateDeviceId() {
-    return `DEVICE_${uuidv4().replace(/-/g, '').substring(0, 16)}`;
+    return `DEVICE_${uuidv4().replace(/-/g, '').substring(0, 16).toUpperCase()}`;
   }
 
   async getBoundPlant(deviceId) {
@@ -187,8 +187,8 @@ class DeviceService extends BaseService {
       }
 
       const environmentService = new EnvironmentService();
+      // 转换指标格式，所有在 environment_metrics 中定义的指标都应被存储（包括 battery_level）
       const formattedMetrics = Object.entries(metrics)
-        .filter(([code]) => code !== 'battery_level')
         .map(([metricCode, value]) => ({ metricCode, value }));
 
       const uploadResult = await environmentService.processDeviceEnvironmentData(targetPlantId, {
@@ -202,16 +202,11 @@ class DeviceService extends BaseService {
         return uploadResult;
       }
 
-      const updateData = {
+      // 更新设备状态（battery_level 已作为环境指标存储，这里只更新设备在线状态）
+      await device.update({
         status: 'online',
         last_heartbeat: new Date(),
-      };
-
-      if (metrics.battery_level !== undefined) {
-        updateData.battery_level = metrics.battery_level;
-      }
-
-      await device.update(updateData);
+      });
 
       logger.info('设备数据上报成功', {
         deviceId,

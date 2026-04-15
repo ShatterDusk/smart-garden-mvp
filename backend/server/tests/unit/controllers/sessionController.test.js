@@ -3,31 +3,28 @@
  */
 
 // 必须在导入 Controller 之前设置 Mock
-jest.mock('../../../src/services', () => {
-  const mockSessionService = {
-    getSessionList: jest.fn(),
-    getPlantsForSessions: jest.fn(),
-    getLatestMessages: jest.fn(),
-    getReadPositions: jest.fn(),
-    createSession: jest.fn(),
-    getSessionById: jest.fn(),
-    getMessageCount: jest.fn(),
-    updateSession: jest.fn(),
-    getMessages: jest.fn(),
-    getDiagnosisCardsForMessages: jest.fn(),
-    createMessage: jest.fn(),
-    prepareContext: jest.fn(),
-    getConversationHistory: jest.fn(),
-    createDiagnosisCard: jest.fn(),
-    upgradeSession: jest.fn(),
-    getLastMessage: jest.fn(),
-    updateReadPosition: jest.fn(),
-    deleteSession: jest.fn(),
-  };
-  return {
-    SessionService: jest.fn(() => mockSessionService),
-  };
-});
+const mockSessionService = {
+  getSessionList: jest.fn(),
+  getPlantsForSessions: jest.fn(),
+  getLatestMessages: jest.fn(),
+  getReadPositions: jest.fn(),
+  createSession: jest.fn(),
+  getSessionById: jest.fn(),
+  getMessageCount: jest.fn(),
+  updateSession: jest.fn(),
+  getMessages: jest.fn(),
+  getDiagnosisCardsForMessages: jest.fn(),
+  createMessage: jest.fn(),
+  prepareContext: jest.fn(),
+  getConversationHistory: jest.fn(),
+  createDiagnosisCard: jest.fn(),
+  upgradeSession: jest.fn(),
+  getLastMessage: jest.fn(),
+  updateReadPosition: jest.fn(),
+  deleteSession: jest.fn(),
+};
+
+jest.mock('../../../src/services/sessionService', () => mockSessionService);
 
 jest.mock('../../../src/services/aiService', () => ({
   analyze: jest.fn(),
@@ -53,7 +50,6 @@ jest.mock('../../../src/utils/logger', () => ({
 }));
 
 const sessionController = require('../../../src/controllers/sessionController');
-const { SessionService } = require('../../../src/services');
 const aiService = require('../../../src/services/aiService');
 const asyncAiService = require('../../../src/services/asyncAiService');
 const { success, error } = require('../../../src/utils/response');
@@ -61,10 +57,8 @@ const { success, error } = require('../../../src/utils/response');
 describe('SessionController', () => {
   let req;
   let res;
-  let mockSessionService;
 
   beforeEach(() => {
-    mockSessionService = new SessionService();
 
     req = {
       body: {},

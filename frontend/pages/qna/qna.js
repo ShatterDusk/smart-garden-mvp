@@ -30,6 +30,28 @@ Page({
     previewInputValue: '',
     // 图片预上传相关
     pendingImage: null, // { localPath, remoteUrl, isUploading, uploadProgress, uploadTask }
+    // 上下文详情面板数据
+    showContextPanel: false,
+    contextPanelType: '',
+    contextPanelTitle: '',
+    envData: {
+      loading: false,
+      hasData: false,
+      source: 'device',
+      sourceText: '设备数据',
+      metrics: [],
+      updateTime: ''
+    },
+    diagnosisData: {
+      loading: false,
+      hasData: false,
+      list: []
+    },
+    careData: {
+      loading: false,
+      hasData: false,
+      list: []
+    }
   },
 
   onLoad: function(options) {
@@ -245,6 +267,28 @@ Page({
         return;
       }
       
+      // SA-7-001: 处理异步模式响应
+      if (result.isAsync) {
+        // 异步模式：显示占位消息，启动轮询
+        var placeholderMessage = {
+          id: 'ai_' + Date.now(),
+          type: 'ai',
+          content: result.aiResponse ? result.aiResponse.content : 'AI 正在分析中，请稍候...',
+          time: that.formatTime(new Date()),
+          isAnalyzing: true // 标记为分析中状态
+        };
+
+        that.setData({
+          currentMessages: that.data.currentMessages.concat(placeholderMessage),
+          isLoading: false
+        });
+        that.scrollToBottom();
+
+        // 启动轮询检查新消息
+        that.startMessagePolling();
+        return;
+      }
+      
       // 后端返回结构: { userMessage, aiResponse }
       var aiResponse = result.aiResponse || result.aiMessage;
       var aiMessage = {
@@ -287,6 +331,101 @@ Page({
       });
       that.scrollToBottom();
     });
+  },
+
+  // SA-7-001: 启动消息轮询
+  // 轮询配置常量
+  POLLING_CONFIG: {
+    FIRST_DELAY: 3000,      // 首次轮询延迟（毫秒）
+    INTERVAL: 2000,         // 轮询间隔（毫秒）
+    MAX_POLLS: 30,          // 最大轮询次数
+    MAX_ERRORS: 3           // 最大连续错误次数
+  },
+
+  startMessagePolling: function() {
+    var that = this;
+    var config = this.POLLING_CONFIG;
+    var pollCount = 0;
+    var errorCount = 0;
+
+    var doPoll = function() {
+      pollCount++;
+
+      // 检查是否超过最大轮询次数
+      if (pollCount > config.MAX_POLLS) {
+        // 轮询超时，更新UI提示用户
+        that.updateMessageStatus('timeout');
+        return;
+      }
+
+      // 检查是否超过最大错误次数
+      if (errorCount >= config.MAX_ERRORS) {
+        that.updateMessageStatus('error');
+        return;
+      }
+
+      api.getSessionMessages(that.data.sessionId).then(function(messages) {
+        // 重置错误计数
+        errorCount = 0;
+
+        // 检查是否有新的非占位消息
+        var hasNewMessage = false;
+        var lastMessage = messages[messages.length - 1];
+
+        if (lastMessage && lastMessage.role === 'assistant') {
+          // 检查是否是占位消息
+          var isPlaceholder = lastMessage.content === 'AI 正在分析中，请稍候...';
+          if (!isPlaceholder) {
+            hasNewMessage = true;
+          }
+        }
+
+        if (hasNewMessage) {
+          // 有新消息，刷新消息列表
+          that.loadMessages();
+        } else {
+          // 继续轮询
+          setTimeout(doPoll, config.INTERVAL);
+        }
+      }).catch(function(err) {
+        // 增加错误计数
+        errorCount++;
+
+        // 根据错误类型决定是否继续
+        if (errorCount < config.MAX_ERRORS) {
+          // 继续轮询
+          setTimeout(doPoll, config.INTERVAL);
+        } else {
+          // 错误次数过多，停止轮询
+          that.updateMessageStatus('error');
+        }
+      });
+    };
+
+    // 延迟后开始第一次轮询
+    setTimeout(doPoll, config.FIRST_DELAY);
+  },
+
+  // 更新消息状态（超时或错误）
+  updateMessageStatus: function(status) {
+    var that = this;
+    var messages = this.data.currentMessages;
+    var lastMessage = messages[messages.length - 1];
+
+    if (lastMessage && lastMessage.isAnalyzing) {
+      var newContent = status === 'timeout'
+        ? 'AI 分析超时，请稍后刷新页面查看结果'
+        : '获取回复失败，请稍后刷新页面重试';
+
+      lastMessage.content = newContent;
+      lastMessage.isAnalyzing = false;
+      lastMessage.isError = true;
+
+      that.setData({
+        currentMessages: messages,
+        isLoading: false
+      });
+    }
   },
 
   showImageOptions: function() {
@@ -636,6 +775,324 @@ Page({
     });
   },
 
+  // 显示上下文详情面板（长按触发）
+  showContextDetail: function(e) {
+    var id = e.currentTarget.dataset.id;
+    var contextOptions = this.data.contextOptions;
+    var selectedOption = null;
+
+    for (var i = 0; i < contextOptions.length; i++) {
+      if (contextOptions[i].id === id) {
+        selectedOption = contextOptions[i];
+        break;
+      }
+    }
+
+    if (!selectedOption) return;
+
+    this.setData({
+      showContextPanel: true,
+      contextPanelType: id,
+      contextPanelTitle: selectedOption.label + '详情'
+    });
+
+    // 震动反馈
+    wx.vibrateShort({ type: 'light' });
+
+    // 加载对应数据
+    if (id === 'env') {
+      this.loadEnvData();
+    } else if (id === 'history') {
+      this.loadDiagnosisData();
+    } else if (id === 'care') {
+      this.loadCareData();
+    }
+  },
+
+  // 加载环境数据
+  loadEnvData: function() {
+    var that = this;
+    var plantId = this.data.plantId;
+
+    if (!plantId) {
+      this.setData({
+        envData: { loading: false, hasData: false, metrics: [], source: 'device', sourceText: '设备数据', updateTime: '' }
+      });
+      return;
+    }
+
+    this.setData({ 'envData.loading': true });
+
+    // 调用API获取环境数据
+    api.getCurrentEnvironment(plantId)
+      .then(function(res) {
+        // API返回格式: { code: 0, message: 'success', data: {...} }
+        if (res && res.code === 0 && res.data) {
+          var data = res.data;
+          var metrics = that.formatEnvMetrics(data);
+          // 判断数据来源：有设备数据则用设备，否则用天气
+          var hasDeviceMetrics = data.deviceMetrics && data.deviceMetrics.length > 0;
+          var source = hasDeviceMetrics ? 'device' : 'weather';
+          that.setData({
+            envData: {
+              loading: false,
+              hasData: metrics.length > 0,
+              source: source,
+              sourceText: source === 'weather' ? '天气数据' : '设备数据',
+              metrics: metrics,
+              updateTime: that.formatTimeAgo(data.updateTime || data.recordedAt)
+            }
+          });
+        } else {
+          that.setData({
+            envData: { loading: false, hasData: false, metrics: [], source: 'device', sourceText: '设备数据', updateTime: '' }
+          });
+        }
+      })
+      .catch(function(err) {
+        console.error('加载环境数据失败', err);
+        that.setData({
+          envData: { loading: false, hasData: false, metrics: [], source: 'device', sourceText: '设备数据', updateTime: '' }
+        });
+      });
+  },
+
+  // 格式化环境指标
+  // API返回数据结构: { deviceMetrics: [...], weatherMetrics: [...], updateTime, ... }
+  // 每个指标: { metricCode, name, value, unit, icon, status, isStale }
+  formatEnvMetrics: function(data) {
+    var metrics = [];
+    
+    // 优先使用设备数据，如果没有则使用天气数据
+    var sourceMetrics = data.deviceMetrics || data.weatherMetrics || [];
+    
+    // 图标映射（如果API没有返回icon）
+    var iconMap = {
+      temperature: '🌡️',
+      humidity: '💧',
+      light: '☀️',
+      soilMoisture: '🌱',
+      soilTemperature: '🌡️',
+      soilEc: '🧪',
+      soilPh: '📊',
+      weatherCondition: '🌤️',
+      windDirection360: '🧭',
+      pressure: '🔽',
+      uvIndex: '☀️'
+    };
+
+    for (var i = 0; i < sourceMetrics.length; i++) {
+      var item = sourceMetrics[i];
+      if (item.value !== null && item.value !== undefined) {
+        metrics.push({
+          metricCode: item.metricCode,
+          icon: item.icon || iconMap[item.metricCode] || '📊',
+          name: item.name || item.metricCode,
+          value: item.value,
+          unit: item.unit || '',
+          isStale: item.isStale || false
+        });
+      }
+    }
+    return metrics;
+  },
+
+  // 加载诊断数据
+  loadDiagnosisData: function() {
+    var that = this;
+    var plantId = this.data.plantId;
+
+    if (!plantId) {
+      this.setData({
+        diagnosisData: { loading: false, hasData: false, list: [] }
+      });
+      return;
+    }
+
+    this.setData({ 'diagnosisData.loading': true });
+
+    // 调用API获取诊断记录
+    // getDiagnosisHistory 使用了 handleListResponse，直接返回列表数组
+    api.getDiagnosisHistory(plantId, 1, 5)
+      .then(function(list) {
+        // list 直接是数组
+        if (list && list.length > 0) {
+          var formattedList = list.map(function(item) {
+            return {
+              diagnosisCardId: item.diagnosisCardId || item.diagnosis_card_id,
+              healthScore: item.healthScore || item.health_score || 0,
+              status: item.status || 'healthy',
+              statusText: that.getStatusText(item.status),
+              displayTime: that.formatTimeAgo(item.createdAt || item.created_at),
+              issues: item.issues || [],
+              selected: false
+            };
+          });
+          that.setData({
+            diagnosisData: {
+              loading: false,
+              hasData: true,
+              list: formattedList
+            }
+          });
+        } else {
+          that.setData({
+            diagnosisData: { loading: false, hasData: false, list: [] }
+          });
+        }
+      })
+      .catch(function(err) {
+        console.error('加载诊断数据失败', err);
+        that.setData({
+          diagnosisData: { loading: false, hasData: false, list: [] }
+        });
+      });
+  },
+
+  // 加载养护记录
+  loadCareData: function() {
+    var that = this;
+    var plantId = this.data.plantId;
+
+    if (!plantId) {
+      this.setData({
+        careData: { loading: false, hasData: false, list: [] }
+      });
+      return;
+    }
+
+    this.setData({ 'careData.loading': true });
+
+    // 调用API获取养护记录
+    // getCareRecords 使用了 handleListResponse，直接返回列表数组
+    api.getCareRecords(plantId, 1, 5)
+      .then(function(list) {
+        // list 直接是数组
+        if (list && list.length > 0) {
+          var iconMap = {
+            water: '💧',
+            fertilize: '🧪',
+            prune: '✂️',
+            repot: '🪴',
+            pestControl: '🐛',
+            other: '📝'
+          };
+          var actionMap = {
+            water: '浇水',
+            fertilize: '施肥',
+            prune: '修剪',
+            repot: '换盆',
+            pestControl: '除虫',
+            other: '其他'
+          };
+          var formattedList = list.map(function(item) {
+            var actionType = item.actionType || item.action_type || 'other';
+            return {
+              recordId: item.recordId || item.record_id || item.care_record_id,
+              actionType: actionType,
+              actionName: actionMap[actionType] || '其他',
+              icon: iconMap[actionType] || '📝',
+              description: item.description || item.notes || '',
+              displayTime: that.formatTimeAgo(item.performedAt || item.performed_at || item.createdAt || item.created_at),
+              selected: false
+            };
+          });
+          that.setData({
+            careData: {
+              loading: false,
+              hasData: true,
+              list: formattedList
+            }
+          });
+        } else {
+          that.setData({
+            careData: { loading: false, hasData: false, list: [] }
+          });
+        }
+      })
+      .catch(function(err) {
+        console.error('加载养护记录失败', err);
+        that.setData({
+          careData: { loading: false, hasData: false, list: [] }
+        });
+      });
+  },
+
+  // 切换诊断选择
+  toggleDiagnosisSelect: function(e) {
+    var id = e.currentTarget.dataset.id;
+    var diagnosisData = this.data.diagnosisData;
+    var list = diagnosisData.list;
+
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].diagnosisCardId === id) {
+        list[i].selected = !list[i].selected;
+        break;
+      }
+    }
+
+    this.setData({
+      'diagnosisData.list': list
+    });
+  },
+
+  // 切换养护记录选择
+  toggleCareSelect: function(e) {
+    var id = e.currentTarget.dataset.id;
+    var careData = this.data.careData;
+    var list = careData.list;
+
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].recordId === id) {
+        list[i].selected = !list[i].selected;
+        break;
+      }
+    }
+
+    this.setData({
+      'careData.list': list
+    });
+  },
+
+  // 获取状态文本
+  getStatusText: function(status) {
+    var map = {
+      healthy: '健康',
+      warning: '需注意',
+      critical: '严重'
+    };
+    return map[status] || '未知';
+  },
+
+  // 格式化相对时间
+  formatTimeAgo: function(dateStr) {
+    if (!dateStr) return '';
+    var date = new Date(dateStr);
+    var now = new Date();
+    var diff = now - date;
+    var minutes = Math.floor(diff / 60000);
+    var hours = Math.floor(diff / 3600000);
+    var days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return '刚刚';
+    if (minutes < 60) return minutes + '分钟前';
+    if (hours < 24) return hours + '小时前';
+    if (days < 30) return days + '天前';
+    return date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate();
+  },
+
+  // 关闭上下文详情面板
+  closeContextPanel: function() {
+    this.setData({
+      showContextPanel: false
+    });
+  },
+
+  // 阻止冒泡
+  preventBubble: function() {
+    // 什么都不做，只是阻止事件冒泡
+  },
+
   startVoiceInput: function() {
     this.setData({ isRecording: true });
   },
@@ -701,6 +1158,7 @@ Page({
         return {
           sessionId: session.sessionId,
           type: session.type,
+          plantId: session.plantId,
           title: session.title,
           lastMessage: lastMessageContent,
           lastTime: session.lastMessage ? that.formatTime(new Date(session.lastMessage.createdAt)) : '',
@@ -726,6 +1184,7 @@ Page({
     var id = e.currentTarget.dataset.id;
     var type = e.currentTarget.dataset.type;
     var title = e.currentTarget.dataset.title;
+    var plantId = e.currentTarget.dataset.plantid;
 
     this.setData({ showSidebar: false });
 
@@ -736,6 +1195,7 @@ Page({
     this.setData({
       sessionId: id,
       sessionType: type,
+      plantId: plantId || '',
       currentTitle: title
     });
 
@@ -759,6 +1219,7 @@ Page({
       that.setData({
         sessionId: session.sessionId,
         sessionType: session.type,
+        plantId: session.plantId || plantId || '',
         currentTitle: session.title
       });
 

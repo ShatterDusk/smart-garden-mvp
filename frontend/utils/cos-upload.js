@@ -3,8 +3,6 @@
  * 小程序前端直传到微信云托管对象存储
  */
 
-const api = require('./api');
-
 /**
  * 上传文件到微信云托管存储
  * @param {string} filePath - 本地文件路径
@@ -12,6 +10,8 @@ const api = require('./api');
  * @returns {Promise<{url: string, fileId: string}>}
  */
 async function uploadToCloudStorage(filePath, options = {}) {
+  // 动态引入 api 以避免循环依赖
+  const api = require('./api');
   const { filename, onProgress } = options;
   
   try {
@@ -112,6 +112,8 @@ async function batchUploadToCloudStorage(filePaths, options = {}) {
  * @param {string} fileId - 文件 fileId
  */
 async function deleteCloudStorageFile(fileId) {
+  // 动态引入 api 以避免循环依赖
+  const api = require('./api');
   return await api.request({
     url: '/cos/delete',
     method: 'DELETE',

@@ -1,5 +1,5 @@
-require('./utils/logCollector.js') 
 // app.js - 应用入口
+require('./utils/logCollector.js')
 App({
   globalData: {
     userInfo: null,

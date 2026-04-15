@@ -37,6 +37,7 @@
         data-id="{{item.sessionId}}"
         data-type="{{item.type}}"
         data-title="{{item.title}}"
+        data-plantid="{{item.plantId}}"
       >
         <!-- 勾选框（编辑模式显示） -->
         <view class="checkbox" wx:if="{{isEditMode}}">

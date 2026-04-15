@@ -7,6 +7,24 @@ beforeAll(async () => {
 
 // 在所有测试之后执行 - 清理资源
 afterAll(async () => {
+  // 等待所有异步 AI 任务完成
+  // AI 服务有 60 秒超时，我们等待 65 秒确保所有请求都已完成或超时
+  try {
+    const asyncAiService = require('../../src/services/asyncAiService');
+    if (asyncAiService.waitForAllTasks) {
+      console.log('[Jest Teardown] 等待异步 AI 任务完成（最多 65 秒）...');
+      await asyncAiService.waitForAllTasks(65000);
+      const pendingCount = asyncAiService.getPendingTasksCount ? asyncAiService.getPendingTasksCount() : 0;
+      if (pendingCount > 0) {
+        console.log(`[Jest Teardown] 警告: 仍有 ${pendingCount} 个异步 AI 任务未完成`);
+      } else {
+        console.log('[Jest Teardown] 所有异步 AI 任务已完成');
+      }
+    }
+  } catch (error) {
+    // 忽略错误
+  }
+
   // 关闭数据库连接
   try {
     const { sequelize } = require('../../src/models');
@@ -42,6 +60,12 @@ afterAll(async () => {
   if (global.gc) {
     global.gc();
   }
+
+  // 强制退出进程，避免挂起的 HTTP 请求阻止 Jest 退出
+  // 延迟 100ms 确保日志输出完成
+  setTimeout(() => {
+    process.exit(0);
+  }, 100);
 });
 
 // 自定义匹配器
