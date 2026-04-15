@@ -3,6 +3,12 @@
  * COS 控制器测试
  */
 
+// 设置必需的环境变量
+process.env.WECHAT_ENV_ID = 'test_env';
+process.env.COS_BUCKET = 'test_bucket';
+process.env.WECHAT_APPID = 'test_appid';
+process.env.WECHAT_SECRET = 'test_secret';
+
 jest.mock('../../../src/utils/logger', () => ({
   info: jest.fn(),
   error: jest.fn(),
