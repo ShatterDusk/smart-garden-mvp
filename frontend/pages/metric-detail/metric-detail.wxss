@@ -233,6 +233,8 @@
   padding: 16rpx 24rpx;
   pointer-events: none;
   z-index: 100;
+  transform: translateX(-50%);
+  white-space: nowrap;
 }
 
 .tooltip-time {

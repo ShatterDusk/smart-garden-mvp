@@ -183,6 +183,7 @@ class SessionService extends BaseService {
         content_type: messageData.contentType || 'text',
         content: messageData.content,
         image_urls: messageData.imageUrls || null,
+        reply_to_message_id: messageData.replyToMessageId || null,
         status: messageData.status || 'normal',
       });
 
@@ -266,7 +267,20 @@ class SessionService extends BaseService {
 
       const cards = await DiagnosisCard.findAll({
         where: { message_id: messageIds },
-        attributes: ['diagnosis_card_id', 'message_id', 'health_score', 'status', 'issues', 'suggestions'],
+        attributes: [
+          'diagnosis_card_id',
+          'message_id',
+          'plant_id',
+          'species',
+          'analysis_type',
+          'health_score',
+          'status',
+          'issues',
+          'suggestions',
+          'confidence',
+          'context_used',
+          'created_at'
+        ],
       });
 
       return new Map(cards.map(c => [c.messageId, c]));

@@ -86,6 +86,14 @@
               showActions="{{false}}"
               customClass="chat-diagnosis-card"
             />
+            
+            <!-- 咨询会话诊断卡升级按钮 -->
+            <view wx:if="{{sessionType === 'consultation' && !item.upgradeClicked}}" class="upgrade-session-bubble">
+              <view class="upgrade-btn" bindtap="onUpgradeSession" data-message-id="{{item.id}}" data-diagnosis-card="{{item.diagnosisCard}}">
+                <text class="upgrade-icon">🌱</text>
+                <text class="upgrade-text">保存到植物档案</text>
+              </view>
+            </view>
           </view>
         </view>
       </view>

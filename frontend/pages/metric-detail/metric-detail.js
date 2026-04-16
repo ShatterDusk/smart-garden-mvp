@@ -701,14 +701,17 @@ Page({
   },
 
   onChartTouch(e) {
-    this.showTooltipAt(e.touches[0].x, e.touches[0].y);
+    const touch = e.touches[0];
+    log('touch', '触摸坐标:', { x: touch.x, y: touch.y });
+    this.showTooltipAt(touch.x, touch.y);
   },
 
   onChartMove(e) {
-    this.showTooltipAt(e.touches[0].x, e.touches[0].y);
+    const touch = e.touches[0];
+    this.showTooltipAt(touch.x, touch.y);
   },
 
-  showTooltipAt(x, y) {
+  showTooltipAt(canvasX, canvasY) {
     const { chartData } = this.data;
     if (chartData.length === 0) return;
 
@@ -717,8 +720,8 @@ Page({
 
     const { padding, chartWidth, minTime, maxTime, timeRange, timeData } = this.chartComputed;
 
-    // 计算相对位置
-    const relativeX = x - padding.left;
+    // 计算相对位置（相对于图表绘制区域）
+    const relativeX = canvasX - padding.left;
 
     // 按时间距离查找最近的数据点（与绘制逻辑一致）
     const targetTimeRatio = Math.max(0, Math.min(1, relativeX / chartWidth));
@@ -736,10 +739,18 @@ Page({
 
     const dataPoint = timeData[closestIndex];
 
+    // tooltip 定位：相对于 chart-container
+    // canvasX/canvasY 是相对于 canvas 的，而 canvas 在 chart-container 内
+    // tooltip 水平居中于触摸点，显示在触摸点上方
+    const tooltipX = canvasX;
+    const tooltipY = Math.max(10, canvasY - 80);
+    
+    log('tooltip', '定位:', { canvasX, canvasY, tooltipX, tooltipY });
+    
     this.setData({
       showTooltip: true,
-      tooltipX: x,
-      tooltipY: y - 60,
+      tooltipX: tooltipX,
+      tooltipY: tooltipY,
       tooltipData: {
         time: dataPoint.displayTime,
         value: dataPoint.value,

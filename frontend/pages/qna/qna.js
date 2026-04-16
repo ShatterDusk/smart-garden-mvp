@@ -347,13 +347,13 @@ Page({
     var config = this.POLLING_CONFIG;
     var pollCount = 0;
     var errorCount = 0;
+    var initialMessageCount = that.data.currentMessages.length;
 
     var doPoll = function() {
       pollCount++;
 
       // 检查是否超过最大轮询次数
       if (pollCount > config.MAX_POLLS) {
-        // 轮询超时，更新UI提示用户
         that.updateMessageStatus('timeout');
         return;
       }
@@ -365,45 +365,100 @@ Page({
       }
 
       api.getSessionMessages(that.data.sessionId).then(function(messages) {
-        // 重置错误计数
         errorCount = 0;
-
-        // 检查是否有新的非占位消息
-        var hasNewMessage = false;
-        var lastMessage = messages[messages.length - 1];
-
-        if (lastMessage && lastMessage.role === 'assistant') {
-          // 检查是否是占位消息
-          var isPlaceholder = lastMessage.content === 'AI 正在分析中，请稍候...';
-          if (!isPlaceholder) {
-            hasNewMessage = true;
-          }
-        }
+        var backendMessageCount = messages.length;
+        var hasNewMessage = backendMessageCount > initialMessageCount;
 
         if (hasNewMessage) {
-          // 有新消息，刷新消息列表
-          that.loadMessages();
+          console.log('[轮询] 检测到新消息，增量更新');
+          // 使用增量更新而不是完全替换
+          that.updateMessagesIncremental(messages);
         } else {
-          // 继续轮询
           setTimeout(doPoll, config.INTERVAL);
         }
       }).catch(function(err) {
-        // 增加错误计数
         errorCount++;
-
-        // 根据错误类型决定是否继续
         if (errorCount < config.MAX_ERRORS) {
-          // 继续轮询
           setTimeout(doPoll, config.INTERVAL);
         } else {
-          // 错误次数过多，停止轮询
           that.updateMessageStatus('error');
         }
       });
     };
 
-    // 延迟后开始第一次轮询
     setTimeout(doPoll, config.FIRST_DELAY);
+  },
+
+  /**
+   * 增量更新消息列表
+   * 只添加新消息，保留现有消息，避免闪烁
+   */
+  updateMessagesIncremental: function(backendMessages) {
+    var that = this;
+    var currentMessages = this.data.currentMessages;
+    var sessionType = this.data.sessionType;
+    var currentTitle = this.data.currentTitle;
+
+    // 将后端消息转换为前端格式
+    var newBackendMessages = (backendMessages || []).map(function(msg) {
+      var diagnosisCard = null;
+      if (msg.diagnosisCard) {
+        diagnosisCard = {
+          diagnosisCardId: msg.diagnosisCard.diagnosisCardId || '',
+          healthScore: msg.diagnosisCard.healthScore,
+          status: msg.diagnosisCard.status,
+          species: msg.diagnosisCard.species || '',
+          confidence: msg.diagnosisCard.confidence || 0,
+          issues: msg.diagnosisCard.issues,
+          suggestions: msg.diagnosisCard.suggestions
+        };
+      }
+
+      return {
+        id: msg.messageId,
+        type: msg.role === 'user' ? 'user' : 'ai',
+        content: msg.content,
+        imageUrl: msg.imageUrls && msg.imageUrls.length > 0 ? msg.imageUrls[0] : '',
+        diagnosisCard: diagnosisCard,
+        time: that.formatTime(new Date(msg.createdAt))
+      };
+    });
+
+    // 获取当前消息的 ID 集合（排除占位消息）
+    var existingIds = {};
+    currentMessages.forEach(function(msg) {
+      // 只记录非占位消息（ID 不以 ai_ 开头）
+      if (msg.id && !msg.id.startsWith('ai_')) {
+        existingIds[msg.id] = true;
+      }
+    });
+
+    // 过滤出真正的新消息
+    var trulyNewMessages = newBackendMessages.filter(function(msg) {
+      return !existingIds[msg.id];
+    });
+
+    if (trulyNewMessages.length === 0) {
+      console.log('[增量更新] 没有新消息');
+      return;
+    }
+
+    console.log('[增量更新] 添加 ' + trulyNewMessages.length + ' 条新消息');
+
+    // 过滤掉占位消息，追加新消息
+    var filteredMessages = currentMessages.filter(function(msg) {
+      // 保留：非 AI 消息、或 ID 不以 ai_ 开头、或有诊断卡的消息
+      return msg.type !== 'ai' || !msg.id.startsWith('ai_') || msg.diagnosisCard;
+    });
+
+    // 追加新消息
+    var updatedMessages = filteredMessages.concat(trulyNewMessages);
+
+    that.setData({
+      currentMessages: updatedMessages,
+      isLoading: false
+    });
+    that.scrollToBottom();
   },
 
   // 更新消息状态（超时或错误）
@@ -1291,5 +1346,80 @@ Page({
         this.closeSidebar();
       }
     }
+  },
+
+  /**
+   * 升级会话：将咨询会话升级为植物专属会话
+   * 点击诊断卡下方的"保存到植物档案"按钮触发
+   */
+  onUpgradeSession: function(e) {
+    var that = this;
+    var messageId = e.currentTarget.dataset.messageId;
+    var diagnosisCard = e.currentTarget.dataset.diagnosisCard;
+    var sessionId = this.data.sessionId;
+
+    if (!diagnosisCard) {
+      wx.showToast({ title: '缺少诊断信息', icon: 'none' });
+      return;
+    }
+
+    // 如果没有识别到品种，提示用户手动输入
+    var species = diagnosisCard.species;
+    if (!species) {
+      wx.showModal({
+        title: '未识别植物品种',
+        content: '当前诊断未识别到具体植物品种，您可以在创建档案时手动填写',
+        showCancel: true,
+        cancelText: '取消',
+        confirmText: '继续创建',
+        success: function(res) {
+          if (res.confirm) {
+            that.doUpgradeSession(messageId, diagnosisCard, sessionId, '');
+          }
+        }
+      });
+      return;
+    }
+
+    this.doUpgradeSession(messageId, diagnosisCard, sessionId, species);
+  },
+
+  /**
+   * 执行会话升级
+   */
+  doUpgradeSession: function(messageId, diagnosisCard, sessionId, species) {
+
+    // 标记该消息的升级按钮已点击
+    var currentMessages = this.data.currentMessages;
+    var messageIndex = currentMessages.findIndex(function(msg) {
+      return msg.id === messageId;
+    });
+
+    if (messageIndex !== -1) {
+      currentMessages[messageIndex].upgradeClicked = true;
+      this.setData({ currentMessages: currentMessages });
+    }
+
+    // 跳转到添加植物页面，预填充诊断信息
+    var params = [
+      'mode=create',
+      'from=upgrade',
+      'sessionId=' + encodeURIComponent(sessionId),
+      'species=' + encodeURIComponent(species),
+      'healthScore=' + diagnosisCard.healthScore,
+      'status=' + diagnosisCard.status
+    ];
+
+    // 如果有问题描述，也传递过去
+    if (diagnosisCard.issues && diagnosisCard.issues.length > 0) {
+      var issueNames = diagnosisCard.issues.map(function(issue) {
+        return issue.name;
+      }).join('、');
+      params.push('issues=' + encodeURIComponent(issueNames));
+    }
+
+    wx.navigateTo({
+      url: '/pages/add-plant/add-plant?' + params.join('&')
+    });
   }
 });

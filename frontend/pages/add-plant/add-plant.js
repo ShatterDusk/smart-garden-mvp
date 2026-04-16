@@ -50,6 +50,11 @@ Page({
     if (from === 'diagnosis') {
       this.loadDiagnosisInfo(options);
     }
+
+    // 处理从咨询会话升级来的情况
+    if (from === 'upgrade') {
+      this.loadUpgradeInfo(options);
+    }
   },
 
   loadDiagnosisInfo(options) {
@@ -73,6 +78,38 @@ Page({
 
     wx.showToast({
       title: '已预填诊断信息',
+      icon: 'none',
+      duration: 2000
+    });
+  },
+
+  // 加载从咨询会话升级来的信息
+  loadUpgradeInfo(options) {
+    var diagnosisInfo = {
+      sessionId: options.sessionId ? decodeURIComponent(options.sessionId) : '',
+      species: options.species ? decodeURIComponent(options.species) : '',
+      healthScore: options.healthScore || '',
+      status: options.status || '',
+      issues: options.issues ? decodeURIComponent(options.issues) : ''
+    };
+
+    var suggestedNickname = diagnosisInfo.species ? '我的' + diagnosisInfo.species : '我的植物';
+    
+    // 根据问题生成备注
+    var remark = '';
+    if (diagnosisInfo.issues) {
+      remark = '诊断发现问题：' + diagnosisInfo.issues;
+    }
+
+    this.setData({
+      diagnosisInfo: diagnosisInfo,
+      'form.species': diagnosisInfo.species,
+      'form.nickname': suggestedNickname,
+      'form.remark': remark
+    });
+
+    wx.showToast({
+      title: '已预填诊断信息，请补充分类',
       icon: 'none',
       duration: 2000
     });
