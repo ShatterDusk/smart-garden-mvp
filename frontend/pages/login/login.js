@@ -1,11 +1,17 @@
 // login.js - 登录页面
 var api = require('../../utils/api.js');
 
+// HACK: 强制显示开发者模式输入框（用于紧急修复登录问题）
+// 设置为 true 时，无论后端返回什么模式都会显示 OpenID 输入框
+var FORCE_DEV_MODE = true;
+
 Page({
   data: {
     isLoading: false,
     isDeveloperMode: false,
-    openidInput: ''
+    openidInput: '',
+    // HACK: 标记强制开发者模式
+    forceDevMode: FORCE_DEV_MODE
   },
 
   onLoad: function() {
@@ -16,8 +22,16 @@ Page({
       this.checkTokenValid(token);
     }
 
-    // 检测登录模式
-    this.checkAuthMode();
+    // HACK: 如果强制开发者模式，直接显示输入框
+    if (FORCE_DEV_MODE) {
+      this.setData({
+        isDeveloperMode: true
+      });
+      console.log('[HACK] 强制开启开发者模式输入框');
+    } else {
+      // 正常检测登录模式
+      this.checkAuthMode();
+    }
   },
 
   // 检测登录模式

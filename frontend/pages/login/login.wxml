@@ -14,7 +14,10 @@
 
     <!-- 开发者模式 OpenID 输入区域 -->
     <view class="dev-mode-section" wx:if="{{isDeveloperMode}}">
-      <view class="dev-mode-title">🔧 开发者模式</view>
+      <view class="dev-mode-title">
+        🔧 开发者模式
+        <text class="hack-badge" wx:if="{{forceDevMode}}">[HACK]</text>
+      </view>
       <input 
         class="openid-input" 
         type="text" 
