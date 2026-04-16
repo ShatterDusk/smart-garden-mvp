@@ -12,6 +12,32 @@
     <view class="card-title">欢迎回来</view>
     <view class="card-subtitle">登录后开始管理您的植物</view>
 
+    <!-- 开发者模式 OpenID 输入区域 -->
+    <view class="dev-mode-section" wx:if="{{isDeveloperMode}}">
+      <view class="dev-mode-title">🔧 开发者模式</view>
+      <input 
+        class="openid-input" 
+        type="text" 
+        placeholder="请输入 OpenID（如 wx_xxx 或 dev_xxx）"
+        value="{{openidInput}}"
+        bindinput="onOpenidInput"
+      />
+      <button 
+        class="login-btn dev-btn"
+        bindtap="handleOpenidLogin"
+        disabled="{{isLoading || !openidInput}}"
+        loading="{{isLoading}}"
+      >
+        <text class="btn-text">OpenID 登录</text>
+      </button>
+      <view class="dev-mode-tip">直接绑定已有账号，保留所有数据</view>
+      <view class="divider">
+        <view class="line"></view>
+        <text class="divider-text">或</text>
+        <view class="line"></view>
+      </view>
+    </view>
+
     <!-- 微信登录按钮 -->
     <button 
       class="login-btn wechat-btn" 
@@ -24,7 +50,7 @@
     </button>
 
     <!-- 分割线 -->
-    <view class="divider">
+    <view class="divider" wx:if="{{!isDeveloperMode}}">
       <view class="line"></view>
       <text class="divider-text">或</text>
       <view class="line"></view>
@@ -35,6 +61,7 @@
       class="login-btn guest-btn" 
       bindtap="handleGuestLogin"
       disabled="{{isLoading}}"
+      wx:if="{{!isDeveloperMode}}"
     >
       <text class="btn-icon">👤</text>
       <text class="btn-text">游客体验</text>

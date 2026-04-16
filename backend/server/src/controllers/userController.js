@@ -6,12 +6,10 @@
 const { UserService } = require('../services');
 const { Plant, Device } = require('../models');
 const { generateToken } = require('../middleware/auth');
+const wechatAuthService = require('../services/WechatAuthService');
 const logger = require('../utils/logger');
 
 const userService = new UserService();
-
-const WECHAT_APPID = process.env.WECHAT_APPID || '';
-const WECHAT_SECRET = process.env.WECHAT_SECRET || '';
 
 /**
  * 微信登录
@@ -21,8 +19,18 @@ async function login(req, res, next) {
   try {
     const { code, nickname, avatarUrl, gender } = req.body;
 
-    const openid = `wx_${Buffer.from(code || Date.now().toString()).toString('base64').substring(0, 28)}`;
+    if (!code) {
+      return res.error('缺少登录凭证 code', 400, 400);
+    }
 
+    // 调用微信认证服务获取 openid
+    const { openid, sessionKey, unionid, isMock } = await wechatAuthService.code2Session(code);
+
+    if (!openid) {
+      return res.error('获取用户身份失败', 500, 500);
+    }
+
+    // 创建或更新用户
     const { isNew, user } = await userService.createUser(openid, {
       nickname,
       avatarUrl,
@@ -30,7 +38,7 @@ async function login(req, res, next) {
 
     if (isNew) {
       await userService.createDefaultConfig(user.user_id);
-      logger.info(`新用户创建: ${user.user_id}`);
+      logger.info(`新用户创建: ${user.user_id}, 模式: ${isMock ? '开发者模式' : '生产模式'}`);
     } else {
       if (nickname || avatarUrl) {
         await user.update({
@@ -57,7 +65,8 @@ async function login(req, res, next) {
         avatarUrl: user.avatar_url,
         createdAt: user.created_at,
       },
-    }, '登录成功');
+      mode: isMock ? 'developer' : 'production',
+    }, isMock ? '登录成功（开发者模式）' : '登录成功');
   } catch (error) {
     next(error);
   }
@@ -303,6 +312,72 @@ async function setConfig(req, res, next) {
   }
 }
 
+/**
+ * 获取登录模式信息
+ * GET /api/users/auth-mode
+ */
+async function getAuthMode(req, res, next) {
+  try {
+    const modeInfo = wechatAuthService.getModeInfo();
+    res.success(modeInfo);
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * 通过 OpenID 直接登录（开发者模式）
+ * POST /api/users/login-by-openid
+ */
+async function loginByOpenid(req, res, next) {
+  try {
+    const { openid, nickname, avatarUrl } = req.body;
+
+    if (!openid) {
+      return res.error('缺少 openid 参数', 400, 400);
+    }
+
+    // 检查 openid 是否为开发者模式格式
+    if (!openid.startsWith('dev_') && !openid.startsWith('wx_')) {
+      return res.error('无效的 openid 格式', 400, 400);
+    }
+
+    // 查找或创建用户
+    let user = await userService.getUserByOpenId(openid);
+
+    if (user) {
+      // 用户已存在，更新登录时间
+      await user.update({ last_login_at: new Date() });
+      logger.info(`OpenID 登录（已存在用户）: ${user.user_id}`);
+    } else {
+      // 新用户
+      const result = await userService.createUser(openid, { nickname, avatarUrl });
+      user = result.user;
+      await userService.createDefaultConfig(user.user_id);
+      logger.info(`OpenID 登录（新用户创建）: ${user.user_id}`);
+    }
+
+    const token = generateToken({
+      user_id: user.user_id,
+      openid: user.wx_openid,
+    });
+
+    res.success({
+      token,
+      expiresIn: 604800,
+      user: {
+        userId: user.user_id,
+        nickname: user.nickname,
+        avatarUrl: user.avatar_url,
+        createdAt: user.created_at,
+      },
+      mode: 'developer',
+    }, '登录成功（OpenID 直连）');
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   login,
   guestLogin,
@@ -312,4 +387,6 @@ module.exports = {
   updateSettings,
   getConfig,
   setConfig,
+  getAuthMode,
+  loginByOpenid,
 };

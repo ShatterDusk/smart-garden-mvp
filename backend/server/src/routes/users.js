@@ -21,6 +21,12 @@ router.post('/login', validateBody(userLoginSchema), asyncHandler(userController
 // POST /api/users/guest-login - 游客登录
 router.post('/guest-login', asyncHandler(userController.guestLogin));
 
+// GET /api/users/auth-mode - 获取登录模式
+router.get('/auth-mode', asyncHandler(userController.getAuthMode));
+
+// POST /api/users/login-by-openid - 通过 OpenID 直接登录（开发者模式）
+router.post('/login-by-openid', asyncHandler(userController.loginByOpenid));
+
 // GET /api/users/profile - 获取用户信息
 router.get('/profile', authMiddleware, asyncHandler(userController.getProfile));
 

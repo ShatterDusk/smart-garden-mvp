@@ -268,6 +268,37 @@ function guestLogin() {
 }
 
 /**
+ * 通过 OpenID 直接登录（开发者模式）
+ * @param {string} openid - OpenID
+ * @param {string} [nickname] - 昵称
+ * @param {string} [avatarUrl] - 头像
+ * @returns {Promise<Object>} 登录结果
+ */
+function loginByOpenid(openid, nickname, avatarUrl) {
+  return post('/users/login-by-openid', {
+    openid: openid,
+    nickname: nickname || '开发者用户',
+    avatarUrl: avatarUrl || ''
+  }).then(function(res) {
+    if (res && res.token) {
+      var success = setToken(res.token);
+      if (!success && DEBUG) {
+        console.error('OpenID登录成功但保存 Token 失败');
+      }
+    }
+    return res;
+  });
+}
+
+/**
+ * 获取登录模式
+ * @returns {Promise<Object>} 登录模式信息
+ */
+function getAuthMode() {
+  return get('/users/auth-mode');
+}
+
+/**
  * 获取用户信息
  * @param {string} [include] - 包含的关联数据，如 'plants,sessions'
  * @returns {Promise<Object>} 用户信息对象
@@ -740,6 +771,8 @@ module.exports = {
   // ==================== 用户模块 ====================
   login: login,
   guestLogin: guestLogin,
+  loginByOpenid: loginByOpenid,
+  getAuthMode: getAuthMode,
   getUserProfile: getUserProfile,
   updateUserProfile: updateUserProfile,
   getUserConfig: getUserConfig,

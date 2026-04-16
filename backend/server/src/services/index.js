@@ -21,6 +21,7 @@ const SessionService = require('./SessionService');
 const aiService = require('./aiService');
 const compensationService = require('./compensationService');
 const weatherService = require('./weatherService');
+const wechatAuthService = require('./WechatAuthService');
 
 module.exports = {
   // 基类
@@ -38,4 +39,5 @@ module.exports = {
   aiService,
   compensationService,
   weatherService,
+  wechatAuthService,
 };
