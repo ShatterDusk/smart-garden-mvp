@@ -50,8 +50,11 @@ graph TB
         S_ENV["EnvironmentService"]
         S_CARE["CareRecordService"]
         S_AI["aiService"]
+        S_ASYNCAI["asyncAiService"]
         S_WEATHER["weatherService"]
         S_COMP["compensationService"]
+        S_WECHATAUTH["WechatAuthService"]
+        S_CACHE["CacheService"]
     end
 
     subgraph models
@@ -100,8 +103,11 @@ graph TB
     S_CARE --> S_BASE --> M_CARE
 
     S_AI --> AI_API
+    S_ASYNCAI --> AI_API
+    S_WECHATAUTH --> WEATHER_API
     S_WEATHER --> WEATHER_API
     S_DEVICE --> S_WEATHER
+    S_USER --> S_WECHATAUTH
 
     M_USER --> MYSQL
     M_UCONFIG --> MYSQL
@@ -148,6 +154,7 @@ graph TB
 | [storage.js](file:///f:/PROJECTS/WeChatProjects/MVP/backend/server/src/routes/storage.js) | `/api/storage` | 云存储上传链接 | 1 |
 | [weather.js](file:///f:/PROJECTS/WeChatProjects/MVP/backend/server/src/routes/weather.js) | `/api/weather` | 天气数据 | 2 |
 | [logs.js](file:///f:/PROJECTS/WeChatProjects/MVP/backend/server/src/routes/logs.js) | `/api/logs` | 日志管理 | 5 |
+| ~~[upload.js](file:///f:/PROJECTS/WeChatProjects/MVP/backend/server/src/routes/upload.js)~~ | ~~`/api/upload`~~ | ~~本地文件上传~~ | ~~2~~ | **已废弃，请使用 COS 直传** |
 
 ---
 
@@ -234,8 +241,11 @@ graph TB
 
     subgraph ext_services
         S_AI["aiService"]
+        S_ASYNCAI["asyncAiService"]
         S_WEATHER["weatherService"]
         S_COMP["compensationService"]
+        S_WECHATAUTH["WechatAuthService"]
+        S_CACHE["CacheService"]
     end
 
     BASE --> S_USER
@@ -247,6 +257,9 @@ graph TB
 
     S_DEVICE --> S_WEATHER
     S_ENV --> S_COMP
+    S_USER --> S_WECHATAUTH
+    S_SESSION --> S_AI
+    S_SESSION --> S_ASYNCAI
 ```
 
 **服务说明**：
@@ -270,9 +283,12 @@ graph TB
 | UserService | createUser, createGuestUser, getUserById, getUserEntity, updateUser, updateUserLoginTime, getUserByOpenId, createDefaultConfig, getConfig, setConfig, getSettings, updateSettings |
 | PlantService | createPlant, getPlantById, getPlantList, getPlantWithDevice, getPlantDetail, updatePlant, deletePlant, getPlantDevices, getLatestDiagnoses, degradePlantSessions |
 | SessionService | createSession, getSessionById, getSessionList, updateSession, deleteSession, getMessages, getMessageCount, createMessage, createDiagnosisCard, getPlantsForSessions, getLatestMessages, getDiagnosisCardsForMessages, getReadPositions, updateReadPosition, getLastMessage, prepareContext, getConversationHistory, upgradeSession |
-| DeviceService | bindDevice, unbindDevice, getDeviceList, getDeviceById, getDeviceByMac, updateDeviceStatus, getPlantsForDevices, reportDeviceData |
+| DeviceService | bindDevice, unbindDevice, getDeviceList, getDeviceById, getDeviceByMac, updateDeviceStatus, getPlantsForDevices, reportDeviceData, getBoundPlant |
 | EnvironmentService | getPlantById, getCurrentData, getHistoryData |
 | CareRecordService | createCareRecord, getCareRecordList, getRecordById, updateCareRecord, deleteCareRecord, getPlantsForRecords |
+| asyncAiService | analyzeAsync, processQueue | 异步AI分析服务 |
+| WechatAuthService | getAccessToken, getUserInfo, code2Session | 微信认证服务 |
+| CacheService | get, set, del, clear | 缓存服务 |
 
 ---
 

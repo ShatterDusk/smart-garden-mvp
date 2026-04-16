@@ -228,10 +228,16 @@ flowchart TB
         U7[/api/cos/*]
         U8[/api/devices<br/>GET/POST bind/unbind]
         U9[/api/environment/*]
+        U10[/api/logs/*<br/>frontend除外]
     end
 
     subgraph 设备认证接口
         D1[/api/devices/data<br/>POST]
+    end
+
+    subgraph 无认证接口
+        N1[/api/logs/frontend]
+        N2[/api/weather/*]
     end
 
     subgraph 数据存储
@@ -248,6 +254,9 @@ flowchart TB
     MP -->|JWT认证| U7
     MP -->|JWT认证| U8
     MP -->|JWT认证| U9
+    MP -->|JWT认证| U10
+    MP -->|无认证| N1
+    MP -->|无认证| N2
 
     IOT -->|设备认证| D1
     D1 -->|写入| ENV
@@ -259,6 +268,7 @@ flowchart TB
     U4 --> DB
     U5 --> DB
     U8 --> DB
+    U10 --> DB
 ```
 
 ---
@@ -279,6 +289,7 @@ flowchart TB
 | COS | 小程序 | ✅ | ✅ | 腾讯云COS直传 |
 | Storage | 小程序 | ✅ | - | 获取上传链接 |
 | Logs | 小程序 + 管理端 | ✅ | ✅ | 前端日志无需认证，查看需密钥 |
+| Upload | 小程序 | ✅ | - | ~~本地文件上传~~ **已废弃，请使用 COS 直传** |
 
 ---
 

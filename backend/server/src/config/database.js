@@ -36,6 +36,7 @@ const sequelize = new Sequelize(
     port: process.env.DB_PORT || 3306,
     dialect: process.env.DB_DIALECT || 'mysql',
     logging: process.env.DB_LOGGING === 'true' ? loggingFunction : false,
+    timezone: '+08:00',  // 设置时区为北京时间
     pool: {
       max: 10,
       min: 2,
@@ -60,7 +61,10 @@ const sequelize = new Sequelize(
       underscored: true,
       freezeTableName: true,
     },
-    dialectOptions,
+    dialectOptions: {
+      ...dialectOptions,
+      timezone: '+08:00',  // MySQL 连接时区
+    },
   }
 );
 
