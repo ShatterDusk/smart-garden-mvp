@@ -310,22 +310,25 @@ class EnvironmentService extends BaseService {
         };
       }
 
+      // 先尝试用真实时间查询
       const now = new Date();
       let startDate;
+      let timeRangeMs;
       switch (timeRange) {
         case '24h':
-          startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          timeRangeMs = 24 * 60 * 60 * 1000;
           break;
         case '30d':
-          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          timeRangeMs = 30 * 24 * 60 * 60 * 1000;
           break;
         case '7d':
         default:
-          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          timeRangeMs = 7 * 24 * 60 * 60 * 1000;
           break;
       }
+      startDate = new Date(now.getTime() - timeRangeMs);
 
-      const whereClause = {
+      let whereClause = {
         plant_id: plantId,
         recorded_at: {
           [Op.gte]: startDate,
@@ -337,11 +340,52 @@ class EnvironmentService extends BaseService {
         whereClause.data_source = dataSource;
       }
 
-      const readings = await EnvironmentReading.findAll({
+      let readings = await EnvironmentReading.findAll({
         where: whereClause,
         order: [['recorded_at', 'ASC']],
         attributes: ['reading_id', 'recorded_at', 'is_stale'],
       });
+
+      // 如果真实时间范围内没有数据，尝试基于该植物的最新数据时间计算范围
+      // 这适用于虚拟传感器等使用模拟时间的场景
+      if (readings.length === 0) {
+        const latestReading = await EnvironmentReading.findOne({
+          where: { plant_id: plantId, ...(dataSource && { data_source: dataSource }) },
+          order: [['recorded_at', 'DESC']],
+          attributes: ['recorded_at'],
+        });
+
+        if (latestReading) {
+          const latestTime = latestReading.recorded_at;
+          const adjustedStartDate = new Date(latestTime.getTime() - timeRangeMs);
+          
+          logger.info('[EnvironmentService.getHistoryData] 真实时间范围内无数据，使用基于最新数据的时间范围', {
+            plantId,
+            dataSource,
+            timeRange,
+            latestDataTime: latestTime.toISOString(),
+            adjustedStartDate: adjustedStartDate.toISOString(),
+          });
+
+          whereClause = {
+            plant_id: plantId,
+            recorded_at: {
+              [Op.gte]: adjustedStartDate,
+              [Op.lte]: latestTime,
+            },
+          };
+
+          if (dataSource) {
+            whereClause.data_source = dataSource;
+          }
+
+          readings = await EnvironmentReading.findAll({
+            where: whereClause,
+            order: [['recorded_at', 'ASC']],
+            attributes: ['reading_id', 'recorded_at', 'is_stale'],
+          });
+        }
+      }
 
       if (readings.length === 0) {
         return {
