@@ -41,8 +41,7 @@ Page({
   },
 
   onReady() {
-    // 页面渲染完成后绘制健康环
-    this.drawHealthRings();
+    // 健康环已改用 CSS 实现，无需 Canvas 绘制
   },
 
   // 设置问候语
@@ -127,10 +126,7 @@ Page({
         loading: false
       });
       
-      // 绘制健康环
-      setTimeout(() => {
-        this.drawHealthRings();
-      }, 100);
+      // 健康环已改用 CSS 实现，无需绘制
       
     }).catch((err) => {
       console.error('加载首页数据失败:', err);
@@ -142,63 +138,7 @@ Page({
     });
   },
 
-  // 绘制健康评分环
-  drawHealthRings() {
-    const plants = this.data.myPlants;
-    if (!plants || plants.length === 0) return;
-    
-    plants.forEach((plant, index) => {
-      const canvasId = `healthRing${index}`;
-      const query = wx.createSelectorQuery();
-      query.select(`#${canvasId}`).fields({ node: true, size: true }).exec((res) => {
-        if (!res[0]) return;
-        
-        const canvas = res[0].node;
-        const ctx = canvas.getContext('2d');
-        const windowInfo = wx.getWindowInfo();
-        const dpr = windowInfo.pixelRatio;
-        
-        canvas.width = 80 * dpr;
-        canvas.height = 80 * dpr;
-        ctx.scale(dpr, dpr);
-        
-        const centerX = 40;
-        const centerY = 40;
-        const radius = 32;
-        const lineWidth = 6;
-        
-        // 清空画布
-        ctx.clearRect(0, 0, 80, 80);
-        
-        // 绘制背景圆环
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-        ctx.strokeStyle = '#e8f5e9';
-        ctx.lineWidth = lineWidth;
-        ctx.stroke();
-        
-        // 计算进度
-        const score = plant.score || 80;
-        const percentage = score / 100;
-        const startAngle = -Math.PI / 2;
-        const endAngle = startAngle + (2 * Math.PI * percentage);
-        
-        // 确定颜色
-        let strokeColor = '#4CAF50';
-        if (plant.status === 'warning' || plant.status === 'critical') {
-          strokeColor = '#FF9800';
-        }
-        
-        // 绘制进度圆环
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, radius, startAngle, endAngle);
-        ctx.strokeStyle = strokeColor;
-        ctx.lineWidth = lineWidth;
-        ctx.lineCap = 'round';
-        ctx.stroke();
-      });
-    });
-  },
+
 
   // 刷新养护小贴士
   refreshTip() {

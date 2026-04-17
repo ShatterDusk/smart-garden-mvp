@@ -79,8 +79,12 @@ Page({
       
       log('onLoad', '初始化数据:', { plantId, metricCode: metric, dataSource: source });
       
-      this.loadMetricInfo();
-      this.loadChartData();
+      // 串行加载：先加载指标信息，再加载图表数据
+      // 确保上方内容渲染完成后再初始化 Canvas
+      this.loadMetricInfo().then(() => {
+        log('onLoad', '指标信息加载完成，开始加载图表数据');
+        this.loadChartData();
+      });
     } catch (err) {
       error('onLoad', '页面加载失败:', err);
       wx.showToast({ title: '页面加载失败', icon: 'error' });
@@ -119,79 +123,85 @@ Page({
     
     const def = metricDefinitions[metricCode] || { name: '未知指标', unit: '', icon: '❓', min: 0, max: 100 };
     
-    // 获取真实当前值
-    api.getCurrentEnvironment(plantId)
-      .then(function(res) {
-        log('loadMetricInfo', '获取实时环境数据:', res);
-        
-        // 从响应中获取当前指标值
-        let currentValue = 0;
-        let status = 'normal';
-        let statusText = '正常';
-        
-        // 根据数据源选择读取方式
-        if (dataSource === 'device') {
-          // 从传感器数据中获取
-          if (res && res.deviceMetrics && Array.isArray(res.deviceMetrics)) {
-            const sensorReading = res.deviceMetrics.find(function(r) {
-              return r.metricCode === metricCode;
-            });
-            if (sensorReading) {
-              currentValue = parseFloat(sensorReading.value) || 0;
+    // 返回 Promise，确保调用方知道何时完成
+    return new Promise((resolve) => {
+      // 获取真实当前值
+      api.getCurrentEnvironment(plantId)
+        .then(function(res) {
+          log('loadMetricInfo', '获取实时环境数据:', res);
+          
+          // 从响应中获取当前指标值
+          let currentValue = 0;
+          let status = 'normal';
+          let statusText = '正常';
+          
+          // 根据数据源选择读取方式
+          if (dataSource === 'device') {
+            // 从传感器数据中获取
+            if (res && res.deviceMetrics && Array.isArray(res.deviceMetrics)) {
+              const sensorReading = res.deviceMetrics.find(function(r) {
+                return r.metricCode === metricCode;
+              });
+              if (sensorReading) {
+                currentValue = parseFloat(sensorReading.value) || 0;
+              }
+            }
+          } else if (dataSource === 'weather') {
+            // 从天气数据中获取
+            if (res && res.weatherMetrics && Array.isArray(res.weatherMetrics)) {
+              const weatherReading = res.weatherMetrics.find(function(r) {
+                return r.metricCode === metricCode;
+              });
+              if (weatherReading) {
+                currentValue = parseFloat(weatherReading.value) || 0;
+              }
             }
           }
-        } else if (dataSource === 'weather') {
-          // 从天气数据中获取
-          if (res && res.weatherMetrics && Array.isArray(res.weatherMetrics)) {
-            const weatherReading = res.weatherMetrics.find(function(r) {
-              return r.metricCode === metricCode;
-            });
-            if (weatherReading) {
-              currentValue = parseFloat(weatherReading.value) || 0;
+          
+          // 判断状态
+          if (currentValue < def.min) {
+            status = 'warning';
+            statusText = '偏低';
+          } else if (currentValue > def.max) {
+            status = 'warning';
+            statusText = '偏高';
+          }
+          
+          that.setData({
+            metricInfo: {
+              ...def,
+              code: metricCode,
+              currentValue: currentValue,
+              status: status,
+              statusText: statusText
             }
-          }
-        }
-        
-        // 判断状态
-        if (currentValue < def.min) {
-          status = 'warning';
-          statusText = '偏低';
-        } else if (currentValue > def.max) {
-          status = 'warning';
-          statusText = '偏高';
-        }
-        
-        that.setData({
-          metricInfo: {
-            ...def,
-            code: metricCode,
-            currentValue: currentValue,
-            status: status,
-            statusText: statusText
-          }
+          }, () => {
+            // setData 回调中 resolve，确保 DOM 已更新
+            wx.setNavigationBarTitle({
+              title: def.name + '趋势'
+            });
+            resolve();
+          });
+        })
+        .catch(function(err) {
+          error('loadMetricInfo', '获取实时环境数据失败:', err);
+          // 降级处理：显示默认值
+          that.setData({
+            metricInfo: {
+              ...def,
+              code: metricCode,
+              currentValue: 0,
+              status: 'normal',
+              statusText: '暂无数据'
+            }
+          }, () => {
+            wx.setNavigationBarTitle({
+              title: def.name + '趋势'
+            });
+            resolve();
+          });
         });
-        
-        wx.setNavigationBarTitle({
-          title: def.name + '趋势'
-        });
-      })
-      .catch(function(err) {
-        error('loadMetricInfo', '获取实时环境数据失败:', err);
-        // 降级处理：显示默认值
-        that.setData({
-          metricInfo: {
-            ...def,
-            code: metricCode,
-            currentValue: 0,
-            status: 'normal',
-            statusText: '暂无数据'
-          }
-        });
-        
-        wx.setNavigationBarTitle({
-          title: def.name + '趋势'
-        });
-      });
+    });
   },
 
   loadChartData() {
@@ -230,8 +240,11 @@ Page({
         that.setData({
           chartData: formattedData
         }, () => {
-          // 数据设置完成后再初始化图表
-          that.initChart();
+          // 延迟初始化图表，确保 DOM 完全布局完成
+          // 解决 Canvas 在上方内容动态渲染后位置错位的问题
+          setTimeout(() => {
+            that.initChart();
+          }, 100);
         });
 
         that.calculateStatistics(formattedData);

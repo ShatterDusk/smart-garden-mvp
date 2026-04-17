@@ -57,7 +57,7 @@
         <text class="section-action" bindtap="goToPlants">查看全部 ></text>
       </view>
       
-      <scroll-view class="plants-scroll" scroll-x="true" show-scrollbar="false" enable-flex>
+      <scroll-view class="plants-scroll" scroll-x="true" show-scrollbar="false">
         <!-- 植物卡片 -->
         <view 
           class="plant-card" 
@@ -70,13 +70,8 @@
           <view class="plant-emoji">{{item.type}}</view>
           <view class="plant-name">{{item.name}}</view>
           <view class="health-ring">
-            <canvas 
-              type="2d" 
-              id="healthRing{{index}}" 
-              class="health-ring-canvas"
-              data-score="{{item.score}}"
-              data-status="{{item.status}}"
-            ></canvas>
+            <view class="health-ring-bg"></view>
+            <view class="health-ring-progress {{item.status === 'warning' || item.status === 'critical' ? 'warning' : ''}}" style="--score: {{item.score || 80}};"></view>
             <view class="health-score {{item.status === 'warning' || item.status === 'critical' ? 'warning' : ''}}">{{item.score}}</view>
           </view>
         </view>
