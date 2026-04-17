@@ -1,0 +1,25 @@
+# Commit Message 模板
+# 请按以下格式填写，# 开头的行会被忽略
+
+# 类型(范围): 简短描述（50字以内）
+# 类型: feat|fix|docs|style|refactor|test|chore|ci
+# 范围: 可选，如 backend|frontend|test|ci|docs
+#
+# 示例:
+# feat(backend): 添加用户认证中间件
+# fix(test): 修复异步测试句柄泄漏
+# docs: 更新 API 文档
+
+<type>(<scope>): <subject>
+
+# 详细描述（可选）
+# 说明变更的动机、背景、实现方式
+# 每行不超过 72 字符
+
+<body>
+
+# 关联信息（可选）
+# 关联的 Issue、PR、文档等
+# 如: Closes #123, Refs #456
+
+<footer>
