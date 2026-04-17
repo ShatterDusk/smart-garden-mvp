@@ -766,33 +766,33 @@ X-Log-Access-Key: <log_access_key>
 
 ---
 
-### 5.5 设备数据上报 ⚠️ 已废弃
+### 5.5 设备数据上报
 
 **接口**: `POST /api/devices/data`
 
-**说明**: 设备数据上报（设备端调用）
+**说明**: 设备数据上报（设备端调用），用于硬件设备上报环境监测数据
 
-**状态**: ⚠️ **已废弃**，建议使用环境数据模块的新接口
-
-**认证**: 需要设备认证
+**认证**: 需要设备认证（`deviceAuthMiddleware`）
 
 **请求参数**:
 
 | 参数 | 类型 | 必填 | 说明 |
 |:---|:---|:---:|:---|
 | deviceId | string | 是 | 设备ID |
-| plantId | string | 是 | 植物ID |
+| plantId | string | 否 | 植物ID（可选，设备已绑定时可不传） |
 | metrics | array | 是 | 指标数据数组 |
-| metrics[].metricCode | string | 是 | 指标代码 |
+| metrics[].metricCode | string | 是 | 指标代码：temperature/humidity/soil_moisture/light/soil_temperature |
 | metrics[].value | number | 是 | 指标值 |
-| recordedAt | string | 是 | 记录时间，ISO8601格式 |
+| timestamp | string | 否 | 记录时间戳，ISO8601格式，默认当前时间 |
+| isSupplement | boolean | 否 | 是否为补传数据，默认false |
 
 **请求示例**:
 ```json
 {
   "deviceId": "DEVICE_001",
   "plantId": "PLANT_001",
-  "recordedAt": "2026-04-04T10:00:00Z",
+  "timestamp": "2026-04-04T10:00:00Z",
+  "isSupplement": false,
   "metrics": [
     { "metricCode": "temperature", "value": 22.5 },
     { "metricCode": "humidity", "value": 60 },
@@ -1858,7 +1858,7 @@ X-Log-Access-Key: <log_access_key>
 | POST | /bind | 绑定设备 | ✅ |
 | POST | /unbind | 解绑设备 | ✅ |
 | GET | /:deviceId | 获取设备详情 | ✅ |
-| POST | /data | 设备数据上报 | 🔧 设备 |
+| POST | /data | 设备数据上报 | 🔧 设备认证 |
 
 #### AI 域 (/api/sessions, /api/ai)
 
