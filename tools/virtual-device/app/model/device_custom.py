@@ -52,8 +52,11 @@ class DeviceCustom(Device):
     
     def _init_time_model(self):
         """初始化时间模型 S/R/k"""
-        # 真实时间 R
-        self._real_time = datetime.datetime.now()
+        # 获取当前时区（用于保持一致性）
+        tz = datetime.timezone(datetime.timedelta(hours=8))  # 北京时间 +08:00
+        
+        # 真实时间 R（带时区）
+        self._real_time = datetime.datetime.now(tz)
         
         # 模拟时间 S
         initial_time = os.getenv('SIMULATED_TIME_INITIAL')
@@ -63,7 +66,7 @@ class DeviceCustom(Device):
             else:
                 self._sim_time = initial_time
         else:
-            self._sim_time = datetime.datetime.now()
+            self._sim_time = datetime.datetime.now(tz)
         
         # 加速倍数 k
         self._accel = min(int(os.getenv('TIME_ACCELERATION', '1')), MAX_TIME_ACCELERATION)
@@ -90,8 +93,9 @@ class DeviceCustom(Device):
             return
         
         try:
-            # 更新真实时间
-            self._real_time = datetime.datetime.now()
+            # 更新真实时间（带时区，保持一致性）
+            tz = datetime.timezone(datetime.timedelta(hours=8))
+            self._real_time = datetime.datetime.now(tz)
             
             # 推进模拟时间（正确模型：dS = k × dR = k × (Δs/k) = Δs）
             self._sim_time += datetime.timedelta(milliseconds=SENSOR_INTERVAL_MS)

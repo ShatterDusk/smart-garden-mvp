@@ -176,3 +176,5 @@ debug/
 *.bak
 *.backup
 *_backup/
+
+workspace-20260414-redis-cache

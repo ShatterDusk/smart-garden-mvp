@@ -1,0 +1,31 @@
+{
+  "version": "2.0",
+  "envId": "{{env.ENV_ID}}",
+  "framework": {
+    "name": "smart-garden-backend",
+    "plugins": {
+      "node": {
+        "use": "@cloudbase/framework-plugin-container",
+        "inputs": {
+          "serviceName": "smart-garden-backend",
+          "servicePath": "/",
+          "localPath": ".",
+          "filePath": "Dockerfile",
+          "containerPort": 3000,
+          "envVariables": {
+            "NODE_ENV": "production",
+            "PORT": "3000"
+          },
+          "customDomains": [],
+          "maxNum": 5,
+          "minNum": 1,
+          "cpu": 0.5,
+          "mem": 1,
+          "policyType": "cpu",
+          "policyThreshold": 60,
+          "versionRemark": "{{env.GIT_COMMIT_MSG}}"
+        }
+      }
+    }
+  }
+}
